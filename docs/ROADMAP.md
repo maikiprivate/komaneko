@@ -616,21 +616,20 @@ DBインデックス:
 ※ ARCHITECTURE.md、CODING_STANDARDS.md、brand/ は Phase 1 完了後に作成
   （実際のコードを書きながら規約を固める方が現実的）
 
-### Phase 1: プロジェクト基盤
+### Phase 1: プロジェクト基盤（完了）
 - [x] モノレポ初期化（pnpm workspaces）
 - [x] 共通設定（biome.json, tsconfig）
-- [ ] Postgres.app セットアップ（一人開発のためDocker不使用）
-- [ ] Prismaセットアップ・初期マイグレーション
-- [ ] Fastifyアプリ基本構成
-- [ ] エラーハンドリング基盤（AppErrorクラス）
-- [ ] 構造化ログ設定（Pino）
-- [ ] ヘルスチェックエンドポイント（/api/health）
-- [ ] レート制限・CORS設定
+- [x] PostgreSQL セットアップ（Postgres.app）
+- [x] Prismaセットアップ・初期マイグレーション
+- [x] Fastifyアプリ基本構成
+- [x] エラーハンドリング基盤（AppErrorクラス）
+- [x] 構造化ログ設定（Pino）
+- [x] ヘルスチェックエンドポイント（/api/health）
+- [x] レート制限・CORS設定
 
-### Phase 2: 認証モジュール
-- [ ] インメモリセッション管理（Cookie-based）
-- [ ] ユーザー登録・ログイン・ログアウト
-- [ ] 匿名セッション
+### Phase 2: 認証モジュール（作業中）
+- [ ] 匿名ユーザー作成
+- [ ] セッション管理（Cookie-based）
 - [ ] 認証ミドルウェア
 - [ ] ユニットテスト作成
 
