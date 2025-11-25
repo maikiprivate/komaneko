@@ -660,6 +660,7 @@ DBインデックス:
 - [ ] シードデータ作成
 - [ ] Railway設定（PostgreSQLのみ）
 - [ ] CI/CD（GitHub Actions: lint, test, build, deploy）
+- [ ] Pre-commitフック設定（husky + lint-staged）
 - [ ] 本番環境テスト
 
 ### 将来フェーズ（必要になったら）
