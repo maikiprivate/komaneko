@@ -1,7 +1,7 @@
+import { randomUUID } from 'node:crypto'
 import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import Fastify from 'fastify'
-import { randomUUID } from 'node:crypto'
 import { prisma } from './db/client.js'
 import { errorHandler } from './shared/errors/index.js'
 

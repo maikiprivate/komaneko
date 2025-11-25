@@ -1,11 +1,7 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify'
 import { AppError } from './AppError.js'
 
-export function errorHandler(
-  error: FastifyError,
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
+export function errorHandler(error: FastifyError, request: FastifyRequest, reply: FastifyReply) {
   // AppError の場合
   if (error instanceof AppError) {
     request.log.warn({ err: error, code: error.code }, 'Application error')

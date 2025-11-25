@@ -184,10 +184,8 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 1（プロジェクト基盤構築） |
-| 最終更新 | 2025-11-25 |
-| 作業中 | モノレポ初期化 |
-| 次のタスク | pnpm workspaces設定 |
+| フェーズ | Phase 2（認証・セッション）準備中 |
+| 最終更新 | 2025-11-26 |
 
 ### Phase 0（完了）
 - [x] .cursorrules 作成
@@ -196,16 +194,16 @@ users ─────┬──── sessions（匿名対応）
 - [x] docs/ROADMAP.md 作成
 - [x] README.md 作成
 
-### Phase 1（作業中）
-- [ ] モノレポ初期化（pnpm workspaces）
-- [ ] 共通設定（biome.json, tsconfig）
-- [ ] Docker Compose（PostgreSQL）
-- [ ] Prismaセットアップ
-- [ ] Fastifyアプリ基本構成
-- [ ] エラーハンドリング基盤（AppError）
-- [ ] 構造化ログ設定（Pino）
-- [ ] ヘルスチェックエンドポイント
-- [ ] レート制限・CORS設定
+### Phase 1（完了）
+- [x] モノレポ初期化（pnpm workspaces）
+- [x] 共通設定（biome.json, tsconfig）
+- [x] PostgreSQL（ローカル）
+- [x] Prismaセットアップ
+- [x] Fastifyアプリ基本構成
+- [x] エラーハンドリング基盤（AppError）
+- [x] 構造化ログ設定（Pino）
+- [x] ヘルスチェックエンドポイント
+- [x] レート制限・CORS設定
 
 ---
 
