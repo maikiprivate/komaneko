@@ -1,0 +1,11 @@
+# 駒猫 - ツールバージョン管理
+# https://mise.jdx.dev/
+
+[tools]
+node = "22"
+
+[tasks]
+dev = "pnpm dev"
+build = "pnpm build"
+test = "pnpm test"
+lint = "pnpm lint"
