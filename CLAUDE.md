@@ -172,25 +172,28 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 0（ドキュメント・設計基盤） |
+| フェーズ | Phase 1（プロジェクト基盤構築） |
 | 最終更新 | 2025-11-25 |
-| 作業中 | 基盤ドキュメント作成 |
-| 次のタスク | Phase 1（プロジェクト基盤構築） |
+| 作業中 | モノレポ初期化 |
+| 次のタスク | pnpm workspaces設定 |
 
-### 完了済み
+### Phase 0（完了）
 - [x] .cursorrules 作成
 - [x] mise.toml 作成
 - [x] CLAUDE.md 作成
 - [x] docs/ROADMAP.md 作成
 - [x] README.md 作成
 
-### Phase 1 で実施予定
+### Phase 1（作業中）
 - [ ] モノレポ初期化（pnpm workspaces）
 - [ ] 共通設定（biome.json, tsconfig）
 - [ ] Docker Compose（PostgreSQL）
 - [ ] Prismaセットアップ
 - [ ] Fastifyアプリ基本構成
+- [ ] エラーハンドリング基盤（AppError）
+- [ ] 構造化ログ設定（Pino）
 - [ ] ヘルスチェックエンドポイント
+- [ ] レート制限・CORS設定
 
 ---
 
