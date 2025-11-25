@@ -20,6 +20,16 @@ manabi-shogi-backend（31,800行）のコア機能を抽出し、komanekoプロ�
 | 2 | モバイルアプリ | メインプラットフォーム（React Native） |
 | 3 | 管理画面 | コンテンツ管理用（React + Vite）|
 
+### 開発の前提
+
+| 項目 | 内容 |
+|------|------|
+| 開発体制 | **一人開発** |
+| ブランチ戦略 | feature/* → main（PRなし、直接マージ） |
+| ローカルDB | Postgres.app（Docker不使用） |
+| CI/CD | 後回し（必要になったら追加） |
+| Pre-commit | 後回し（必要になったら追加） |
+
 ---
 
 ## 1. 設計原則・開発ルール（最重要）
@@ -607,9 +617,9 @@ DBインデックス:
   （実際のコードを書きながら規約を固める方が現実的）
 
 ### Phase 1: プロジェクト基盤
-- [ ] モノレポ初期化（pnpm workspaces）
-- [ ] 共通設定（biome.json, tsconfig）
-- [ ] Docker Compose（PostgreSQLのみ）
+- [x] モノレポ初期化（pnpm workspaces）
+- [x] 共通設定（biome.json, tsconfig）
+- [ ] Postgres.app セットアップ（一人開発のためDocker不使用）
 - [ ] Prismaセットアップ・初期マイグレーション
 - [ ] Fastifyアプリ基本構成
 - [ ] エラーハンドリング基盤（AppErrorクラス）
@@ -659,9 +669,9 @@ DBインデックス:
 ### Phase 8: デプロイ
 - [ ] シードデータ作成
 - [ ] Railway設定（PostgreSQLのみ）
-- [ ] CI/CD（GitHub Actions: lint, test, build, deploy）
-- [ ] Pre-commitフック設定（husky + lint-staged）
 - [ ] 本番環境テスト
+- [ ] CI/CD（任意：GitHub Actions）※一人開発では後回し可
+- [ ] Pre-commitフック（任意：husky + lint-staged）※一人開発では後回し可
 
 ### 将来フェーズ（必要になったら）
 - [ ] 定跡モジュール（データ量多いため後回し）
