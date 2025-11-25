@@ -600,7 +600,8 @@ DBインデックス:
 - [x] .cursorrules 作成（AI自動読込ルール・必須）
 - [x] mise.toml 作成（ツールバージョン管理）
 - [x] CLAUDE.md 作成（最小限：プロジェクト概要 + レイヤールール）
-- [ ] docs/ROADMAP.md 作成（開発計画書）
+- [x] docs/ROADMAP.md 作成（開発計画書）
+- [x] README.md 作成（プロジェクト概要）
 
 ※ ARCHITECTURE.md、CODING_STANDARDS.md、brand/ は Phase 1 完了後に作成
   （実際のコードを書きながら規約を固める方が現実的）

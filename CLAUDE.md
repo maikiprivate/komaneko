@@ -181,6 +181,8 @@ users ─────┬──── sessions（匿名対応）
 - [x] .cursorrules 作成
 - [x] mise.toml 作成
 - [x] CLAUDE.md 作成
+- [x] docs/ROADMAP.md 作成
+- [x] README.md 作成
 
 ### Phase 1 で実施予定
 - [ ] モノレポ初期化（pnpm workspaces）
