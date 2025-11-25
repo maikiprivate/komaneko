@@ -1,0 +1,68 @@
+// 駒猫 Prisma スキーマ
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== ユーザー・認証 ==========
+
+model User {
+  id        String   @id @default(uuid())
+  email     String?  @unique
+  name      String?
+  isAnonymous Boolean @default(true) @map("is_anonymous")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sessions Session[]
+  hearts   Hearts?
+  streak   Streak?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ========== ゲーミフィケーション ==========
+
+model Hearts {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  count     Int      @default(5)
+  maxCount  Int      @default(5) @map("max_count")
+  lastRefill DateTime @default(now()) @map("last_refill")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("hearts")
+}
+
+model Streak {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  currentCount Int      @default(0) @map("current_count")
+  longestCount Int      @default(0) @map("longest_count")
+  lastActiveDate DateTime? @map("last_active_date")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("streaks")
+}
