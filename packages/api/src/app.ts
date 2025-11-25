@@ -1,9 +1,15 @@
 import Fastify from 'fastify'
+import { randomUUID } from 'node:crypto'
 import { errorHandler } from './shared/errors/index.js'
+
+const isDev = process.env.NODE_ENV !== 'production'
 
 export function buildApp() {
   const app = Fastify({
-    logger: true,
+    logger: {
+      level: isDev ? 'debug' : 'info',
+    },
+    genReqId: () => randomUUID(),
   })
 
   // エラーハンドラを登録

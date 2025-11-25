@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/index.ts | pino-pretty",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest",
@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "pino-pretty": "^13.1.2",
     "prisma": "^6.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
