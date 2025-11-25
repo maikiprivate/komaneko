@@ -1,0 +1,52 @@
+# 駒猫 開発ルール
+
+## コミュニケーション
+- 日本語で応答してください
+
+## レイヤールール（厳守）
+Router → Service → Repository の一方向のみ
+- Router: HTTP処理のみ
+- Service: ビジネスロジック + 認可チェック
+- Repository: データアクセスのみ
+- 同レイヤー間の呼び出し禁止
+- レイヤー飛ばし禁止
+
+## ファイル命名
+feature.router.ts / feature.service.ts / feature.repository.ts
+feature.schema.ts / feature.test.ts
+
+## 関数命名
+- Router: handleGetXxx(), handleCreateXxx()
+- Service: getXxxById(), createXxx()
+- Repository: findById(), findMany(), insert()
+
+## コードスタイル
+- TypeScript strict mode
+- interface > type
+- enum禁止、const object使用
+- 純粋関数を優先
+
+## エラー処理
+- AppErrorクラス + エラーコード使用
+- 文字列比較禁止
+
+## データベース・認可
+- Prismaのみ使用、raw SQL禁止
+- 認可ロジックはService層で実装
+- データアクセス前に必ず所有者チェック
+
+## テスト
+- 全APIエンドポイントにテスト必須
+- Service層: 80%以上カバレッジ
+- テストファイルは実装と同階層
+- Service層・将棋ロジックはTDD（テスト先行）で実装
+
+## Git（重要）
+- 1機能 = 1コミット
+- 作業前にブランチ作成必須
+- ユーザー許可なしのコミット禁止
+
+## shared/ ルール
+- 3箇所以上で使う場合のみ追加
+- utils/は純粋関数のみ
+- 循環依存禁止
