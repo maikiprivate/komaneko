@@ -6,7 +6,7 @@ import { useTheme } from '@/components/useTheme'
 import { mockHomeData } from '@/mocks/homeData'
 
 const characterSitting = require('@/assets/images/character/sitting.png')
-const homeBackground = require('@/assets/images/background/home.png')
+const homeBackground = require('@/assets/images/background/home.jpg')
 
 // 分を「◯時間◯分」形式に変換
 function formatRecoveryTime(minutes: number): string {
@@ -124,12 +124,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* 仮のコンテンツエリア */}
-      <View style={styles.content}>
-        <Text style={[styles.placeholder, { color: colors.text.secondary }]}>
-          ここに学習メニューが入ります
-        </Text>
-      </View>
       </SafeAreaView>
     </ImageBackground>
   )
@@ -140,7 +134,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backgroundImagePosition: {
-    top: 50,
+    // top: 50,
   },
   container: {
     flex: 1,
@@ -256,14 +250,5 @@ const styles = StyleSheet.create({
   characterImage: {
     width: 320,
     height: 320,
-  },
-  // コンテンツ
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholder: {
-    fontSize: 16,
   },
 })
