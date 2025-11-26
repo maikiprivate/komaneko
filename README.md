@@ -35,15 +35,30 @@
 ```bash
 # 依存関係のインストール
 pnpm install
+```
 
-# データベース起動
-docker compose up -d
+### APIサーバー（packages/api）
 
+```bash
+# データベース起動（ローカルのPostgres.app使用）
 # マイグレーション
-pnpm db:migrate
+cd packages/api && pnpm db:migrate
 
 # 開発サーバー起動
-pnpm dev
+cd packages/api && pnpm dev
+```
+
+### モバイルアプリ（packages/app）
+
+```bash
+# Expo開発サーバー起動
+cd packages/app && pnpm start
+
+# iOSシミュレータで起動
+cd packages/app && pnpm ios
+
+# Androidエミュレータで起動
+cd packages/app && pnpm android
 ```
 
 ## プロジェクト構造

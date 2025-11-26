@@ -1,9 +1,11 @@
-import { StyleSheet, View, Text } from 'react-native'
+import { StyleSheet, View, Text, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 
 import { useTheme } from '@/components/useTheme'
 import { mockHomeData } from '@/mocks/homeData'
+
+const characterSitting = require('@/assets/images/character/sitting.png')
 
 // 分を「◯時間◯分」形式に変換
 function formatRecoveryTime(minutes: number): string {
@@ -107,10 +109,21 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* キャラクター表示 */}
+      <View style={styles.characterArea}>
+        <Image source={characterSitting} style={styles.characterImage} resizeMode="contain" />
+        {/* ゲーム風セリフボックス */}
+        <View style={styles.dialogBox}>
+          <Text style={styles.dialogText}>
+            一日お疲れ様にゃ！{'\n'}今日の締めくくりに詰将棋はいかがかにゃ？
+          </Text>
+        </View>
+      </View>
+
       {/* 仮のコンテンツエリア */}
       <View style={styles.content}>
         <Text style={[styles.placeholder, { color: colors.text.secondary }]}>
-          ここにキャラクターと学習メニューが入ります
+          ここに学習メニューが入ります
         </Text>
       </View>
     </SafeAreaView>
@@ -206,6 +219,32 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  // キャラクター
+  characterArea: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  dialogBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: -40,
+    marginHorizontal: 16,
+    borderWidth: 2,
+    borderColor: '#FF8C42',
+  },
+  dialogText: {
+    color: '#2D3436',
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  characterImage: {
+    width: 300,
+    height: 300,
   },
   // コンテンツ
   content: {
