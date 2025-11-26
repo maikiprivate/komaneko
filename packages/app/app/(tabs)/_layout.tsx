@@ -17,7 +17,7 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
-  const { colors } = useTheme()
+  const { colors, palette } = useTheme()
 
   return (
     <Tabs
@@ -28,9 +28,9 @@ export default function TabLayout() {
           backgroundColor: colors.tabBar.background,
         },
         headerStyle: {
-          backgroundColor: colors.background.primary,
+          backgroundColor: palette.orange,
         },
-        headerTintColor: colors.text.primary,
+        headerTintColor: '#FFFFFF',
         headerShown: useClientOnlyValue(false, true),
       }}
     >
@@ -46,7 +46,7 @@ export default function TabLayout() {
                   <FontAwesome
                     name="cog"
                     size={22}
-                    color={colors.text.primary}
+                    color="#FFFFFF"
                     style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
                   />
                 )}
