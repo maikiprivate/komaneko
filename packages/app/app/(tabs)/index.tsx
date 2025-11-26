@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, Image } from 'react-native'
+import { StyleSheet, View, Text, Image, ImageBackground } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 
@@ -6,6 +6,7 @@ import { useTheme } from '@/components/useTheme'
 import { mockHomeData } from '@/mocks/homeData'
 
 const characterSitting = require('@/assets/images/character/sitting.png')
+const homeBackground = require('@/assets/images/background/home.png')
 
 // 分を「◯時間◯分」形式に変換
 function formatRecoveryTime(minutes: number): string {
@@ -25,10 +26,13 @@ export default function HomeScreen() {
   const heartsPercent = (hearts.current / hearts.max) * 100
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background.primary }]}
-      edges={[]}
+    <ImageBackground
+      source={homeBackground}
+      style={styles.backgroundImage}
+      imageStyle={styles.backgroundImagePosition}
+      resizeMode="cover"
     >
+      <SafeAreaView style={styles.container} edges={[]}>
       {/* ストリーク（カレンダー式） */}
       <View style={[styles.streakCard, { backgroundColor: colors.card.background }]}>
         {/* ヘッダー */}
@@ -126,11 +130,18 @@ export default function HomeScreen() {
           ここに学習メニューが入ります
         </Text>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   )
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+  },
+  backgroundImagePosition: {
+    top: 50,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 16,
@@ -223,7 +234,7 @@ const styles = StyleSheet.create({
   // キャラクター
   characterArea: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 24,
   },
   dialogBox: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -243,8 +254,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   characterImage: {
-    width: 300,
-    height: 300,
+    width: 320,
+    height: 320,
   },
   // コンテンツ
   content: {
