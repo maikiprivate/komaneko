@@ -1,13 +1,14 @@
 import React from 'react'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Link, Tabs } from 'expo-router'
-import { Pressable, Image } from 'react-native'
+import { Pressable, Image, View } from 'react-native'
 
 const lessonIcon = require('@/assets/images/tabs/lesson.png')
 const tsumeshogiIcon = require('@/assets/images/tabs/tsumeshogi.png')
 
 import { useTheme } from '@/components/useTheme'
 import { useClientOnlyValue } from '@/components/useClientOnlyValue'
+import { LogoHeader } from '@/components/icons/LogoHeader'
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name']
@@ -37,8 +38,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'ホーム',
+          title: '',
+          tabBarLabel: 'ホーム',
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          headerLeft: () => (
+            <View style={{ marginLeft: 15, marginTop: -2 }}>
+              <LogoHeader width={119} height={27} />
+            </View>
+          ),
           headerRight: () => (
             <Link href="/two" asChild>
               <Pressable>
