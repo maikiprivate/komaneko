@@ -5,6 +5,7 @@ import { useTheme } from '@/components/useTheme'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { PieceStand } from '@/components/shogi/PieceStand'
 import { parseSfen } from '@/lib/shogi/sfen'
+import { getPieceStandOrder } from '@/lib/shogi/perspective'
 import type { Perspective } from '@/lib/shogi/types'
 
 // テスト用の詰将棋問題（1手詰め）
@@ -28,12 +29,11 @@ export default function TsumeshogiScreen() {
   const boardWidth = cellSize * 9 + 8 + 12
 
   // 視点に応じた駒台の順序
-  const topStand = perspective === 'sente'
-    ? { pieces: capturedPieces.gote, label: '後手', isOpponent: true }
-    : { pieces: capturedPieces.sente, label: '先手', isOpponent: true }
-  const bottomStand = perspective === 'sente'
-    ? { pieces: capturedPieces.sente, label: '先手', isOpponent: false }
-    : { pieces: capturedPieces.gote, label: '後手', isOpponent: false }
+  const { top: topStand, bottom: bottomStand } = getPieceStandOrder(
+    capturedPieces.sente,
+    capturedPieces.gote,
+    perspective
+  )
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]} edges={[]}>
