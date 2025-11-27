@@ -17,9 +17,9 @@ export default function TsumeshogiScreen() {
   const { board } = createInitialBoard()
 
   // 画面幅から余白を引いて9マスで割る
-  const cellSize = Math.floor((width - 32) / 9)
-  // 盤面の幅（cellSize * 9 + padding + border）
-  const boardWidth = cellSize * 9 + 8
+  const cellSize = Math.floor((width - 48) / 9)
+  // 盤面エリアの幅（cellSize * 9 + padding + border + 段番号の幅）
+  const boardWidth = cellSize * 9 + 8 + 12
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]} edges={[]}>
