@@ -47,37 +47,49 @@ export default function HomeScreen() {
         <View style={styles.weekCalendar}>
           {DAY_LABELS.map((day, index) => {
             const dayData = streak.weeklyProgress[index]
+            const nextDayData = streak.weeklyProgress[index + 1]
             const isToday = index === streak.todayIndex
             const isFuture = index > streak.todayIndex
+            const showConnector = dayData.completed && nextDayData?.completed
             return (
-              <View key={day} style={styles.dayColumn}>
-                <Text style={[styles.dayLabel, { color: colors.text.secondary }]}>
-                  {day}
-                </Text>
-                <View
-                  style={[
-                    styles.dayCircle,
-                    dayData.completed
-                      ? { backgroundColor: colors.gamification.streak }
-                      : isFuture
-                        ? { backgroundColor: colors.border }
-                        : { backgroundColor: 'transparent', borderColor: colors.border, borderWidth: 2 },
-                    isToday && { borderColor: colors.gamification.streak, borderWidth: 3 },
-                  ]}
-                >
-                  {dayData.completed ? (
-                    <FontAwesome name="check" size={14} color="#FFFFFF" />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.dateText,
-                        { color: isToday ? colors.gamification.streak : colors.text.secondary },
-                      ]}
-                    >
-                      {dayData.date}
-                    </Text>
-                  )}
+              <View key={day} style={styles.dayColumnWrapper}>
+                <View style={styles.dayColumn}>
+                  <Text style={[styles.dayLabel, { color: colors.text.secondary }]}>
+                    {day}
+                  </Text>
+                  <View
+                    style={[
+                      styles.dayCircle,
+                      dayData.completed
+                        ? { backgroundColor: colors.gamification.streak }
+                        : isFuture
+                          ? { backgroundColor: colors.border }
+                          : { backgroundColor: 'transparent', borderColor: colors.border, borderWidth: 2 },
+                      isToday && { borderColor: colors.gamification.streak, borderWidth: 3 },
+                    ]}
+                  >
+                    {dayData.completed ? (
+                      <FontAwesome name="check" size={14} color="#FFFFFF" />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.dateText,
+                          { color: isToday ? colors.gamification.streak : colors.text.secondary },
+                        ]}
+                      >
+                        {dayData.date}
+                      </Text>
+                    )}
+                  </View>
                 </View>
+                {index < DAY_LABELS.length - 1 && (
+                  <View
+                    style={[
+                      styles.streakConnector,
+                      { backgroundColor: showConnector ? colors.gamification.streak : 'transparent' },
+                    ]}
+                  />
+                )}
               </View>
             )
           })}
@@ -206,10 +218,23 @@ const styles = StyleSheet.create({
   weekCalendar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  dayColumnWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    flex: 1,
   },
   dayColumn: {
     alignItems: 'center',
     gap: 4,
+  },
+  streakConnector: {
+    flex: 1,
+    height: 6,
+    marginBottom: 13,
+    marginHorizontal: -4,
+    borderRadius: 3,
   },
   dayLabel: {
     fontSize: 11,
