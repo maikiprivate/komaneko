@@ -29,7 +29,6 @@ export default function HomeScreen() {
     <ImageBackground
       source={homeBackground}
       style={styles.backgroundImage}
-      imageStyle={styles.backgroundImagePosition}
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container} edges={[]}>
@@ -144,9 +143,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
-  },
-  backgroundImagePosition: {
-    // top: 50,
   },
   container: {
     flex: 1,
