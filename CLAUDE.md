@@ -184,25 +184,30 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 2（モバイルアプリ・ホーム画面）作業中 |
-| 最終更新 | 2025-11-26 |
+| フェーズ | Phase 3（将棋盤共通コンポーネント） |
+| 最終更新 | 2025-11-27 |
 | 開発方針 | **アプリ画面先行（モック先行）** |
 
-### Phase 2（作業中）- 方針変更
-**変更理由**: 画面を先に作ることで仕様が明確になり、不要なAPIを作らずに済む
+### Phase 3（作業中）- 将棋盤共通コンポーネント
 
-- [ ] Expo プロジェクト初期化（Managed）
-- [ ] Expo Router セットアップ
-- [ ] テーマ・カラー定義
-- [ ] 駒猫キャラクター表示
-- [ ] ホーム画面（モックデータ）
+**目標**: 詰将棋・駒塾で共通利用する将棋盤コンポーネントを作成
 
-### Phase 0（完了）
-- [x] .cursorrules 作成
-- [x] mise.toml 作成
-- [x] CLAUDE.md 作成
-- [x] docs/ROADMAP.md 作成
-- [x] README.md 作成
+```
+packages/app/
+├── components/shogi/    # ShogiBoard, Piece, PieceStand
+├── lib/shogi/           # types, sfen, perspective, pieceImages
+├── mocks/shogiData.ts
+└── assets/images/pieces/
+```
+
+**重要**: `perspective.ts` で先手/後手視点の切り替えを集約（manabi-shogiの教訓）
+
+### Phase 2（完了）
+- [x] Expo プロジェクト初期化（Managed）
+- [x] Expo Router セットアップ
+- [x] テーマ・カラー定義
+- [x] 駒猫キャラクター表示
+- [x] ホーム画面（ハート、ストリーク、ヘッダーロゴ）
 
 ### Phase 1（完了）
 - [x] モノレポ初期化（pnpm workspaces）
@@ -214,6 +219,13 @@ users ─────┬──── sessions（匿名対応）
 - [x] 構造化ログ設定（Pino）
 - [x] ヘルスチェックエンドポイント
 - [x] レート制限・CORS設定
+
+### Phase 0（完了）
+- [x] .cursorrules 作成
+- [x] mise.toml 作成
+- [x] CLAUDE.md 作成
+- [x] docs/ROADMAP.md 作成
+- [x] README.md 作成
 
 ---
 
