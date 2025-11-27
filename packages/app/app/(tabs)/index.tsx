@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   // 体力ゲージカード
   heartsCard: {
-    marginTop: 12,
+    marginTop: 8,
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   // ストリークカード（カレンダー式）
   streakCard: {
-    marginTop: 8,
+    marginTop: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
