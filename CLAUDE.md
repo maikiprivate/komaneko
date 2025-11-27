@@ -5,6 +5,18 @@
 
 ---
 
+## 開発の前提
+
+| 項目 | 内容 |
+|------|------|
+| 開発体制 | **一人開発** |
+| ブランチ戦略 | feature/* → main（PRなし、直接マージ） |
+| ローカルDB | Postgres.app（Docker不使用） |
+| CI/CD | 後回し（必要になったら追加） |
+| Pre-commit | 後回し（必要になったら追加） |
+
+---
+
 ## プロジェクト概要
 
 | 項目 | 内容 |
@@ -172,23 +184,48 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 0（ドキュメント・設計基盤） |
-| 最終更新 | 2025-11-25 |
-| 作業中 | 基盤ドキュメント作成 |
-| 次のタスク | Phase 1（プロジェクト基盤構築） |
+| フェーズ | Phase 3（将棋盤共通コンポーネント） |
+| 最終更新 | 2025-11-27 |
+| 開発方針 | **アプリ画面先行（モック先行）** |
 
-### 完了済み
+### Phase 3（作業中）- 将棋盤共通コンポーネント
+
+**目標**: 詰将棋・駒塾で共通利用する将棋盤コンポーネントを作成
+
+```
+packages/app/
+├── components/shogi/    # ShogiBoard, Piece, PieceStand
+├── lib/shogi/           # types, sfen, perspective, pieceImages
+├── mocks/shogiData.ts
+└── assets/images/pieces/
+```
+
+**重要**: `perspective.ts` で先手/後手視点の切り替えを集約（manabi-shogiの教訓）
+
+### Phase 2（完了）
+- [x] Expo プロジェクト初期化（Managed）
+- [x] Expo Router セットアップ
+- [x] テーマ・カラー定義
+- [x] 駒猫キャラクター表示
+- [x] ホーム画面（ハート、ストリーク、ヘッダーロゴ）
+
+### Phase 1（完了）
+- [x] モノレポ初期化（pnpm workspaces）
+- [x] 共通設定（biome.json, tsconfig）
+- [x] PostgreSQL（ローカル）
+- [x] Prismaセットアップ
+- [x] Fastifyアプリ基本構成
+- [x] エラーハンドリング基盤（AppError）
+- [x] 構造化ログ設定（Pino）
+- [x] ヘルスチェックエンドポイント
+- [x] レート制限・CORS設定
+
+### Phase 0（完了）
 - [x] .cursorrules 作成
 - [x] mise.toml 作成
 - [x] CLAUDE.md 作成
-
-### Phase 1 で実施予定
-- [ ] モノレポ初期化（pnpm workspaces）
-- [ ] 共通設定（biome.json, tsconfig）
-- [ ] Docker Compose（PostgreSQL）
-- [ ] Prismaセットアップ
-- [ ] Fastifyアプリ基本構成
-- [ ] ヘルスチェックエンドポイント
+- [x] docs/ROADMAP.md 作成
+- [x] README.md 作成
 
 ---
 

@@ -20,6 +20,16 @@ manabi-shogi-backend（31,800行）のコア機能を抽出し、komanekoプロ�
 | 2 | モバイルアプリ | メインプラットフォーム（React Native） |
 | 3 | 管理画面 | コンテンツ管理用（React + Vite）|
 
+### 開発の前提
+
+| 項目 | 内容 |
+|------|------|
+| 開発体制 | **一人開発** |
+| ブランチ戦略 | feature/* → main（PRなし、直接マージ） |
+| ローカルDB | Postgres.app（Docker不使用） |
+| CI/CD | 後回し（必要になったら追加） |
+| Pre-commit | 後回し（必要になったら追加） |
+
 ---
 
 ## 1. 設計原則・開発ルール（最重要）
@@ -594,78 +604,226 @@ DBインデックス:
 
 ---
 
-## 7. 実装フェーズ（YAGNI版）
+## 7. 実装フェーズ（アプリ先行版）
 
-### Phase 0: 最小限のドキュメント（30分で完了）
-- [x] .cursorrules 作成（AI自動読込ルール・必須）
-- [x] mise.toml 作成（ツールバージョン管理）
-- [x] CLAUDE.md 作成（最小限：プロジェクト概要 + レイヤールール）
-- [ ] docs/ROADMAP.md 作成（開発計画書）
+### 開発方針
+```
+アプリモック → API実装 → API接続
 
-※ ARCHITECTURE.md、CODING_STANDARDS.md、brand/ は Phase 1 完了後に作成
-  （実際のコードを書きながら規約を固める方が現実的）
+理由:
+- 画面を先に作ることで仕様が明確になる
+- 不要なAPIを作らずに済む
+- Expo Goで随時フィードバックを得られる
+```
 
-### Phase 1: プロジェクト基盤
-- [ ] モノレポ初期化（pnpm workspaces）
-- [ ] 共通設定（biome.json, tsconfig）
-- [ ] Docker Compose（PostgreSQLのみ）
-- [ ] Prismaセットアップ・初期マイグレーション
-- [ ] Fastifyアプリ基本構成
-- [ ] エラーハンドリング基盤（AppErrorクラス）
-- [ ] 構造化ログ設定（Pino）
-- [ ] ヘルスチェックエンドポイント（/api/health）
-- [ ] レート制限・CORS設定
+### MVP定義
+**ホーム画面 + 駒塾 + 詰将棋**（ゲーミフィケーション含む）
 
-### Phase 2: 認証モジュール
-- [ ] インメモリセッション管理（Cookie-based）
-- [ ] ユーザー登録・ログイン・ログアウト
-- [ ] 匿名セッション
+---
+
+### ⚠️ 重要：共通化ルール（manabi-shogiの教訓）
+
+**原則:**
+- 2画面以上で使う → 共通化を検討
+- ビジネスルールに関わる → 必ず共通化
+- 画面ごとに別実装を絶対に作らない
+
+```
+packages/app/src/
+│
+├── shogi/                      # 🎯 将棋コア
+│   ├── components/
+│   │   └── ShogiBoard.tsx      # 将棋盤（1つだけ！）
+│   ├── logic/
+│   │   ├── rules.ts            # 将棋ルール（合法手判定等）
+│   │   ├── sfen.ts             # SFEN変換
+│   │   └── cpu.ts              # CPUロジック（将来）
+│   └── assets/
+│       └── pieces/             # 駒画像
+│
+├── core/                       # 🎯 アプリコア
+│   ├── gamification/
+│   │   ├── hearts.ts           # ハート消費・回復ロジック
+│   │   ├── streak.ts           # 連続学習日数計算
+│   │   └── useHeartGuard.ts    # ハートなし時の制御
+│   ├── learning/
+│   │   ├── progress.ts         # 進捗管理
+│   │   └── records.ts          # 学習記録
+│   └── ui/
+│       ├── LoadingState.tsx    # 共通ローディング
+│       └── ErrorBoundary.tsx   # エラーハンドリング
+│
+└── screens/                    # 画面（共通モジュールを使う側）
+```
+
+**今後も増える可能性があるため、新機能追加時は:**
+1. まず既存の共通モジュールで対応できないか確認
+2. 新規作成する場合は shogi/ または core/ に配置
+3. 画面固有のロジックは最小限に
+
+---
+
+### Phase 0: ドキュメント（完了）
+- [x] .cursorrules 作成
+- [x] mise.toml 作成
+- [x] CLAUDE.md 作成
+- [x] docs/ROADMAP.md 作成
+- [x] README.md 作成
+
+### Phase 1: API基盤（完了）
+- [x] モノレポ初期化（pnpm workspaces）
+- [x] 共通設定（biome.json, tsconfig）
+- [x] PostgreSQL セットアップ（Postgres.app）
+- [x] Prismaセットアップ・初期マイグレーション
+- [x] Fastifyアプリ基本構成
+- [x] エラーハンドリング基盤（AppError）
+- [x] 構造化ログ設定（Pino）
+- [x] ヘルスチェックエンドポイント
+- [x] レート制限・CORS設定
+
+---
+
+## Part A: アプリモック開発
+
+### Phase 2: アプリ基盤 + ホーム画面（完了）
+- [x] Expo (Managed) プロジェクト初期化
+- [x] Expo Router セットアップ
+- [x] ナビゲーション構造（Tab / Stack）
+- [x] テーマ・カラー定義
+- [x] 駒猫キャラクター表示
+- [x] ホーム画面（モックデータ）
+  - ハート表示（ゲージ形式）
+  - ストリーク表示（週カレンダー + 連続日接続線）
+  - ヘッダーロゴ
+- [x] 📱 Expo Go で動作確認
+
+### Phase 3: 将棋盤共通コンポーネント（作業中）
+
+**目標**: 詰将棋・駒塾で共通利用する将棋盤コンポーネントを作成
+
+#### ディレクトリ構造
+```
+packages/app/
+├── components/
+│   └── shogi/
+│       ├── ShogiBoard.tsx      # 盤面 + ラベル + 視点対応
+│       ├── Piece.tsx           # 駒表示
+│       └── PieceStand.tsx      # 駒台
+│
+├── lib/
+│   └── shogi/
+│       ├── types.ts            # 型 + 定数
+│       ├── sfen.ts             # SFEN解析
+│       ├── perspective.ts      # 視点変換（テスト容易）
+│       └── pieceImages.ts      # 駒画像マッピング
+│
+├── mocks/
+│   └── shogiData.ts            # モックSFEN
+│
+└── assets/images/pieces/       # 駒画像28枚
+```
+
+#### 視点変換（perspective.ts）の役割
+manabi-shogiで問題になった先手/後手視点の切り替えを集約：
+- `flipBoard()` - 盤面配列の180度回転
+- `getColumnLabels()` / `getRowLabels()` - 座標ラベル生成
+- `flipPosition()` - 座標変換（表示 ↔ SFEN標準）
+- `shouldRotatePiece()` - 駒の向き判定
+
+**原則**: データは常にSFEN標準（先手視点）、変換は表示時のみ
+
+#### 実装タスク
+- [ ] 駒画像アセットをコピー（28枚）
+- [ ] lib/shogi/types.ts（型定義）
+- [ ] lib/shogi/sfen.ts（SFEN解析）
+- [ ] lib/shogi/perspective.ts（視点変換）
+- [ ] lib/shogi/pieceImages.ts（画像マッピング）
+- [ ] components/shogi/Piece.tsx
+- [ ] components/shogi/ShogiBoard.tsx
+- [ ] components/shogi/PieceStand.tsx
+- [ ] mocks/shogiData.ts
+- [ ] 詰将棋画面に統合
+- [ ] 駒塾画面に統合
+- [ ] 📱 Expo Go でフィードバック取得
+
+#### 将来追加（今は作らない）
+- lib/shogi/moves.ts（合法手生成）
+- lib/shogi/engine.ts（エンジン連携）
+- components/shogi/PromotionDialog.tsx（成り確認）
+
+### Phase 4: 駒塾・詰将棋画面（モック）
+- [ ] レッスン一覧画面
+- [ ] レッスン学習画面（共通将棋盤使用）
+- [ ] 問題一覧画面（難易度・手数フィルタ）
+- [ ] 詰将棋プレイ画面（共通将棋盤使用）
+- [ ] 解答表示・解説
+- [ ] 進捗表示
+- [ ] 📱 Expo Go でフィードバック取得
+
+### Phase 5: アプリコア（ゲーミフィケーション）
+- [ ] **core/ 共通モジュール作成**
+  - ハートロジック（消費・回復・制限）
+  - ストリークロジック（日数計算）
+  - 学習記録
+
+---
+
+## Part B: API開発
+
+### Phase 6: 認証API
+- [ ] 匿名ユーザー作成
+- [ ] セッション管理（Cookie-based）
 - [ ] 認証ミドルウェア
-- [ ] ユニットテスト作成
+- [ ] ユニットテスト
 
-### Phase 3: 駒塾モジュール【優先】
-- [ ] CRUD（Router → Service → Repository）
-- [ ] Zodスキーマでバリデーション
+### Phase 7: コンテンツAPI
+- [ ] 駒塾CRUD（Router → Service → Repository）
 - [ ] レッスンステップ管理
-- [ ] ユニット・統合テスト（TDD）
-
-### Phase 4: 詰将棋モジュール
-- [ ] CRUD
+- [ ] 詰将棋CRUD
 - [ ] 難易度・手数フィルタ
 - [ ] 解答管理
-- [ ] テスト作成（TDD）
+- [ ] ユニット・統合テスト（TDD）
 
-### Phase 5: ゲーミフィケーション + BFF
+### Phase 8: ゲーミフィケーションAPI + BFF
 - [ ] ハートシステム（消費・回復）
 - [ ] 連続記録（日付計算）
 - [ ] 学習記録
-- [ ] BFF統合エンドポイント（/api/home/status など）
+- [ ] BFF統合エンドポイント
+  - GET /api/home/status
+  - GET /api/lesson/:id/study
+  - GET /api/tsumeshogi/:id/play
 - [ ] テスト作成（TDD）
 
-### Phase 6: モバイルアプリ【メインプラットフォーム】
-- [ ] React Native + Expo 初期設定
-- [ ] JWT認証
-- [ ] ホーム画面
-- [ ] 駒塾学習画面
-- [ ] 詰将棋プレイ画面
+---
 
-### Phase 7: 管理画面
+## Part C: 統合・リリース
+
+### Phase 9: アプリ-API接続
+- [ ] 認証フロー実装
+- [ ] モックデータ → API呼び出しに置き換え
+- [ ] ローディング状態UI
+- [ ] エラーハンドリングUI
+- [ ] オフライン対応（任意）
+
+### Phase 10: 管理画面
 - [ ] React + Vite設定
-- [ ] シンプルなAPIクライアント（fetch + 型定義）
-- [ ] ダッシュボード
 - [ ] 駒塾・詰将棋管理画面
+- [ ] コンテンツ投入
 
-### Phase 8: デプロイ
+### Phase 11: デプロイ
 - [ ] シードデータ作成
-- [ ] Railway設定（PostgreSQLのみ）
-- [ ] CI/CD（GitHub Actions: lint, test, build, deploy）
+- [ ] Railway設定
 - [ ] 本番環境テスト
+- [ ] App Store / Google Play 準備（任意）
+
+---
 
 ### 将来フェーズ（必要になったら）
 - [ ] 定跡モジュール（データ量多いため後回し）
 - [ ] Redis導入（水平スケール時）
 - [ ] Sentry統合（ユーザー増加後）
-- [ ] Swagger導入（外部API公開時）
+- [ ] プッシュ通知
+- [ ] ソーシャル機能
 
 ---
 

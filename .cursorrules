@@ -26,9 +26,11 @@ feature.schema.ts / feature.test.ts
 - enum禁止、const object使用
 - 純粋関数を優先
 
-## エラー処理
-- AppErrorクラス + エラーコード使用
-- 文字列比較禁止
+## エラー処理（重要）
+- AppErrorクラスのみ使用（throw new Error() 禁止）
+- 新しいエラーは先に errorCodes.ts に追加してから使用
+- エラーコードは大文字スネークケース（例: USER_NOT_FOUND）
+- 文字列でのエラー比較禁止（error.code で比較）
 
 ## データベース・認可
 - Prismaのみ使用、raw SQL禁止

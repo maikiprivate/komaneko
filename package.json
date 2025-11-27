@@ -1,0 +1,24 @@
+{
+  "name": "komaneko",
+  "version": "0.1.0",
+  "private": true,
+  "description": "将棋をゲーム感覚で楽しく学べるアプリ",
+  "scripts": {
+    "dev": "pnpm --filter @komaneko/api dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "db:migrate": "pnpm --filter @komaneko/api db:migrate",
+    "db:studio": "pnpm --filter @komaneko/api db:studio"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.14.2",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4"
+  }
+}
