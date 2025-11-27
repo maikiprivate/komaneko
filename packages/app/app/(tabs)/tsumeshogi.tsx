@@ -3,7 +3,13 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
+import { PieceStand } from '@/components/shogi/PieceStand'
 import { createInitialBoard } from '@/lib/shogi/sfen'
+import type { CapturedPieces } from '@/lib/shogi/types'
+
+// テスト用の持ち駒データ（最大ケース）
+const testSenteHand: CapturedPieces = { hi: 2, kaku: 2, kin: 4, gin: 4, kei: 4, kyo: 4, fu: 18 }
+const testGoteHand: CapturedPieces = { hi: 2, kaku: 2, kin: 4, gin: 4, kei: 4, kyo: 4, fu: 18 }
 
 export default function TsumeshogiScreen() {
   const { colors } = useTheme()
@@ -12,6 +18,8 @@ export default function TsumeshogiScreen() {
 
   // 画面幅から余白を引いて9マスで割る
   const cellSize = Math.floor((width - 32) / 9)
+  // 盤面の幅（cellSize * 9 + padding + border）
+  const boardWidth = cellSize * 9 + 8
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]} edges={[]}>
@@ -19,7 +27,9 @@ export default function TsumeshogiScreen() {
         <Text style={[styles.title, { color: colors.text.primary }]}>
           詰将棋
         </Text>
+        <PieceStand pieces={testGoteHand} isOpponent label="後手" width={boardWidth} />
         <ShogiBoard board={board} player="sente" cellSize={cellSize} />
+        <PieceStand pieces={testSenteHand} label="先手" width={boardWidth} />
       </View>
     </SafeAreaView>
   )
@@ -33,7 +43,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
+    gap: 4,
   },
   title: {
     fontSize: 20,
