@@ -4,42 +4,54 @@
 
 import { StyleSheet, View, Text } from 'react-native'
 
-import type { Board, Player } from '../../lib/shogi/types'
+import type { Board, Perspective } from '../../lib/shogi/types'
+import {
+  transformBoardForPerspective,
+  getFileLabels,
+  getRankLabels,
+} from '../../lib/shogi/perspective'
 import { Piece } from './Piece'
 
 interface ShogiBoardProps {
   board: Board
-  player: Player
+  perspective: Perspective
   cellSize?: number
 }
 
 // 星の位置（罫線の交点）
 // 将棋の座標: 3三、6三、3六、6六
-// マスの右下角に配置
-const STAR_POSITIONS = [
+// マスの右下角に配置（先手視点の場合）
+const STAR_POSITIONS_SENTE = [
   { row: 2, col: 2 },  // 6三
   { row: 2, col: 5 },  // 3三
   { row: 5, col: 2 },  // 6六
   { row: 5, col: 5 },  // 3六
 ]
 
-// 筋の番号（右から左へ）
-const FILE_LABELS = ['9', '8', '7', '6', '5', '4', '3', '2', '1']
-// 段の番号（上から下へ）
-const RANK_LABELS = ['一', '二', '三', '四', '五', '六', '七', '八', '九']
+// 後手視点の場合（180度回転）
+const STAR_POSITIONS_GOTE = [
+  { row: 3, col: 3 },  // 6六 → 変換後
+  { row: 3, col: 6 },  // 3六 → 変換後
+  { row: 6, col: 3 },  // 6三 → 変換後
+  { row: 6, col: 6 },  // 3三 → 変換後
+]
 
-function hasStarAtBottomRight(row: number, col: number): boolean {
-  return STAR_POSITIONS.some((pos) => pos.row === row && pos.col === col)
+function hasStarAtBottomRight(row: number, col: number, perspective: Perspective): boolean {
+  const positions = perspective === 'sente' ? STAR_POSITIONS_SENTE : STAR_POSITIONS_GOTE
+  return positions.some((pos) => pos.row === row && pos.col === col)
 }
 
-export function ShogiBoard({ board, player, cellSize = 36 }: ShogiBoardProps) {
+export function ShogiBoard({ board, perspective, cellSize = 36 }: ShogiBoardProps) {
   const labelSize = 12
+  const transformedBoard = transformBoardForPerspective(board, perspective)
+  const fileLabels = getFileLabels(perspective)
+  const rankLabels = getRankLabels(perspective)
 
   return (
     <View style={styles.board}>
       {/* 筋の番号（上部） */}
       <View style={[styles.row, { height: labelSize }]}>
-        {FILE_LABELS.map((label, index) => (
+        {fileLabels.map((label, index) => (
           <Text key={index} style={[styles.label, { width: cellSize, height: labelSize, lineHeight: labelSize }]}>
             {label}
           </Text>
@@ -48,7 +60,7 @@ export function ShogiBoard({ board, player, cellSize = 36 }: ShogiBoardProps) {
       </View>
 
       {/* 盤面 + 段の番号 */}
-      {board.map((row, rowIndex) => (
+      {transformedBoard.map((row, rowIndex) => (
         <View key={rowIndex} style={styles.row}>
           {row.map((piece, colIndex) => (
             <View
@@ -58,18 +70,18 @@ export function ShogiBoard({ board, player, cellSize = 36 }: ShogiBoardProps) {
               {piece && (
                 <Piece
                   type={piece.type}
-                  isOpponent={piece.owner !== player}
+                  isOpponent={piece.owner !== perspective}
                   size={cellSize - 4}
                 />
               )}
-              {hasStarAtBottomRight(rowIndex, colIndex) && (
+              {hasStarAtBottomRight(rowIndex, colIndex, perspective) && (
                 <View style={styles.star} />
               )}
             </View>
           ))}
           {/* 段の番号（右側） */}
           <Text style={[styles.label, styles.rankLabel, { width: labelSize, height: cellSize, lineHeight: cellSize }]}>
-            {RANK_LABELS[rowIndex]}
+            {rankLabels[rowIndex]}
           </Text>
         </View>
       ))}
