@@ -697,7 +697,7 @@ packages/app/src/
   - ヘッダーロゴ
 - [x] 📱 Expo Go で動作確認
 
-### Phase 3: 将棋盤共通コンポーネント（作業中）
+### Phase 3: 将棋盤共通コンポーネント（完了）
 
 **目標**: 詰将棋・駒塾で共通利用する将棋盤コンポーネントを作成
 
@@ -718,49 +718,56 @@ packages/app/
 │       └── pieceImages.ts      # 駒画像マッピング
 │
 ├── mocks/
-│   └── shogiData.ts            # モックSFEN
+│   └── tsumeshogiData.ts       # 詰将棋モックデータ
 │
-└── assets/images/pieces/       # 駒画像28枚
+└── assets/images/pieces/       # 駒画像14枚
 ```
 
 #### 視点変換（perspective.ts）の役割
 manabi-shogiで問題になった先手/後手視点の切り替えを集約：
-- `flipBoard()` - 盤面配列の180度回転
-- `getColumnLabels()` / `getRowLabels()` - 座標ラベル生成
-- `flipPosition()` - 座標変換（表示 ↔ SFEN標準）
-- `shouldRotatePiece()` - 駒の向き判定
+- `transformBoardForPerspective()` - 盤面の180度回転
+- `getFileLabels()` / `getRankLabels()` - 座標ラベル生成
+- `getPieceStandOrder()` - 駒台表示順序
 
 **原則**: データは常にSFEN標準（先手視点）、変換は表示時のみ
 
-#### 実装タスク
-- [ ] 駒画像アセットをコピー（28枚）
-- [ ] lib/shogi/types.ts（型定義）
-- [ ] lib/shogi/sfen.ts（SFEN解析）
-- [ ] lib/shogi/perspective.ts（視点変換）
-- [ ] lib/shogi/pieceImages.ts（画像マッピング）
-- [ ] components/shogi/Piece.tsx
-- [ ] components/shogi/ShogiBoard.tsx
-- [ ] components/shogi/PieceStand.tsx
-- [ ] mocks/shogiData.ts
-- [ ] 詰将棋画面に統合
-- [ ] 駒塾画面に統合
-- [ ] 📱 Expo Go でフィードバック取得
+#### 完了タスク
+- [x] 駒画像アセット（14枚）
+- [x] lib/shogi/types.ts（型定義）
+- [x] lib/shogi/sfen.ts（SFEN解析）
+- [x] lib/shogi/perspective.ts（視点変換）
+- [x] lib/shogi/pieceImages.ts（画像マッピング）
+- [x] components/shogi/Piece.tsx
+- [x] components/shogi/ShogiBoard.tsx
+- [x] components/shogi/PieceStand.tsx
+- [x] mocks/tsumeshogiData.ts
+- [x] 詰将棋画面に統合
+- [x] 駒塾画面に統合
+- [x] 📱 Expo Go でフィードバック取得
 
 #### 将来追加（今は作らない）
 - lib/shogi/moves.ts（合法手生成）
 - lib/shogi/engine.ts（エンジン連携）
 - components/shogi/PromotionDialog.tsx（成り確認）
 
-### Phase 4: 駒塾・詰将棋画面（モック）
-- [ ] レッスン一覧画面
-- [ ] レッスン学習画面（共通将棋盤使用）
-- [ ] 問題一覧画面（難易度・手数フィルタ）
+### Phase 4: 詰将棋画面（作業中）
+
+**目標**: 詰将棋機能のモック画面を完成させる
+
+- [x] 詰将棋一覧画面（手数タブ、ステータスフィルタ）
+- [x] ヘッダー統一（LogoHeader + 設定アイコン）
 - [ ] 詰将棋プレイ画面（共通将棋盤使用）
 - [ ] 解答表示・解説
+- [ ] 進捗表示（解答済み/未解答）
+- [ ] 📱 Expo Go でフィードバック取得
+
+### Phase 5: 駒塾画面（モック）
+- [ ] レッスン一覧画面
+- [ ] レッスン学習画面（共通将棋盤使用）
 - [ ] 進捗表示
 - [ ] 📱 Expo Go でフィードバック取得
 
-### Phase 5: アプリコア（ゲーミフィケーション）
+### Phase 6: アプリコア（ゲーミフィケーション）
 - [ ] **core/ 共通モジュール作成**
   - ハートロジック（消費・回復・制限）
   - ストリークロジック（日数計算）
@@ -770,13 +777,13 @@ manabi-shogiで問題になった先手/後手視点の切り替えを集約：
 
 ## Part B: API開発
 
-### Phase 6: 認証API
+### Phase 7: 認証API
 - [ ] 匿名ユーザー作成
 - [ ] セッション管理（Cookie-based）
 - [ ] 認証ミドルウェア
 - [ ] ユニットテスト
 
-### Phase 7: コンテンツAPI
+### Phase 8: コンテンツAPI
 - [ ] 駒塾CRUD（Router → Service → Repository）
 - [ ] レッスンステップ管理
 - [ ] 詰将棋CRUD
@@ -784,7 +791,7 @@ manabi-shogiで問題になった先手/後手視点の切り替えを集約：
 - [ ] 解答管理
 - [ ] ユニット・統合テスト（TDD）
 
-### Phase 8: ゲーミフィケーションAPI + BFF
+### Phase 9: ゲーミフィケーションAPI + BFF
 - [ ] ハートシステム（消費・回復）
 - [ ] 連続記録（日付計算）
 - [ ] 学習記録
@@ -798,19 +805,19 @@ manabi-shogiで問題になった先手/後手視点の切り替えを集約：
 
 ## Part C: 統合・リリース
 
-### Phase 9: アプリ-API接続
+### Phase 10: アプリ-API接続
 - [ ] 認証フロー実装
 - [ ] モックデータ → API呼び出しに置き換え
 - [ ] ローディング状態UI
 - [ ] エラーハンドリングUI
 - [ ] オフライン対応（任意）
 
-### Phase 10: 管理画面
+### Phase 11: 管理画面
 - [ ] React + Vite設定
 - [ ] 駒塾・詰将棋管理画面
 - [ ] コンテンツ投入
 
-### Phase 11: デプロイ
+### Phase 12: デプロイ
 - [ ] シードデータ作成
 - [ ] Railway設定
 - [ ] 本番環境テスト

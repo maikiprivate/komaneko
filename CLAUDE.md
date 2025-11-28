@@ -184,19 +184,27 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 3（将棋盤共通コンポーネント） |
-| 最終更新 | 2025-11-27 |
+| フェーズ | Phase 4（詰将棋画面） |
+| 最終更新 | 2025-11-28 |
 | 開発方針 | **アプリ画面先行（モック先行）** |
 
-### Phase 3（作業中）- 将棋盤共通コンポーネント
+### Phase 4（作業中）- 詰将棋画面
 
-**目標**: 詰将棋・駒塾で共通利用する将棋盤コンポーネントを作成
+**目標**: 詰将棋機能のモック画面を完成させる
+
+- [x] 詰将棋一覧画面（手数タブ、ステータスフィルタ）
+- [x] ヘッダー統一（LogoHeader + 設定アイコン）
+- [ ] 詰将棋プレイ画面（共通将棋盤使用）
+- [ ] 解答表示・解説
+- [ ] 進捗表示（解答済み/未解答）
+
+### Phase 3（完了）- 将棋盤共通コンポーネント
 
 ```
 packages/app/
 ├── components/shogi/    # ShogiBoard, Piece, PieceStand
 ├── lib/shogi/           # types, sfen, perspective, pieceImages
-├── mocks/shogiData.ts
+├── mocks/tsumeshogiData.ts
 └── assets/images/pieces/
 ```
 
