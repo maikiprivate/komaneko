@@ -1,6 +1,8 @@
-import { Stack, useLocalSearchParams } from 'expo-router'
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { Stack, router, useLocalSearchParams } from 'expo-router'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
 import { PieceStand } from '@/components/shogi/PieceStand'
@@ -18,10 +20,26 @@ function getProblemNumber(problemId: string, moves: number): number {
   return index + 1
 }
 
+/** 同じ手数の問題リスト内での前後の問題IDを取得 */
+function getAdjacentProblemIds(
+  problemId: string,
+  moves: number,
+): { prevId: string | null; nextId: string | null } {
+  const sameMovesProblems = MOCK_TSUMESHOGI_PROBLEMS.filter((p) => p.moves === moves)
+  const currentIndex = sameMovesProblems.findIndex((p) => p.id === problemId)
+
+  const prevId = currentIndex > 0 ? sameMovesProblems[currentIndex - 1].id : null
+  const nextId =
+    currentIndex < sameMovesProblems.length - 1 ? sameMovesProblems[currentIndex + 1].id : null
+
+  return { prevId, nextId }
+}
+
 export default function TsumeshogiPlayScreen() {
-  const { colors } = useTheme()
+  const { colors, palette } = useTheme()
   const { width } = useWindowDimensions()
   const { id } = useLocalSearchParams<{ id: string }>()
+  const insets = useSafeAreaInsets()
 
   // IDから問題を取得
   const problem = MOCK_TSUMESHOGI_PROBLEMS.find((p) => p.id === id)
@@ -34,6 +52,36 @@ export default function TsumeshogiPlayScreen() {
   const movesLabel = MOVES_LABELS[problem.moves as MovesOption]
   const problemNumber = getProblemNumber(problem.id, problem.moves)
   const headerTitle = `${movesLabel} 問題${problemNumber}`
+
+  // 次の問題
+  const { nextId } = getAdjacentProblemIds(problem.id, problem.moves)
+
+  // 正解状態（後で実際のロジックに置き換え）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isSolved, _setIsSolved] = useState(false)
+
+  // アニメーション用
+  const scaleAnim = useRef(new Animated.Value(1)).current
+
+  // 正解時のアニメーション
+  useEffect(() => {
+    if (isSolved) {
+      // バウンスアニメーション
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.15,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 3,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [isSolved, scaleAnim])
 
   // 進行状況（後でstateに置き換え）
   const currentMove = 1
@@ -58,10 +106,7 @@ export default function TsumeshogiPlayScreen() {
   return (
     <>
       <Stack.Screen options={{ title: headerTitle }} />
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background.secondary }]}
-        edges={['bottom']}
-      >
+      <View style={[styles.container, { backgroundColor: colors.background.secondary }]}>
         <View style={styles.commentArea}>
           <KomanekoComment message="王手の連続で玉を詰ませるにゃ！持ち駒を上手く使ってにゃ〜" />
         </View>
@@ -85,7 +130,58 @@ export default function TsumeshogiPlayScreen() {
             {currentMove}手目 / {problem.moves}手詰め
           </Text>
         </View>
-      </SafeAreaView>
+        <View style={styles.navigationArea}>
+          <TouchableOpacity
+            onPress={() => isSolved && nextId && router.replace(`/tsumeshogi/${nextId}`)}
+            disabled={!isSolved || !nextId}
+            activeOpacity={0.8}
+          >
+            <Animated.View
+              style={[
+                styles.navButton,
+                {
+                  transform: [{ scale: scaleAnim }],
+                  backgroundColor: isSolved ? colors.gamification.success : colors.background.secondary,
+                  borderColor: isSolved ? colors.gamification.success : colors.border,
+                  opacity: isSolved ? 1 : 0.6,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.navButtonText,
+                  { color: isSolved ? '#FFFFFF' : colors.text.secondary },
+                ]}
+              >
+                次の問題へ
+              </Text>
+              <FontAwesome
+                name="chevron-right"
+                size={14}
+                color={isSolved ? '#FFFFFF' : colors.text.secondary}
+              />
+            </Animated.View>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.spacer} />
+        <View style={[styles.footer, { backgroundColor: colors.background.primary, borderTopColor: palette.orange }]}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => console.log('やり直し')}>
+            <FontAwesome name="refresh" size={20} color={colors.gamification.success} />
+            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>やり直し</Text>
+          </TouchableOpacity>
+          <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
+          <TouchableOpacity style={styles.actionButton} onPress={() => console.log('ヒント')}>
+            <FontAwesome name="lightbulb-o" size={20} color={palette.orange} />
+            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>ヒント</Text>
+          </TouchableOpacity>
+          <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
+          <TouchableOpacity style={styles.actionButton} onPress={() => console.log('解答')}>
+            <FontAwesome name="key" size={20} color={colors.gamification.heart} />
+            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>解答</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.homeIndicatorArea, { backgroundColor: colors.background.primary, height: insets.bottom }]} />
+      </View>
     </>
   )
 }
@@ -106,6 +202,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   progressText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  spacer: {
+    flex: 1,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 2,
+  },
+  actionButton: {
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  footerDivider: {
+    width: 1,
+    height: 32,
+  },
+  homeIndicatorArea: {
+    // height is set dynamically using insets.bottom
+  },
+  navigationArea: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    paddingHorizontal: 16,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  navButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
