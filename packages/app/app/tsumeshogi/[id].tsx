@@ -1,0 +1,76 @@
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { StyleSheet, View, useWindowDimensions } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+
+import { PieceStand } from '@/components/shogi/PieceStand'
+import { ShogiBoard } from '@/components/shogi/ShogiBoard'
+import { useTheme } from '@/components/useTheme'
+import { getPieceStandOrder } from '@/lib/shogi/perspective'
+import { parseSfen } from '@/lib/shogi/sfen'
+import type { Perspective } from '@/lib/shogi/types'
+import { MOCK_TSUMESHOGI_PROBLEMS } from '@/mocks/tsumeshogiData'
+
+export default function TsumeshogiPlayScreen() {
+  const { colors } = useTheme()
+  const { width } = useWindowDimensions()
+  const { id } = useLocalSearchParams<{ id: string }>()
+
+  // IDから問題を取得
+  const problem = MOCK_TSUMESHOGI_PROBLEMS.find((p) => p.id === id)
+
+  if (!problem) {
+    return null
+  }
+
+  // SFENをパース
+  const { board, capturedPieces } = parseSfen(problem.sfen)
+
+  // 視点（詰将棋は常に先手視点）
+  const perspective: Perspective = 'sente'
+
+  // 画面幅から余白を引いて9マスで割る
+  const cellSize = Math.floor((width - 48) / 9)
+  const boardWidth = cellSize * 9 + 8 + 12
+
+  // 視点に応じた駒台の順序
+  const { top: topStand, bottom: bottomStand } = getPieceStandOrder(
+    capturedPieces.sente,
+    capturedPieces.gote,
+    perspective,
+  )
+
+  return (
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background.primary }]}
+      edges={['bottom']}
+    >
+      <View style={styles.content}>
+        <PieceStand
+          pieces={topStand.pieces}
+          isOpponent={topStand.isOpponent}
+          label={topStand.label}
+          width={boardWidth}
+        />
+        <ShogiBoard board={board} perspective={perspective} cellSize={cellSize} />
+        <PieceStand
+          pieces={bottomStand.pieces}
+          isOpponent={bottomStand.isOpponent}
+          label={bottomStand.label}
+          width={boardWidth}
+        />
+      </View>
+    </SafeAreaView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+})

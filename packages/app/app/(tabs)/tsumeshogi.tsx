@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -46,6 +47,7 @@ function getStatusBackgroundColor(
 
 export default function TsumeshogiScreen() {
   const { colors } = useTheme()
+  const router = useRouter()
   const [selectedMoves, setSelectedMoves] = useState<MovesOption>(3)
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('unsolved')
 
@@ -57,8 +59,7 @@ export default function TsumeshogiScreen() {
       : filteredByMoves.filter((p) => p.status === selectedStatus)
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {
-    // TODO: 問題画面へ遷移
-    console.log('Selected problem:', problem.id)
+    router.push(`/tsumeshogi/${problem.id}`)
   }
 
   return (
