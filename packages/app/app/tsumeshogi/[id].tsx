@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams } from 'expo-router'
-import { StyleSheet, View, useWindowDimensions } from 'react-native'
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
@@ -34,6 +34,9 @@ export default function TsumeshogiPlayScreen() {
   const movesLabel = MOVES_LABELS[problem.moves as MovesOption]
   const problemNumber = getProblemNumber(problem.id, problem.moves)
   const headerTitle = `${movesLabel} 問題${problemNumber}`
+
+  // 進行状況（後でstateに置き換え）
+  const currentMove = 1
 
   // SFENをパース
   const { board, capturedPieces } = parseSfen(problem.sfen)
@@ -77,6 +80,11 @@ export default function TsumeshogiPlayScreen() {
             width={boardWidth}
           />
         </View>
+        <View style={styles.progressArea}>
+          <Text style={[styles.progressText, { color: colors.text.secondary }]}>
+            {currentMove}手目 / {problem.moves}手詰め
+          </Text>
+        </View>
       </SafeAreaView>
     </>
   )
@@ -92,5 +100,13 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     gap: 4,
+  },
+  progressArea: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  progressText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 })
