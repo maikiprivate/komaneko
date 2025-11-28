@@ -1,7 +1,8 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
 import { StyleSheet, View, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { KomanekoComment } from '@/components/KomanekoComment'
 import { PieceStand } from '@/components/shogi/PieceStand'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { useTheme } from '@/components/useTheme'
@@ -41,9 +42,12 @@ export default function TsumeshogiPlayScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background.primary }]}
+      style={[styles.container, { backgroundColor: colors.background.secondary }]}
       edges={['bottom']}
     >
+      <View style={styles.commentArea}>
+        <KomanekoComment message="王手の連続で玉を詰ませるにゃ！持ち駒を上手く使ってにゃ〜" />
+      </View>
       <View style={styles.content}>
         <PieceStand
           pieces={topStand.pieces}
@@ -66,6 +70,9 @@ export default function TsumeshogiPlayScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  commentArea: {
+    paddingVertical: 12,
   },
   content: {
     flex: 1,
