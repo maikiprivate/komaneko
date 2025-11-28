@@ -1,11 +1,11 @@
-import { StyleSheet, View, Text, useWindowDimensions } from 'react-native'
+import { StyleSheet, View, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { useTheme } from '@/components/useTheme'
-import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { PieceStand } from '@/components/shogi/PieceStand'
-import { createInitialBoard } from '@/lib/shogi/sfen'
+import { ShogiBoard } from '@/components/shogi/ShogiBoard'
+import { useTheme } from '@/components/useTheme'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
+import { createInitialBoard } from '@/lib/shogi/sfen'
 import type { Perspective } from '@/lib/shogi/types'
 
 export default function LessonScreen() {
@@ -27,18 +27,28 @@ export default function LessonScreen() {
   const { top: topStand, bottom: bottomStand } = getPieceStandOrder(
     capturedPieces.sente,
     capturedPieces.gote,
-    perspective
+    perspective,
   )
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]} edges={[]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background.primary }]}
+      edges={[]}
+    >
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text.primary }]}>
-          駒塾
-        </Text>
-        <PieceStand pieces={topStand.pieces} isOpponent={topStand.isOpponent} label={topStand.label} width={boardWidth} />
+        <PieceStand
+          pieces={topStand.pieces}
+          isOpponent={topStand.isOpponent}
+          label={topStand.label}
+          width={boardWidth}
+        />
         <ShogiBoard board={board} perspective={perspective} cellSize={cellSize} />
-        <PieceStand pieces={bottomStand.pieces} isOpponent={bottomStand.isOpponent} label={bottomStand.label} width={boardWidth} />
+        <PieceStand
+          pieces={bottomStand.pieces}
+          isOpponent={bottomStand.isOpponent}
+          label={bottomStand.label}
+          width={boardWidth}
+        />
       </View>
     </SafeAreaView>
   )
@@ -53,9 +63,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 4,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
   },
 })

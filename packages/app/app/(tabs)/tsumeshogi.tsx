@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native'
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import {
   MOCK_TSUMESHOGI_PROBLEMS,
-  MOVES_OPTIONS,
   MOVES_LABELS,
-  filterByMoves,
+  MOVES_OPTIONS,
   type MovesOption,
-  type TsumeshogiProblem,
   type ProblemStatus,
+  type TsumeshogiProblem,
+  filterByMoves,
 } from '@/mocks/tsumeshogiData'
 
 /** ステータスの表示名 */
@@ -30,7 +30,10 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
 ]
 
 /** ステータスに応じた背景色を取得 */
-function getStatusBackgroundColor(status: ProblemStatus, colors: ReturnType<typeof useTheme>['colors']) {
+function getStatusBackgroundColor(
+  status: ProblemStatus,
+  colors: ReturnType<typeof useTheme>['colors'],
+) {
   switch (status) {
     case 'solved':
       return colors.gamification.success
@@ -48,9 +51,10 @@ export default function TsumeshogiScreen() {
 
   // フィルタ
   const filteredByMoves = filterByMoves(MOCK_TSUMESHOGI_PROBLEMS, selectedMoves)
-  const filteredProblems = selectedStatus === 'all'
-    ? filteredByMoves
-    : filteredByMoves.filter((p) => p.status === selectedStatus)
+  const filteredProblems =
+    selectedStatus === 'all'
+      ? filteredByMoves
+      : filteredByMoves.filter((p) => p.status === selectedStatus)
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {
     // TODO: 問題画面へ遷移
@@ -58,7 +62,10 @@ export default function TsumeshogiScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.secondary }]} edges={[]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background.secondary }]}
+      edges={[]}
+    >
       {/* 手数タブ */}
       <View style={[styles.tabContainer, { borderBottomColor: colors.border }]}>
         {MOVES_OPTIONS.map((moves) => (
@@ -66,7 +73,10 @@ export default function TsumeshogiScreen() {
             key={moves}
             style={[
               styles.tab,
-              selectedMoves === moves && [styles.tabSelected, { borderBottomColor: colors.button.primary }],
+              selectedMoves === moves && [
+                styles.tabSelected,
+                { borderBottomColor: colors.button.primary },
+              ],
             ]}
             onPress={() => setSelectedMoves(moves)}
           >
@@ -123,8 +133,15 @@ export default function TsumeshogiScreen() {
               <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
                 問題 {index + 1}
               </Text>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusBackgroundColor(problem.status, colors) }]}>
-                <Text style={[styles.statusBadgeText, { color: colors.text.inverse }]}>{STATUS_LABELS[problem.status]}</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: getStatusBackgroundColor(problem.status, colors) },
+                ]}
+              >
+                <Text style={[styles.statusBadgeText, { color: colors.text.inverse }]}>
+                  {STATUS_LABELS[problem.status]}
+                </Text>
               </View>
             </TouchableOpacity>
           ))
