@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router'
+import { Stack, useLocalSearchParams } from 'expo-router'
 import { StyleSheet, View, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -9,7 +9,14 @@ import { useTheme } from '@/components/useTheme'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
 import { parseSfen } from '@/lib/shogi/sfen'
 import type { Perspective } from '@/lib/shogi/types'
-import { MOCK_TSUMESHOGI_PROBLEMS } from '@/mocks/tsumeshogiData'
+import { MOCK_TSUMESHOGI_PROBLEMS, MOVES_LABELS, type MovesOption } from '@/mocks/tsumeshogiData'
+
+/** 同じ手数の問題内での番号を取得 */
+function getProblemNumber(problemId: string, moves: number): number {
+  const sameMovesProblems = MOCK_TSUMESHOGI_PROBLEMS.filter((p) => p.moves === moves)
+  const index = sameMovesProblems.findIndex((p) => p.id === problemId)
+  return index + 1
+}
 
 export default function TsumeshogiPlayScreen() {
   const { colors } = useTheme()
@@ -22,6 +29,11 @@ export default function TsumeshogiPlayScreen() {
   if (!problem) {
     return null
   }
+
+  // ヘッダータイトル用の情報
+  const movesLabel = MOVES_LABELS[problem.moves as MovesOption]
+  const problemNumber = getProblemNumber(problem.id, problem.moves)
+  const headerTitle = `${movesLabel} 問題${problemNumber}`
 
   // SFENをパース
   const { board, capturedPieces } = parseSfen(problem.sfen)
@@ -41,29 +53,32 @@ export default function TsumeshogiPlayScreen() {
   )
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background.secondary }]}
-      edges={['bottom']}
-    >
-      <View style={styles.commentArea}>
-        <KomanekoComment message="王手の連続で玉を詰ませるにゃ！持ち駒を上手く使ってにゃ〜" />
-      </View>
-      <View style={styles.content}>
-        <PieceStand
-          pieces={topStand.pieces}
-          isOpponent={topStand.isOpponent}
-          label={topStand.label}
-          width={boardWidth}
-        />
-        <ShogiBoard board={board} perspective={perspective} cellSize={cellSize} />
-        <PieceStand
-          pieces={bottomStand.pieces}
-          isOpponent={bottomStand.isOpponent}
-          label={bottomStand.label}
-          width={boardWidth}
-        />
-      </View>
-    </SafeAreaView>
+    <>
+      <Stack.Screen options={{ title: headerTitle }} />
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background.secondary }]}
+        edges={['bottom']}
+      >
+        <View style={styles.commentArea}>
+          <KomanekoComment message="王手の連続で玉を詰ませるにゃ！持ち駒を上手く使ってにゃ〜" />
+        </View>
+        <View style={styles.content}>
+          <PieceStand
+            pieces={topStand.pieces}
+            isOpponent={topStand.isOpponent}
+            label={topStand.label}
+            width={boardWidth}
+          />
+          <ShogiBoard board={board} perspective={perspective} cellSize={cellSize} />
+          <PieceStand
+            pieces={bottomStand.pieces}
+            isOpponent={bottomStand.isOpponent}
+            label={bottomStand.label}
+            width={boardWidth}
+          />
+        </View>
+      </SafeAreaView>
+    </>
   )
 }
 
@@ -75,8 +90,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     gap: 4,
   },
