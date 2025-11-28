@@ -1,6 +1,6 @@
-import { StyleSheet, View, Text, Image, ImageBackground } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { Image, ImageBackground, StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import { mockHomeData } from '@/mocks/homeData'
@@ -26,115 +26,119 @@ export default function HomeScreen() {
   const heartsPercent = (hearts.current / hearts.max) * 100
 
   return (
-    <ImageBackground
-      source={homeBackground}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
+    <ImageBackground source={homeBackground} style={styles.backgroundImage} resizeMode="cover">
       <SafeAreaView style={styles.container} edges={[]}>
-      {/* ストリーク（カレンダー式） */}
-      <View style={[styles.streakCard, { backgroundColor: colors.card.background }]}>
-        {/* ヘッダー */}
-        <View style={styles.streakHeader}>
-          <FontAwesome name="fire" size={16} color={colors.gamification.streak} />
-          <Text style={[styles.streakDays, { color: colors.gamification.streak }]}>
-            {streak.current}日連続
-          </Text>
-        </View>
-
-        {/* 週カレンダー */}
-        <View style={styles.weekCalendar}>
-          {DAY_LABELS.map((day, index) => {
-            const dayData = streak.weeklyProgress[index]
-            const nextDayData = streak.weeklyProgress[index + 1]
-            const isToday = index === streak.todayIndex
-            const isFuture = index > streak.todayIndex
-            const showConnector = dayData.completed && nextDayData?.completed
-            return (
-              <View key={day} style={styles.dayColumnWrapper}>
-                <View style={styles.dayColumn}>
-                  <Text style={[styles.dayLabel, { color: colors.text.secondary }]}>
-                    {day}
-                  </Text>
-                  <View
-                    style={[
-                      styles.dayCircle,
-                      dayData.completed
-                        ? { backgroundColor: colors.gamification.streak }
-                        : isFuture
-                          ? { backgroundColor: colors.border }
-                          : { backgroundColor: 'transparent', borderColor: colors.border, borderWidth: 2 },
-                      isToday && { borderColor: colors.gamification.streak, borderWidth: 3 },
-                    ]}
-                  >
-                    {dayData.completed ? (
-                      <FontAwesome name="check" size={14} color="#FFFFFF" />
-                    ) : (
-                      <Text
-                        style={[
-                          styles.dateText,
-                          { color: isToday ? colors.gamification.streak : colors.text.secondary },
-                        ]}
-                      >
-                        {dayData.date}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-                {index < DAY_LABELS.length - 1 && (
-                  <View
-                    style={[
-                      styles.streakConnector,
-                      { backgroundColor: showConnector ? colors.gamification.streak : 'transparent' },
-                    ]}
-                  />
-                )}
-              </View>
-            )
-          })}
-        </View>
-      </View>
-
-      {/* 体力ゲージ */}
-      <View style={[styles.heartsCard, { backgroundColor: colors.card.background }]}>
-        <View style={styles.heartsLabelRow}>
-          <FontAwesome name="heart" size={14} color={colors.gamification.heart} />
-          {hearts.current < hearts.max && (
-            <Text style={[styles.recoveryText, { color: colors.text.secondary }]}>
-              回復まであと {formatRecoveryTime(hearts.recovery.nextRecoveryMinutes)}
+        {/* ストリーク（カレンダー式） */}
+        <View style={[styles.streakCard, { backgroundColor: colors.card.background }]}>
+          {/* ヘッダー */}
+          <View style={styles.streakHeader}>
+            <FontAwesome name="fire" size={16} color={colors.gamification.streak} />
+            <Text style={[styles.streakDays, { color: colors.gamification.streak }]}>
+              {streak.current}日連続
             </Text>
-          )}
+          </View>
+
+          {/* 週カレンダー */}
+          <View style={styles.weekCalendar}>
+            {DAY_LABELS.map((day, index) => {
+              const dayData = streak.weeklyProgress[index]
+              const nextDayData = streak.weeklyProgress[index + 1]
+              const isToday = index === streak.todayIndex
+              const isFuture = index > streak.todayIndex
+              const showConnector = dayData.completed && nextDayData?.completed
+              return (
+                <View key={day} style={styles.dayColumnWrapper}>
+                  <View style={styles.dayColumn}>
+                    <Text style={[styles.dayLabel, { color: colors.text.secondary }]}>{day}</Text>
+                    <View
+                      style={[
+                        styles.dayCircle,
+                        dayData.completed
+                          ? { backgroundColor: colors.gamification.streak }
+                          : isFuture
+                            ? { backgroundColor: colors.border }
+                            : {
+                                backgroundColor: 'transparent',
+                                borderColor: colors.border,
+                                borderWidth: 2,
+                              },
+                        isToday && { borderColor: colors.gamification.streak, borderWidth: 3 },
+                      ]}
+                    >
+                      {dayData.completed ? (
+                        <FontAwesome name="check" size={14} color="#FFFFFF" />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.dateText,
+                            { color: isToday ? colors.gamification.streak : colors.text.secondary },
+                          ]}
+                        >
+                          {dayData.date}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  {index < DAY_LABELS.length - 1 && (
+                    <View
+                      style={[
+                        styles.streakConnector,
+                        {
+                          backgroundColor: showConnector
+                            ? colors.gamification.streak
+                            : 'transparent',
+                        },
+                      ]}
+                    />
+                  )}
+                </View>
+              )
+            })}
+          </View>
         </View>
-        <View style={[styles.gaugeBackground, { backgroundColor: colors.border }]}>
-          <View
-            style={[
-              styles.gaugeFill,
-              { backgroundColor: colors.gamification.heart, width: `${heartsPercent}%` },
-            ]}
-          />
-          {Array.from({ length: hearts.max - 1 }).map((_, i) => (
+
+        {/* 体力ゲージ */}
+        <View style={[styles.heartsCard, { backgroundColor: colors.card.background }]}>
+          <View style={styles.heartsLabelRow}>
+            <FontAwesome name="heart" size={14} color={colors.gamification.heart} />
+            {hearts.current < hearts.max && (
+              <Text style={[styles.recoveryText, { color: colors.text.secondary }]}>
+                回復まであと {formatRecoveryTime(hearts.recovery.nextRecoveryMinutes)}
+              </Text>
+            )}
+          </View>
+          <View style={[styles.gaugeBackground, { backgroundColor: colors.border }]}>
             <View
-              key={i}
               style={[
-                styles.gaugeTick,
-                { left: `${((i + 1) / hearts.max) * 100}%`, backgroundColor: colors.card.background },
+                styles.gaugeFill,
+                { backgroundColor: colors.gamification.heart, width: `${heartsPercent}%` },
               ]}
             />
-          ))}
+            {Array.from({ length: hearts.max - 1 }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.gaugeTick,
+                  {
+                    left: `${((i + 1) / hearts.max) * 100}%`,
+                    backgroundColor: colors.card.background,
+                  },
+                ]}
+              />
+            ))}
+          </View>
         </View>
-      </View>
 
-      {/* キャラクター表示 */}
-      <View style={styles.characterArea}>
-        <Image source={characterSitting} style={styles.characterImage} resizeMode="contain" />
-        {/* ゲーム風セリフボックス */}
-        <View style={styles.dialogBox}>
-          <Text style={styles.dialogText}>
-            一日お疲れ様にゃ！{'\n'}今日の締めくくりに詰将棋はいかがかにゃ？
-          </Text>
+        {/* キャラクター表示 */}
+        <View style={styles.characterArea}>
+          <Image source={characterSitting} style={styles.characterImage} resizeMode="contain" />
+          {/* ゲーム風セリフボックス */}
+          <View style={styles.dialogBox}>
+            <Text style={styles.dialogText}>
+              一日お疲れ様にゃ！{'\n'}今日の締めくくりに詰将棋はいかがかにゃ？
+            </Text>
+          </View>
         </View>
-      </View>
-
       </SafeAreaView>
     </ImageBackground>
   )
