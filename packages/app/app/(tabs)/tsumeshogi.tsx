@@ -1,50 +1,135 @@
-import { StyleSheet, View, Text, useWindowDimensions } from 'react-native'
+import { useState } from 'react'
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
-import { ShogiBoard } from '@/components/shogi/ShogiBoard'
-import { PieceStand } from '@/components/shogi/PieceStand'
-import { parseSfen } from '@/lib/shogi/sfen'
-import { getPieceStandOrder } from '@/lib/shogi/perspective'
-import type { Perspective } from '@/lib/shogi/types'
+import {
+  MOCK_TSUMESHOGI_PROBLEMS,
+  MOVES_OPTIONS,
+  MOVES_LABELS,
+  filterByMoves,
+  type MovesOption,
+  type TsumeshogiProblem,
+  type ProblemStatus,
+} from '@/mocks/tsumeshogiData'
 
-// テスト用の詰将棋問題（1手詰め）
-// 後手玉: 1一、先手金: 2二、先手持ち駒: 飛
-// 答え: ▲1二飛
-const TEST_TSUMESHOGI_SFEN = '8k/7G1/9/9/9/9/9/9/9 b R 1'
+/** ステータスの表示名 */
+const STATUS_LABELS: Record<ProblemStatus, string> = {
+  unsolved: '未解答',
+  in_progress: '挑戦中',
+  solved: '解答済み',
+}
+
+type StatusFilter = ProblemStatus | 'all'
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'unsolved', label: '未解答' },
+  { value: 'in_progress', label: '挑戦中' },
+  { value: 'solved', label: '解答済み' },
+  { value: 'all', label: 'すべて' },
+]
+
+/** ステータスに応じた背景色を取得 */
+function getStatusBackgroundColor(status: ProblemStatus, colors: ReturnType<typeof useTheme>['colors']) {
+  switch (status) {
+    case 'solved':
+      return colors.gamification.success
+    case 'in_progress':
+      return colors.gamification.streak
+    default:
+      return colors.border // グレー
+  }
+}
 
 export default function TsumeshogiScreen() {
   const { colors } = useTheme()
-  const { width } = useWindowDimensions()
+  const [selectedMoves, setSelectedMoves] = useState<MovesOption>(3)
+  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('unsolved')
 
-  // 詰将棋データを解析
-  const { board, capturedPieces } = parseSfen(TEST_TSUMESHOGI_SFEN)
+  // フィルタ
+  const filteredByMoves = filterByMoves(MOCK_TSUMESHOGI_PROBLEMS, selectedMoves)
+  const filteredProblems = selectedStatus === 'all'
+    ? filteredByMoves
+    : filteredByMoves.filter((p) => p.status === selectedStatus)
 
-  // 視点（テスト用に切り替え可能）
-  const perspective: Perspective = 'sente'
-
-  // 画面幅から余白を引いて9マスで割る
-  const cellSize = Math.floor((width - 48) / 9)
-  // 盤面エリアの幅（cellSize * 9 + padding + border + 段番号の幅）
-  const boardWidth = cellSize * 9 + 8 + 12
-
-  // 視点に応じた駒台の順序
-  const { top: topStand, bottom: bottomStand } = getPieceStandOrder(
-    capturedPieces.sente,
-    capturedPieces.gote,
-    perspective
-  )
+  const handleProblemPress = (problem: TsumeshogiProblem) => {
+    // TODO: 問題画面へ遷移
+    console.log('Selected problem:', problem.id)
+  }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]} edges={[]}>
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text.primary }]}>
-          詰将棋
-        </Text>
-        <PieceStand pieces={topStand.pieces} isOpponent={topStand.isOpponent} label={topStand.label} width={boardWidth} />
-        <ShogiBoard board={board} perspective={perspective} cellSize={cellSize} />
-        <PieceStand pieces={bottomStand.pieces} isOpponent={bottomStand.isOpponent} label={bottomStand.label} width={boardWidth} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.secondary }]} edges={[]}>
+      {/* 手数タブ */}
+      <View style={[styles.tabContainer, { borderBottomColor: colors.border }]}>
+        {MOVES_OPTIONS.map((moves) => (
+          <TouchableOpacity
+            key={moves}
+            style={[
+              styles.tab,
+              selectedMoves === moves && [styles.tabSelected, { borderBottomColor: colors.button.primary }],
+            ]}
+            onPress={() => setSelectedMoves(moves)}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                { color: selectedMoves === moves ? colors.button.primary : colors.text.secondary },
+              ]}
+            >
+              {MOVES_LABELS[moves]}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
+
+      {/* ステータスフィルタボタン */}
+      <View style={styles.statusFilterContainer}>
+        {STATUS_FILTER_OPTIONS.map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            style={[
+              styles.statusButton,
+              selectedStatus === option.value
+                ? { backgroundColor: colors.button.primary, borderColor: colors.button.primary }
+                : { backgroundColor: colors.card.background, borderColor: colors.border },
+            ]}
+            onPress={() => setSelectedStatus(option.value)}
+          >
+            <Text
+              style={[
+                styles.statusButtonText,
+                { color: selectedStatus === option.value ? '#FFFFFF' : colors.text.secondary },
+              ]}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* 問題リスト */}
+      <ScrollView style={styles.listContainer} contentContainerStyle={styles.listContent}>
+        {filteredProblems.length === 0 ? (
+          <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+            該当する問題がありません
+          </Text>
+        ) : (
+          filteredProblems.map((problem, index) => (
+            <TouchableOpacity
+              key={problem.id}
+              style={[styles.card, { backgroundColor: colors.card.background }]}
+              onPress={() => handleProblemPress(problem)}
+            >
+              <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
+                問題 {index + 1}
+              </Text>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusBackgroundColor(problem.status, colors) }]}>
+                <Text style={[styles.statusBadgeText, { color: colors.text.inverse }]}>{STATUS_LABELS[problem.status]}</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -53,14 +138,74 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
+  tabContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  tabSelected: {
+    borderBottomWidth: 2,
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  statusFilterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  statusButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  statusButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  listContainer: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 24,
+  },
+  card: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 })

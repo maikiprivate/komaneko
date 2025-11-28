@@ -1,0 +1,122 @@
+/**
+ * 詰将棋モックデータ
+ */
+
+/** 問題のステータス */
+export type ProblemStatus = 'unsolved' | 'in_progress' | 'solved'
+
+/** 詰将棋問題 */
+export interface TsumeshogiProblem {
+  id: string
+  sfen: string
+  moves: number  // 手数（3, 5, 7）
+  status: ProblemStatus
+}
+
+/** 手数のオプション */
+export const MOVES_OPTIONS = [3, 5, 7] as const
+export type MovesOption = (typeof MOVES_OPTIONS)[number]
+
+/** 手数の表示名 */
+export const MOVES_LABELS: Record<MovesOption, string> = {
+  3: '3手詰め',
+  5: '5手詰め',
+  7: '7手詰め',
+}
+
+/** モックデータ */
+export const MOCK_TSUMESHOGI_PROBLEMS: TsumeshogiProblem[] = [
+  // 3手詰め
+  {
+    id: '3-001',
+    sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
+    moves: 3,
+    status: 'solved',
+  },
+  {
+    id: '3-002',
+    sfen: '8l/7k1/7pp/9/9/9/9/9/9 b RG 1',
+    moves: 3,
+    status: 'solved',
+  },
+  {
+    id: '3-003',
+    sfen: '7nl/6Gk1/6p1p/9/9/9/9/9/9 b S 1',
+    moves: 3,
+    status: 'in_progress',
+  },
+  {
+    id: '3-004',
+    sfen: '8k/7G1/9/9/9/9/9/9/9 b R 1',
+    moves: 3,
+    status: 'unsolved',
+  },
+  {
+    id: '3-005',
+    sfen: 'k8/1G7/9/9/9/9/9/9/9 b R 1',
+    moves: 3,
+    status: 'unsolved',
+  },
+  // 5手詰め
+  {
+    id: '5-001',
+    sfen: '7nl/6Gbk/6ppp/9/9/9/9/9/9 b RS 1',
+    moves: 5,
+    status: 'solved',
+  },
+  {
+    id: '5-002',
+    sfen: '8l/7sk/6ppp/9/9/9/9/9/9 b RBG 1',
+    moves: 5,
+    status: 'unsolved',
+  },
+  {
+    id: '5-003',
+    sfen: '7nl/6skp/6p1p/9/9/9/9/9/9 b RBG 1',
+    moves: 5,
+    status: 'unsolved',
+  },
+  {
+    id: '5-004',
+    sfen: '6snl/5g1k1/5pppp/9/9/9/9/9/9 b RB2S 1',
+    moves: 5,
+    status: 'unsolved',
+  },
+  // 7手詰め
+  {
+    id: '7-001',
+    sfen: '7nl/6skp/6p1p/9/9/9/9/9/9 b RB2G 1',
+    moves: 7,
+    status: 'unsolved',
+  },
+  {
+    id: '7-002',
+    sfen: '6snl/5g1k1/5pppp/9/9/9/9/9/9 b RB2S 1',
+    moves: 7,
+    status: 'unsolved',
+  },
+  {
+    id: '7-003',
+    sfen: '6snl/5gsk1/5pppp/9/9/9/9/9/9 b RB2G 1',
+    moves: 7,
+    status: 'unsolved',
+  },
+]
+
+/** 手数でフィルタリング */
+export function filterByMoves(problems: TsumeshogiProblem[], moves: MovesOption): TsumeshogiProblem[] {
+  return problems.filter((p) => p.moves === moves)
+}
+
+/** 次の問題を取得（挑戦中 > 未解答の順） */
+export function getNextProblem(problems: TsumeshogiProblem[], moves: MovesOption): TsumeshogiProblem | null {
+  const filtered = filterByMoves(problems, moves)
+
+  // 挑戦中があればそれを返す
+  const inProgress = filtered.find((p) => p.status === 'in_progress')
+  if (inProgress) return inProgress
+
+  // なければ未解答の最初を返す
+  const unsolved = filtered.find((p) => p.status === 'unsolved')
+  return unsolved ?? null
+}
