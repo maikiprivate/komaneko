@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import 'react-native-reanimated'
 
 import { useColorScheme } from '@/components/useColorScheme'
+import { useTheme } from '@/components/useTheme'
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -47,12 +48,21 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme()
+  const { palette } = useTheme()
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="tsumeshogi/[id]" options={{ title: '詰将棋' }} />
+        <Stack.Screen
+          name="tsumeshogi/[id]"
+          options={{
+            title: '詰将棋',
+            headerStyle: { backgroundColor: palette.orange },
+            headerTintColor: '#FFFFFF',
+            headerBackButtonDisplayMode: 'minimal',
+          }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
