@@ -56,17 +56,56 @@ export default function TsumeshogiPlayScreen() {
   // 次の問題
   const { nextId } = getAdjacentProblemIds(problem.id, problem.moves)
 
-  // 正解状態（後で実際のロジックに置き換え）
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isSolved, _setIsSolved] = useState(false)
+  // 正解状態
+  const [isSolved, setIsSolved] = useState(false)
+
+  // フィードバック状態
+  type FeedbackType = 'none' | 'correct' | 'incorrect'
+  const [feedback, setFeedback] = useState<FeedbackType>('none')
 
   // アニメーション用
   const scaleAnim = useRef(new Animated.Value(1)).current
+  const feedbackOpacity = useRef(new Animated.Value(0)).current
+  const feedbackScale = useRef(new Animated.Value(0.5)).current
 
-  // 正解時のアニメーション
+  // フィードバック表示関数
+  const showFeedback = (type: 'correct' | 'incorrect') => {
+    setFeedback(type)
+    feedbackOpacity.setValue(0)
+    feedbackScale.setValue(0.5)
+
+    // 表示アニメーション
+    Animated.parallel([
+      Animated.timing(feedbackOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(feedbackScale, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+    ]).start()
+
+    // 1.5秒後に非表示
+    setTimeout(() => {
+      Animated.timing(feedbackOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setFeedback('none')
+        if (type === 'correct') {
+          setIsSolved(true)
+        }
+      })
+    }, 1500)
+  }
+
+  // 正解時の「次の問題へ」ボタンアニメーション
   useEffect(() => {
     if (isSolved) {
-      // バウンスアニメーション
       Animated.sequence([
         Animated.timing(scaleAnim, {
           toValue: 1.15,
@@ -110,20 +149,42 @@ export default function TsumeshogiPlayScreen() {
         <View style={styles.commentArea}>
           <KomanekoComment message="王手の連続で玉を詰ませるにゃ！持ち駒を上手く使ってにゃ〜" />
         </View>
-        <View style={styles.content}>
-          <PieceStand
-            pieces={topStand.pieces}
-            isOpponent={topStand.isOpponent}
-            label={topStand.label}
-            width={boardWidth}
-          />
-          <ShogiBoard board={board} perspective={perspective} cellSize={cellSize} />
-          <PieceStand
-            pieces={bottomStand.pieces}
-            isOpponent={bottomStand.isOpponent}
-            label={bottomStand.label}
-            width={boardWidth}
-          />
+        <View style={styles.boardSection}>
+          <View style={styles.content}>
+            <PieceStand
+              pieces={topStand.pieces}
+              isOpponent={topStand.isOpponent}
+              label={topStand.label}
+              width={boardWidth}
+            />
+            <ShogiBoard board={board} perspective={perspective} cellSize={cellSize} />
+            <PieceStand
+              pieces={bottomStand.pieces}
+              isOpponent={bottomStand.isOpponent}
+              label={bottomStand.label}
+              width={boardWidth}
+            />
+          </View>
+
+          {/* フィードバックオーバーレイ（将棋盤エリア基準） */}
+          {feedback !== 'none' && (
+            <Animated.View style={[styles.feedbackOverlay, { opacity: feedbackOpacity }]}>
+              <Animated.Text
+                style={[
+                  styles.feedbackSymbol,
+                  {
+                    color:
+                      feedback === 'correct'
+                        ? '#8BC34A'
+                        : colors.gamification.error,
+                    transform: [{ scale: feedbackScale }],
+                  },
+                ]}
+              >
+                {feedback === 'correct' ? '○' : '×'}
+              </Animated.Text>
+            </Animated.View>
+          )}
         </View>
         <View style={styles.progressArea}>
           <Text style={[styles.progressText, { color: colors.text.secondary }]}>
@@ -193,6 +254,9 @@ const styles = StyleSheet.create({
   commentArea: {
     paddingVertical: 12,
   },
+  boardSection: {
+    position: 'relative',
+  },
   content: {
     alignItems: 'center',
     gap: 4,
@@ -250,5 +314,19 @@ const styles = StyleSheet.create({
   navButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  feedbackOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  feedbackSymbol: {
+    fontSize: 280,
+    fontWeight: 'bold',
   },
 })
