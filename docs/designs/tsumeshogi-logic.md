@@ -29,7 +29,7 @@
 
 ## 実装ステップ
 
-### Step 1: 駒の移動ロジック（基盤）
+### Step 1: 駒の移動ロジック（基盤）✅ 完了
 
 **新規ファイル:** `packages/app/lib/shogi/moveGenerator.ts`
 
@@ -59,9 +59,34 @@ function mustPromote(pieceType, to, player): boolean
 - 二歩禁止
 - 行き場のない駒の禁止
 
-### Step 2: 王手・詰み判定ロジック
+### Step 2: ゲームフック（基本構造）
+
+**新規ファイル:** `packages/app/hooks/useTsumeshogiGame.ts`
+
+Step 4から前倒し。まず基本的な盤面操作を実装し、後からcheckmate.tsを統合する。
+
+```typescript
+function useTsumeshogiGame(problem, callbacks) {
+  // 状態
+  boardState          // 現在の盤面
+  currentMoveCount    // 現在の手数
+  selectedPosition    // 選択中のマス
+  selectedCaptured    // 選択中の持ち駒
+  possibleMoves       // 移動可能なマス
+  isThinking          // 相手思考中フラグ
+
+  // 操作
+  handleCellPress(row, col)       // マスタップ
+  handleCapturedPress(pieceType)  // 持ち駒タップ
+  reset()                         // やり直し
+}
+```
+
+### Step 3: 王手・詰み判定ロジック
 
 **新規ファイル:** `packages/app/lib/shogi/checkmate.ts`
+
+実装後、useTsumeshogiGameに統合する。
 
 ```typescript
 // 王の位置を取得
@@ -101,54 +126,7 @@ function isUsefulBlock(boardState, blockMove): boolean {
 - 3手詰めで合駒しても4手目で取られて結局詰む → 合駒しない
 - 合駒しても次の王手に対応できない → 合駒しない
 
-### Step 3: コンポーネントのタップ対応
-
-**修正ファイル:**
-- `packages/app/components/shogi/ShogiBoard.tsx`
-- `packages/app/components/shogi/PieceStand.tsx`
-- `packages/app/components/shogi/Piece.tsx`
-
-**追加するProps:**
-```typescript
-// ShogiBoard
-onCellPress?: (row: number, col: number) => void
-selectedPosition?: Position | null
-possibleMoves?: Position[]
-
-// PieceStand
-onPiecePress?: (pieceType: PieceType) => void
-selectedPiece?: PieceType | null
-
-// Piece
-isSelected?: boolean
-```
-
-**スタイル追加:**
-- 選択中マス: 黄色背景
-- 移動可能マス: 薄緑背景またはドット
-
-### Step 4: ゲームフック
-
-**新規ファイル:** `packages/app/hooks/useTsumeshogiGame.ts`
-
-```typescript
-function useTsumeshogiGame(problem, callbacks) {
-  // 状態
-  boardState          // 現在の盤面
-  currentMoveCount    // 現在の手数
-  selectedPosition    // 選択中のマス
-  selectedCaptured    // 選択中の持ち駒
-  possibleMoves       // 移動可能なマス
-  isThinking          // 相手思考中フラグ
-
-  // 操作
-  handleCellPress(row, col)       // マスタップ
-  handleCapturedPress(pieceType)  // 持ち駒タップ
-  reset()                         // やり直し
-}
-```
-
-**ゲームフロー:**
+**ゲームフロー（checkmate.ts統合後）:**
 ```
 handleCellPress
   ↓
@@ -164,6 +142,32 @@ handleCellPress
        ├─ 逃げられる → 盤面更新、次のターン
        └─ 逃げられない（不正解） → onIncorrect() → reset()
 ```
+
+### Step 4: コンポーネントのタップ対応
+
+**修正ファイル:**
+- `packages/app/components/shogi/ShogiBoard.tsx` ✅ 部分完了
+- `packages/app/components/shogi/PieceStand.tsx`
+- `packages/app/components/shogi/Piece.tsx`
+
+**追加するProps:**
+```typescript
+// ShogiBoard ✅ 実装済み
+onCellPress?: (row: number, col: number) => void
+selectedPosition?: Position | null
+possibleMoves?: Position[]
+
+// PieceStand
+onPiecePress?: (pieceType: PieceType) => void
+selectedPiece?: PieceType | null
+
+// Piece
+isSelected?: boolean
+```
+
+**スタイル追加:**
+- 選択中マス: 黄色背景 ✅
+- 移動可能マス: 薄緑背景 ✅
 
 ### Step 5: 画面統合
 
