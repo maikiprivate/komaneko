@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { Link, Tabs } from 'expo-router'
+import { Tabs } from 'expo-router'
 import type React from 'react'
-import { Image, Pressable, View } from 'react-native'
+import { Image, View } from 'react-native'
 
 const lessonIcon = require('@/assets/images/tabs/lesson.png')
 const tsumeshogiIcon = require('@/assets/images/tabs/tsumeshogi.png')
@@ -46,20 +46,6 @@ export default function TabLayout() {
               <LogoHeader width={119} height={27} />
             </View>
           ),
-          headerRight: () => (
-            <Link href="/two" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="cog"
-                    size={22}
-                    color="#FFFFFF"
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
         }}
       />
       <Tabs.Screen
@@ -77,20 +63,6 @@ export default function TabLayout() {
             <View style={{ marginLeft: 15, marginTop: -2 }}>
               <LogoHeader width={119} height={27} />
             </View>
-          ),
-          headerRight: () => (
-            <Link href="/two" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="cog"
-                    size={22}
-                    color="#FFFFFF"
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
           ),
         }}
       />
@@ -110,27 +82,6 @@ export default function TabLayout() {
               <LogoHeader width={119} height={27} />
             </View>
           ),
-          headerRight: () => (
-            <Link href="/two" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="cog"
-                    size={22}
-                    color="#FFFFFF"
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: '設定',
-          href: null, // タブバーから非表示
         }}
       />
     </Tabs>

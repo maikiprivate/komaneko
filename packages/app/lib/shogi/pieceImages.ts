@@ -2,10 +2,11 @@
  * 駒画像マッピング
  */
 
+import type { ImageSourcePropType } from 'react-native'
 import type { PieceType } from './types'
 
 /** 駒種から画像を取得するマッピング */
-export const PIECE_IMAGES: Record<PieceType, ReturnType<typeof require>> = {
+export const PIECE_IMAGES: Record<PieceType, ImageSourcePropType> = {
   fu: require('../../assets/images/pieces/fu.png'),
   kyo: require('../../assets/images/pieces/kyo.png'),
   kei: require('../../assets/images/pieces/kei.png'),
@@ -23,6 +24,6 @@ export const PIECE_IMAGES: Record<PieceType, ReturnType<typeof require>> = {
 }
 
 /** 駒種から画像を取得 */
-export function getPieceImage(pieceType: PieceType) {
+export function getPieceImage(pieceType: PieceType): ImageSourcePropType {
   return PIECE_IMAGES[pieceType]
 }

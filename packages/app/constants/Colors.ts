@@ -113,5 +113,5 @@ const Colors = {
 export default Colors
 
 // 型定義
-export type ThemeColors = typeof lightTheme
+export type ThemeColors = typeof lightTheme | typeof darkTheme
 export type ColorScheme = 'light' | 'dark'
