@@ -8,8 +8,8 @@ import { KomanekoComment } from '@/components/KomanekoComment'
 import { PieceStand } from '@/components/shogi/PieceStand'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { useTheme } from '@/components/useTheme'
+import { useTsumeshogiGame } from '@/hooks/useTsumeshogiGame'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
-import { parseSfen } from '@/lib/shogi/sfen'
 import type { Perspective } from '@/lib/shogi/types'
 import { MOCK_TSUMESHOGI_PROBLEMS, MOVES_LABELS, type MovesOption } from '@/mocks/tsumeshogiData'
 
@@ -122,11 +122,11 @@ export default function TsumeshogiPlayScreen() {
     }
   }, [isSolved, scaleAnim])
 
-  // 進行状況（後でstateに置き換え）
-  const currentMove = 1
-
-  // SFENをパース
-  const { board, capturedPieces } = parseSfen(problem.sfen)
+  // ゲームフックを使用
+  const game = useTsumeshogiGame(problem, {
+    onCorrect: () => showFeedback('correct'),
+    onIncorrect: () => showFeedback('incorrect'),
+  })
 
   // 視点（詰将棋は常に先手視点）
   const perspective: Perspective = 'sente'
@@ -137,8 +137,8 @@ export default function TsumeshogiPlayScreen() {
 
   // 視点に応じた駒台の順序
   const { top: topStand, bottom: bottomStand } = getPieceStandOrder(
-    capturedPieces.sente,
-    capturedPieces.gote,
+    game.boardState.capturedPieces.sente,
+    game.boardState.capturedPieces.gote,
     perspective,
   )
 
@@ -157,7 +157,14 @@ export default function TsumeshogiPlayScreen() {
               label={topStand.label}
               width={boardWidth}
             />
-            <ShogiBoard board={board} perspective={perspective} cellSize={cellSize} />
+            <ShogiBoard
+              board={game.boardState.board}
+              perspective={perspective}
+              cellSize={cellSize}
+              onCellPress={game.handleCellPress}
+              selectedPosition={game.selectedPosition}
+              possibleMoves={game.possibleMoves}
+            />
             <PieceStand
               pieces={bottomStand.pieces}
               isOpponent={bottomStand.isOpponent}
@@ -175,7 +182,7 @@ export default function TsumeshogiPlayScreen() {
                   {
                     color:
                       feedback === 'correct'
-                        ? '#8BC34A'
+                        ? palette.correctFeedback
                         : colors.gamification.error,
                     transform: [{ scale: feedbackScale }],
                   },
@@ -185,10 +192,35 @@ export default function TsumeshogiPlayScreen() {
               </Animated.Text>
             </Animated.View>
           )}
+
+          {/* 成り選択ダイアログ */}
+          {game.pendingPromotion && (
+            <View style={styles.promotionOverlay}>
+              <View style={[styles.promotionDialog, { backgroundColor: colors.background.primary }]}>
+                <Text style={[styles.promotionTitle, { color: colors.text.primary }]}>
+                  成りますか？
+                </Text>
+                <View style={styles.promotionButtons}>
+                  <TouchableOpacity
+                    style={[styles.promotionButton, { backgroundColor: palette.orange }]}
+                    onPress={() => game.handlePromotionSelect(true)}
+                  >
+                    <Text style={[styles.promotionButtonText, { color: palette.white }]}>成る</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.promotionButton, { backgroundColor: colors.background.secondary, borderWidth: 1, borderColor: colors.border }]}
+                    onPress={() => game.handlePromotionSelect(false)}
+                  >
+                    <Text style={[styles.promotionButtonText, { color: colors.text.primary }]}>不成</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
         <View style={styles.progressArea}>
           <Text style={[styles.progressText, { color: colors.text.secondary }]}>
-            {currentMove}手目 / {problem.moves}手詰め
+            {game.currentMoveCount}手目 / {problem.moves}手詰め
           </Text>
         </View>
         <View style={styles.navigationArea}>
@@ -211,7 +243,7 @@ export default function TsumeshogiPlayScreen() {
               <Text
                 style={[
                   styles.navButtonText,
-                  { color: isSolved ? '#FFFFFF' : colors.text.secondary },
+                  { color: isSolved ? palette.white : colors.text.secondary },
                 ]}
               >
                 次の問題へ
@@ -219,14 +251,14 @@ export default function TsumeshogiPlayScreen() {
               <FontAwesome
                 name="chevron-right"
                 size={14}
-                color={isSolved ? '#FFFFFF' : colors.text.secondary}
+                color={isSolved ? palette.white : colors.text.secondary}
               />
             </Animated.View>
           </TouchableOpacity>
         </View>
         <View style={styles.spacer} />
         <View style={[styles.footer, { backgroundColor: colors.background.primary, borderTopColor: palette.orange }]}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => console.log('やり直し')}>
+          <TouchableOpacity style={styles.actionButton} onPress={game.reset}>
             <FontAwesome name="refresh" size={20} color={colors.gamification.success} />
             <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>やり直し</Text>
           </TouchableOpacity>
@@ -328,5 +360,40 @@ const styles = StyleSheet.create({
   feedbackSymbol: {
     fontSize: 280,
     fontWeight: 'bold',
+  },
+  promotionOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 200,
+  },
+  promotionDialog: {
+    padding: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 16,
+  },
+  promotionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  promotionButtons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  promotionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  promotionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    // Note: デフォルトは白（成るボタン用）、不成ボタンではインラインで上書き
   },
 })

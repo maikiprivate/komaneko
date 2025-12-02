@@ -2,9 +2,10 @@
  * 将棋盤コンポーネント
  */
 
-import { StyleSheet, View, Text } from 'react-native'
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native'
 
-import type { Board, Perspective } from '../../lib/shogi/types'
+import Colors from '@/constants/Colors'
+import type { Board, Perspective, Position } from '../../lib/shogi/types'
 import {
   transformBoardForPerspective,
   getFileLabels,
@@ -12,10 +13,25 @@ import {
 } from '../../lib/shogi/perspective'
 import { Piece } from './Piece'
 
+/** 将棋盤の木目色（UIローカル定数） */
+const BOARD_COLORS = {
+  background: '#E8C98E',
+  border: '#CD853F',
+  cellBorder: '#A0826D',
+  star: '#5D4037',
+  label: '#8B7355',
+} as const
+
 interface ShogiBoardProps {
   board: Board
   perspective: Perspective
   cellSize?: number
+  /** セルタップ時のコールバック（row, colは元の盤面座標） */
+  onCellPress?: (row: number, col: number) => void
+  /** 選択中のマス（元の盤面座標） */
+  selectedPosition?: Position | null
+  /** 移動可能なマス一覧（元の盤面座標） */
+  possibleMoves?: Position[]
 }
 
 // 星の位置（罫線の交点）
@@ -41,11 +57,45 @@ function hasStarAtBottomRight(row: number, col: number, perspective: Perspective
   return positions.some((pos) => pos.row === row && pos.col === col)
 }
 
-export function ShogiBoard({ board, perspective, cellSize = 36 }: ShogiBoardProps) {
+export function ShogiBoard({
+  board,
+  perspective,
+  cellSize = 36,
+  onCellPress,
+  selectedPosition,
+  possibleMoves = [],
+}: ShogiBoardProps) {
   const labelSize = 12
   const transformedBoard = transformBoardForPerspective(board, perspective)
   const fileLabels = getFileLabels(perspective)
   const rankLabels = getRankLabels(perspective)
+
+  // 表示座標から元の盤面座標に変換
+  const toOriginalCoord = (displayRow: number, displayCol: number): { row: number; col: number } => {
+    if (perspective === 'gote') {
+      return { row: 8 - displayRow, col: 8 - displayCol }
+    }
+    return { row: displayRow, col: displayCol }
+  }
+
+  // 元の盤面座標が選択中かどうか
+  const isSelected = (displayRow: number, displayCol: number): boolean => {
+    if (!selectedPosition) return false
+    const orig = toOriginalCoord(displayRow, displayCol)
+    return orig.row === selectedPosition.row && orig.col === selectedPosition.col
+  }
+
+  // 元の盤面座標が移動可能かどうか
+  const isPossibleMove = (displayRow: number, displayCol: number): boolean => {
+    const orig = toOriginalCoord(displayRow, displayCol)
+    return possibleMoves.some((p) => p.row === orig.row && p.col === orig.col)
+  }
+
+  const handleCellPress = (displayRow: number, displayCol: number) => {
+    if (!onCellPress) return
+    const orig = toOriginalCoord(displayRow, displayCol)
+    onCellPress(orig.row, orig.col)
+  }
 
   return (
     <View style={styles.board}>
@@ -62,23 +112,35 @@ export function ShogiBoard({ board, perspective, cellSize = 36 }: ShogiBoardProp
       {/* 盤面 + 段の番号 */}
       {transformedBoard.map((row, rowIndex) => (
         <View key={rowIndex} style={styles.row}>
-          {row.map((piece, colIndex) => (
-            <View
-              key={`${rowIndex}-${colIndex}`}
-              style={[styles.cell, { width: cellSize, height: cellSize }]}
-            >
-              {piece && (
-                <Piece
-                  type={piece.type}
-                  isOpponent={piece.owner !== perspective}
-                  size={cellSize - 4}
-                />
-              )}
-              {hasStarAtBottomRight(rowIndex, colIndex, perspective) && (
-                <View style={styles.star} />
-              )}
-            </View>
-          ))}
+          {row.map((piece, colIndex) => {
+            const selected = isSelected(rowIndex, colIndex)
+            const possible = isPossibleMove(rowIndex, colIndex)
+
+            return (
+              <TouchableOpacity
+                key={`${rowIndex}-${colIndex}`}
+                style={[
+                  styles.cell,
+                  { width: cellSize, height: cellSize },
+                  selected && styles.selectedCell,
+                  possible && styles.possibleCell,
+                ]}
+                onPress={() => handleCellPress(rowIndex, colIndex)}
+                activeOpacity={0.7}
+              >
+                {piece && (
+                  <Piece
+                    type={piece.type}
+                    isOpponent={piece.owner !== perspective}
+                    size={cellSize - 4}
+                  />
+                )}
+                {hasStarAtBottomRight(rowIndex, colIndex, perspective) && (
+                  <View style={styles.star} />
+                )}
+              </TouchableOpacity>
+            )
+          })}
           {/* 段の番号（右側） */}
           <Text style={[styles.label, styles.rankLabel, { width: labelSize, height: cellSize, lineHeight: cellSize }]}>
             {rankLabels[rowIndex]}
@@ -91,10 +153,10 @@ export function ShogiBoard({ board, perspective, cellSize = 36 }: ShogiBoardProp
 
 const styles = StyleSheet.create({
   board: {
-    backgroundColor: '#E8C98E',
+    backgroundColor: BOARD_COLORS.background,
     padding: 2,
     borderWidth: 2,
-    borderColor: '#CD853F',
+    borderColor: BOARD_COLORS.border,
     borderRadius: 4,
   },
   row: {
@@ -102,7 +164,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    color: '#8B7355',
+    color: BOARD_COLORS.label,
     textAlign: 'center',
   },
   rankLabel: {
@@ -110,9 +172,15 @@ const styles = StyleSheet.create({
   },
   cell: {
     borderWidth: 0.5,
-    borderColor: '#A0826D',
+    borderColor: BOARD_COLORS.cellBorder,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  selectedCell: {
+    backgroundColor: Colors.palette.shogiSelected,
+  },
+  possibleCell: {
+    backgroundColor: Colors.palette.greenLight,
   },
   star: {
     position: 'absolute',
@@ -121,7 +189,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#5D4037',
+    backgroundColor: BOARD_COLORS.star,
     zIndex: 10,
   },
 })

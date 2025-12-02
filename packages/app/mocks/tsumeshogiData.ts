@@ -24,8 +24,18 @@ export const MOVES_LABELS: Record<MovesOption, string> = {
   7: '7手詰め',
 }
 
+/** 初期配置SFEN（テスト用） */
+export const INITIAL_POSITION_SFEN = 'lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1'
+
 /** モックデータ */
 export const MOCK_TSUMESHOGI_PROBLEMS: TsumeshogiProblem[] = [
+  // テスト用: 初期配置
+  {
+    id: 'test-initial',
+    sfen: INITIAL_POSITION_SFEN,
+    moves: 3,
+    status: 'unsolved',
+  },
   // 3手詰め
   {
     id: '3-001',

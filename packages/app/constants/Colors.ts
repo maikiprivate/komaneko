@@ -32,6 +32,11 @@ const palette = {
   red: '#FF5252',
   streakOrange: '#FF9800',
   green: '#4CAF50',
+  greenLight: '#C8E6C9',
+  correctFeedback: '#8BC34A',
+
+  // 将棋盤インタラクション
+  shogiSelected: '#FFE0B2',
 } as const
 
 // ライトモードテーマ
