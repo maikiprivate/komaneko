@@ -2,9 +2,10 @@
  * 駒台コンポーネント（持ち駒表示）
  */
 
-import { StyleSheet, View, Text } from 'react-native'
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native'
 
-import type { CapturedPieces } from '../../lib/shogi/types'
+import Colors from '@/constants/Colors'
+import type { CapturedPieces, PieceType } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 import { Piece } from './Piece'
 
@@ -14,13 +15,28 @@ interface PieceStandProps {
   pieceSize?: number
   label?: string
   width?: number
+  /** 持ち駒タップ時のコールバック */
+  onPiecePress?: (pieceType: PieceType) => void
+  /** 選択中の駒 */
+  selectedPiece?: PieceType | null
 }
 
-export function PieceStand({ pieces, isOpponent = false, pieceSize = 32, label, width }: PieceStandProps) {
+export function PieceStand({
+  pieces,
+  isOpponent = false,
+  pieceSize = 32,
+  label,
+  width,
+  onPiecePress,
+  selectedPiece,
+}: PieceStandProps) {
   // 相手は右から左へ（row-reverse）、自分は左から右へ（row）
   const piecesDirection = isOpponent ? 'row-reverse' : 'row'
   // 相手はラベル左、自分はラベル右
   const containerDirection = isOpponent ? 'row' : 'row-reverse'
+
+  // タップ可能かどうか（相手の駒台はタップ不可）
+  const isTappable = !isOpponent && !!onPiecePress
 
   return (
     <View style={[styles.container, { flexDirection: containerDirection }, width ? { width } : undefined]}>
@@ -32,13 +48,21 @@ export function PieceStand({ pieces, isOpponent = false, pieceSize = 32, label, 
           const count = pieces[pieceType] ?? 0
           if (count === 0) return null
 
+          const isSelected = selectedPiece === pieceType
+
           return (
-            <View key={pieceType} style={styles.pieceWrapper}>
+            <TouchableOpacity
+              key={pieceType}
+              style={[styles.pieceWrapper, isSelected && styles.selectedPiece]}
+              onPress={() => isTappable && onPiecePress(pieceType)}
+              disabled={!isTappable}
+              activeOpacity={isTappable ? 0.7 : 1}
+            >
               <Piece type={pieceType} isOpponent={isOpponent} size={pieceSize} />
               {count > 1 && (
                 <Text style={styles.count}>{count}</Text>
               )}
-            </View>
+            </TouchableOpacity>
           )
         })}
       </View>
@@ -72,6 +96,11 @@ const styles = StyleSheet.create({
   pieceWrapper: {
     position: 'relative',
     marginHorizontal: 2,
+    borderRadius: 4,
+    padding: 2,
+  },
+  selectedPiece: {
+    backgroundColor: Colors.palette.shogiSelected,
   },
   count: {
     position: 'absolute',

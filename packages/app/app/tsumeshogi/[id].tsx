@@ -170,6 +170,8 @@ export default function TsumeshogiPlayScreen() {
               isOpponent={bottomStand.isOpponent}
               label={bottomStand.label}
               width={boardWidth}
+              onPiecePress={game.handleCapturedPress}
+              selectedPiece={game.selectedCaptured}
             />
           </View>
 
