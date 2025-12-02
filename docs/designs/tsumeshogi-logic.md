@@ -23,15 +23,14 @@
 
 ### 不正解時の挙動
 
-1. 相手が応手を指す（500ms待機）
-2. ×フィードバック表示
-3. 盤面リセット
+1. ×フィードバック表示
+2. 盤面リセット
 
 ## 実装ステップ
 
 ### Step 1: 駒の移動ロジック（基盤）✅ 完了
 
-**新規ファイル:** `packages/app/lib/shogi/moveGenerator.ts`
+**ファイル:** `packages/app/lib/shogi/moveGenerator.ts`
 
 ```typescript
 // 駒の移動パターン定義
@@ -51,55 +50,76 @@ function canPromote(pieceType, from, to, player): boolean
 function mustPromote(pieceType, to, player): boolean
 ```
 
-**実装する駒の動き:**
+**実装済み:**
 - 歩、香、桂、銀、金、角、飛、王
 - 成駒（と、成香、成桂、成銀、馬、龍）
-
-**チェック項目:**
 - 二歩禁止
 - 行き場のない駒の禁止
 
-### Step 2: ゲームフック（基本構造）
+### Step 2: ゲームフック（基本構造）✅ 完了
 
-**新規ファイル:** `packages/app/hooks/useTsumeshogiGame.ts`
+**ファイル:** `packages/app/hooks/useShogiBoard.ts`, `useTsumeshogiGame.ts`
 
-Step 4から前倒し。まず基本的な盤面操作を実装し、後からcheckmate.tsを統合する。
+現在の実装は仮実装。Step 3 で `useTsumeshogiGame` を全面書き換えする。
 
-```typescript
-function useTsumeshogiGame(problem, callbacks) {
-  // 状態
-  boardState          // 現在の盤面
-  currentMoveCount    // 現在の手数
-  selectedPosition    // 選択中のマス
-  selectedCaptured    // 選択中の持ち駒
-  possibleMoves       // 移動可能なマス
-  isThinking          // 相手思考中フラグ
-
-  // 操作
-  handleCellPress(row, col)       // マスタップ
-  handleCapturedPress(pieceType)  // 持ち駒タップ
-  reset()                         // やり直し
-}
-```
-
-### Step 3: 王手・詰み判定ロジック
+### Step 3: 王手・詰み判定ロジック 🔄 作業中
 
 **新規ファイル:** `packages/app/lib/shogi/checkmate.ts`
 
-実装後、useTsumeshogiGameに統合する。
+#### アーキテクチャ変更
+
+**重要:** `useTsumeshogiGame` は `useShogiBoard` を使用しない設計に変更。
+
+**理由:**
+- useShogiBoard は「実行 → コールバック」設計
+- 詰将棋は「検証 → 実行」の順序が必須
+- コールバック連携は複雑になりスパゲッティ化リスクあり
+
+**新設計（検証先行パターン）:**
+```
+handleCellPress(row, col)
+  │
+  ├─ 選択モード: 駒を選択 → possibleMoves 計算 → return
+  │
+  └─ 移動モード: 移動先選択
+       │
+       ├─ 1. 仮盤面を作成: newState = makeMove(boardState, from, to)
+       │
+       ├─ 2. 王手チェック: isCheck(newState.board, 'gote')
+       │     └─ No → onIncorrect() → reset() → return
+       │
+       ├─ 3. 詰みチェック: isCheckmate(newState, 'gote')
+       │     └─ Yes → setBoardState(newState) → onCorrect() → return
+       │
+       └─ 4. AI応手:
+             ├─ setGamePhase('ai_thinking')
+             ├─ evasion = getBestEvasion(newState)
+             ├─ afterAI = applyMove(newState, evasion)
+             └─ setBoardState(afterAI)
+```
+
+#### checkmate.ts 関数一覧
 
 ```typescript
+/** 移動手 */
+export type Move =
+  | { type: 'move'; from: Position; to: Position; promote: boolean }
+  | { type: 'drop'; pieceType: PieceType; to: Position }
+
 // 王の位置を取得
 function findKing(board, player): Position | null
 
 // 王手かどうかを判定
 function isCheck(board, player): boolean
 
-// 王手を解除できる手を全て取得
-function getCheckEvasionMoves(boardState): Move[]
+// 合法手（自玉を王手にさらさない手）を全て列挙
+function getAllLegalMoves(boardState, player): Move[]
 
 // 詰みかどうかを判定
-function isCheckmate(boardState): boolean
+function isCheckmate(boardState, player): boolean
+
+// 打ち歩詰めチェック
+function isDropPawnMate(boardState, to, player): boolean
 
 // 最善の応手を選択（AI）
 function getBestEvasion(boardState): Move | null
@@ -111,48 +131,34 @@ function getBestEvasion(boardState): Move | null
 
 1. **玉の移動** - 安全なマスへ逃げる
 2. **攻め駒を取る** - 王手している駒を取れる場合
-3. **有効な合駒** - 合駒で王手を防ぎ、かつ次の手で取られても状況が改善する場合のみ
+3. **有効な合駒** - 合駒で王手を防ぐ
 
 ```typescript
-// 合駒が有効かどうかを判定
-function isUsefulBlock(boardState, blockMove): boolean {
-  // 合駒後の局面で、攻め方に取られた後も
-  // 玉に逃げ道があるかをチェック
-  // 単に1手延命するだけの合駒は無効とみなす
+function getMoveScore(boardState, move): number {
+  if (move.type === 'move') {
+    const piece = boardState.board[move.from.row][move.from.col]
+    // 玉の移動は最優先
+    if (piece?.type === 'ou') return 1000
+    // 攻め駒を取る
+    const target = boardState.board[move.to.row][move.to.col]
+    if (target) return 500 + getPieceValue(target.type)
+    // 合駒
+    return 100
+  }
+  // 持ち駒での合駒は低優先
+  return 50
 }
 ```
 
-**無駄な合駒の例:**
-- 3手詰めで合駒しても4手目で取られて結局詰む → 合駒しない
-- 合駒しても次の王手に対応できない → 合駒しない
-
-**ゲームフロー（checkmate.ts統合後）:**
-```
-handleCellPress
-  ↓
-駒選択 or 移動先選択
-  ↓
-移動実行 → makeMove()
-  ↓
-王手チェック → isCheck()
-  ↓
-詰みチェック → isCheckmate()
-  ├─ 詰み → onCorrect()
-  └─ 詰みでない → 相手の応手 → getBestEvasion()
-       ├─ 逃げられる → 盤面更新、次のターン
-       └─ 逃げられない（不正解） → onIncorrect() → reset()
-```
-
-### Step 4: コンポーネントのタップ対応
+### Step 4: コンポーネントのタップ対応 ✅ 完了
 
 **修正ファイル:**
-- `packages/app/components/shogi/ShogiBoard.tsx` ✅ 部分完了
-- `packages/app/components/shogi/PieceStand.tsx`
-- `packages/app/components/shogi/Piece.tsx`
+- `packages/app/components/shogi/ShogiBoard.tsx` ✅
+- `packages/app/components/shogi/PieceStand.tsx` ✅
 
-**追加するProps:**
+**実装済みProps:**
 ```typescript
-// ShogiBoard ✅ 実装済み
+// ShogiBoard
 onCellPress?: (row: number, col: number) => void
 selectedPosition?: Position | null
 possibleMoves?: Position[]
@@ -160,36 +166,33 @@ possibleMoves?: Position[]
 // PieceStand
 onPiecePress?: (pieceType: PieceType) => void
 selectedPiece?: PieceType | null
-
-// Piece
-isSelected?: boolean
 ```
 
-**スタイル追加:**
+**スタイル:**
 - 選択中マス: 黄色背景 ✅
 - 移動可能マス: 薄緑背景 ✅
 
-### Step 5: 画面統合
+### Step 5: 画面統合 ✅ 完了
 
-**修正ファイル:** `packages/app/app/tsumeshogi/[id].tsx`
+**ファイル:** `packages/app/app/tsumeshogi/[id].tsx`
 
-**実装内容:**
+**実装済み:**
 - useTsumeshogiGame フックを統合
 - やり直しボタンを接続
-- 進行状況表示を動的に（currentMoveCount使用）
-- 相手思考中の表示（isThinking）
+- 進行状況表示を動的に
+- 正解/不正解フィードバック
 
-### Step 6: 成りダイアログ
+### Step 6: 成りダイアログ ✅ 完了
 
-- 成り/不成りの選択UI
-- 成れる場合にダイアログ表示
-- 強制成りの場合は自動で成る
+- 成り/不成りの選択UI ✅
+- 成れる場合にダイアログ表示 ✅
+- 強制成りの場合は自動で成る ✅
 
 ## アーキテクチャ
 
 ### レイヤー構造
 
-ロジックとUIを分離し、さらに共通ロジックと画面固有ロジックを分離する。
+ロジックとUIを分離し、詰将棋専用フックは独立して状態管理を行う。
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -199,18 +202,18 @@ isSelected?: boolean
                       ↓ 使用
 ┌─────────────────────────────────────────────────────┐
 │  ゲームフック（画面固有ロジック）                      │
+├─────────────────────────────────────────────────────┤
 │  useTsumeshogiGame.ts    │  useLessonGame.ts       │
-│  - 詰み判定              │  - 正解手順判定          │
-│  - AI応手                │  - ヒント表示            │
-│  - 王手チェック           │  - 進捗管理              │
+│  - 全状態を自己管理       │  - useShogiBoard使用    │
+│  - 詰み判定・AI応手       │  - 正解手順判定          │
+│  - 検証先行パターン       │  - ヒント表示            │
+│                          │  - 進捗管理              │
 └─────────────────────────────────────────────────────┘
                       ↓ 使用
 ┌─────────────────────────────────────────────────────┐
-│  共通フック（盤面操作）                               │
+│  共通フック（駒塾等で使用）                           │
 │  useShogiBoard.ts                                   │
-│  - 駒の選択/移動                                    │
-│  - 持ち駒の選択/打ち                                 │
-│  - やり直し                                         │
+│  ※ 詰将棋では使用しない                              │
 └─────────────────────────────────────────────────────┘
                       ↓ 使用
 ┌─────────────────────────────────────────────────────┐
@@ -223,8 +226,8 @@ isSelected?: boolean
 
 ```
 hooks/
-├── useShogiBoard.ts       # 共通: 盤面操作の基本
-├── useTsumeshogiGame.ts   # 詰将棋: useShogiBoard + 詰み判定
+├── useShogiBoard.ts       # 共通: 盤面操作（駒塾等で使用）
+├── useTsumeshogiGame.ts   # 詰将棋: 独立した状態管理 + 詰み判定
 └── useLessonGame.ts       # 駒塾: useShogiBoard + 正解判定（将来）
 
 lib/shogi/
@@ -242,7 +245,7 @@ lib/shogi/
 |----------|------|------|
 | 画面（UI） | 表示とユーザー操作の受付 | ボタン、レイアウト、アニメーション |
 | ゲームフック | 画面固有のゲームルール | 詰み判定、正解判定、AI応手 |
-| 共通フック | 盤面操作の共通処理 | 駒選択、移動、持ち駒、やり直し |
+| 共通フック | 盤面操作の共通処理（オプション） | 駒選択、移動、やり直し |
 | 純粋関数 | 状態を持たない計算ロジック | 移動可能位置計算、王手判定 |
 
 ### 依存方向
@@ -253,34 +256,49 @@ lib/shogi/
 
 ## 設計原則
 
-### 実装アプローチ
-- 実装先行（モック先行フェーズのため）
-- テストは必要に応じて後から追加
+### 検証先行（Validate Before Execute）
+
+```typescript
+// 仮盤面で検証してから状態更新
+const newState = makeMove(boardState, from, to, promote)
+if (!isCheck(newState.board, 'gote')) {
+  // 不正解: 状態は変更されていないのでリセットするだけ
+  onIncorrect()
+  reset()
+  return
+}
+// 検証OK: 状態を反映
+setBoardState(newState)
+```
+
+### 単一責任
+
+- `checkmate.ts`: 王手・詰み判定のみ（純粋関数）
+- `useTsumeshogiGame`: 詰将棋の状態管理とフロー
 
 ### シンプルさの維持
+
 - 詰将棋に必要な機能のみ実装
 - 千日手、入玉判定は不要
-- 状態管理はReact標準（useState/useReducer）
-
-### ゲームロジックの分離
-- ロジックは `lib/shogi/` 配下に純粋関数として実装
-- UIとロジックを疎結合に
+- 状態管理はReact標準（useState）
 
 ### 座標系
+
 - ゲームロジックは常に先手視点（row=0が一段目、col=0が9筋）
 - 表示のみperspectiveで変換
 
 ## 修正ファイル一覧
 
-| ファイル | 種類 | 内容 |
-|----------|------|------|
-| `lib/shogi/moveGenerator.ts` | 新規 | 駒の移動ロジック |
-| `lib/shogi/checkmate.ts` | 新規 | 王手・詰み判定 |
-| `hooks/useTsumeshogiGame.ts` | 新規 | ゲームフック |
-| `components/shogi/ShogiBoard.tsx` | 修正 | タップ対応 |
-| `components/shogi/PieceStand.tsx` | 修正 | タップ対応 |
-| `components/shogi/Piece.tsx` | 修正 | 選択表示 |
-| `app/tsumeshogi/[id].tsx` | 修正 | 統合 |
+| ファイル | 種類 | 内容 | 状態 |
+|----------|------|------|------|
+| `lib/shogi/moveGenerator.ts` | 新規 | 駒の移動ロジック | ✅ 完了 |
+| `lib/shogi/checkmate.ts` | 新規 | 王手・詰み判定 | 🔄 作業中 |
+| `lib/shogi/types.ts` | 修正 | Move型追加 | 🔄 作業中 |
+| `hooks/useShogiBoard.ts` | 新規 | 共通盤面操作 | ✅ 完了 |
+| `hooks/useTsumeshogiGame.ts` | 新規 | 詰将棋ゲームフック | 🔄 書き換え予定 |
+| `components/shogi/ShogiBoard.tsx` | 修正 | タップ対応 | ✅ 完了 |
+| `components/shogi/PieceStand.tsx` | 修正 | タップ対応 | ✅ 完了 |
+| `app/tsumeshogi/[id].tsx` | 修正 | 統合 | ✅ 完了 |
 
 ## スコープ外
 
