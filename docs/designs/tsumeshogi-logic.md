@@ -64,7 +64,26 @@ function mustPromote(pieceType, to, player): boolean
 
 ### Step 3: 王手・詰み判定ロジック 🔄 作業中
 
-**新規ファイル:** `packages/app/lib/shogi/checkmate.ts`
+#### ファイル構成の再設計
+
+コードレビューにより、以下の問題を発見し再設計を実施：
+
+**問題点:**
+1. `checkmate.ts` の `getPromotionOptions` と `moveGenerator.ts` の `canPromote`/`mustPromote` でロジック重複
+2. `checkmate.ts` に共通ロジックと詰将棋専用ロジックが混在
+3. ファイル名（checkmate）と内容（王手、合法手、AI応手）が一致しない
+
+**新ファイル構成:**
+```
+lib/shogi/
+├── types.ts           # 型定義（Move型含む）
+├── moveGenerator.ts   # 駒の移動 + getPromotionOptions, applyMove
+├── rules.ts           # 将棋ルール（共通）★ checkmate.tsをリネーム
+└── pieceValue.ts      # 駒の評価値（共通）★ 新規
+
+hooks/
+└── useTsumeshogiGame.ts  # 詰将棋専用（AI応手含む）
+```
 
 #### アーキテクチャ変更
 
@@ -98,14 +117,21 @@ handleCellPress(row, col)
              └─ setBoardState(afterAI)
 ```
 
-#### checkmate.ts 関数一覧
+#### 各ファイルの責務
 
+**moveGenerator.ts（追加あり）:**
 ```typescript
-/** 移動手 */
-export type Move =
-  | { type: 'move'; from: Position; to: Position; promote: boolean }
-  | { type: 'drop'; pieceType: PieceType; to: Position }
+// 既存（維持）
+getPossibleMoves, getDropPositions, makeMove, makeDrop
+canPromote, mustPromote, promote, unpromote
 
+// 追加
+function getPromotionOptions(pieceType, from, to, player): boolean[]
+function applyMove(boardState, move): BoardState
+```
+
+**rules.ts（checkmate.ts からリネーム）:**
+```typescript
 // 王の位置を取得
 function findKing(board, player): Position | null
 
@@ -120,9 +146,19 @@ function isCheckmate(boardState, player): boolean
 
 // 打ち歩詰めチェック
 function isDropPawnMate(boardState, to, player): boolean
+```
 
-// 最善の応手を選択（AI）
-function getBestEvasion(boardState): Move | null
+**pieceValue.ts（新規）:**
+```typescript
+export const PIECE_VALUES: Record<PieceType, number> = { ... }
+export function getPieceValue(pieceType: PieceType): number
+```
+
+**useTsumeshogiGame.ts（AI応手を含む）:**
+```typescript
+// AI応手選択（詰将棋専用）
+function getBestEvasion(boardState: BoardState): Move | null
+function getMoveScore(boardState: BoardState, move: Move): number
 ```
 
 **相手の応手ロジック（重要）:**
@@ -218,7 +254,7 @@ selectedPiece?: PieceType | null
                       ↓ 使用
 ┌─────────────────────────────────────────────────────┐
 │  純粋関数（lib/shogi/）                             │
-│  moveGenerator.ts │ checkmate.ts │ sfen.ts など     │
+│  moveGenerator.ts │ rules.ts │ pieceValue.ts など   │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -227,16 +263,28 @@ selectedPiece?: PieceType | null
 ```
 hooks/
 ├── useShogiBoard.ts       # 共通: 盤面操作（駒塾等で使用）
-├── useTsumeshogiGame.ts   # 詰将棋: 独立した状態管理 + 詰み判定
+├── useTsumeshogiGame.ts   # 詰将棋: 独立した状態管理 + AI応手
 └── useLessonGame.ts       # 駒塾: useShogiBoard + 正解判定（将来）
 
 lib/shogi/
-├── moveGenerator.ts       # 共通: 駒の移動
-├── checkmate.ts           # 詰将棋用: 詰み判定
+├── types.ts               # 共通: 型定義（Move型含む）
+├── moveGenerator.ts       # 共通: 駒の移動 + getPromotionOptions, applyMove
+├── rules.ts               # 共通: 将棋ルール（王手・詰み判定）
+├── pieceValue.ts          # 共通: 駒の評価値
 ├── sfen.ts                # 共通: SFEN解析
 ├── perspective.ts         # 共通: 視点変換
-├── pieceImages.ts         # 共通: 駒画像
-└── types.ts               # 共通: 型定義
+└── pieceImages.ts         # 共通: 駒画像
+```
+
+**依存関係:**
+```
+types.ts
+    ↑
+moveGenerator.ts ←─── rules.ts
+    ↑                    ↑
+pieceValue.ts ←──────────┤
+                         ↑
+              useTsumeshogiGame.ts
 ```
 
 ### 各レイヤーの責務
@@ -273,8 +321,10 @@ setBoardState(newState)
 
 ### 単一責任
 
-- `checkmate.ts`: 王手・詰み判定のみ（純粋関数）
-- `useTsumeshogiGame`: 詰将棋の状態管理とフロー
+- `moveGenerator.ts`: 駒の移動ロジック（純粋関数）
+- `rules.ts`: 将棋ルール・詰み判定（純粋関数）
+- `pieceValue.ts`: 駒の評価値（純粋関数）
+- `useTsumeshogiGame`: 詰将棋の状態管理 + AI応手
 
 ### シンプルさの維持
 
@@ -291,11 +341,12 @@ setBoardState(newState)
 
 | ファイル | 種類 | 内容 | 状態 |
 |----------|------|------|------|
-| `lib/shogi/moveGenerator.ts` | 新規 | 駒の移動ロジック | ✅ 完了 |
-| `lib/shogi/checkmate.ts` | 新規 | 王手・詰み判定 | 🔄 作業中 |
-| `lib/shogi/types.ts` | 修正 | Move型追加 | 🔄 作業中 |
+| `lib/shogi/types.ts` | 修正 | Move型追加 | ✅ 完了 |
+| `lib/shogi/moveGenerator.ts` | 修正 | 駒の移動 + getPromotionOptions, applyMove | 🔄 作業中 |
+| `lib/shogi/rules.ts` | リネーム | 将棋ルール（checkmate.tsから） | 🔄 作業中 |
+| `lib/shogi/pieceValue.ts` | 新規 | 駒の評価値 | 🔄 作業中 |
 | `hooks/useShogiBoard.ts` | 新規 | 共通盤面操作 | ✅ 完了 |
-| `hooks/useTsumeshogiGame.ts` | 新規 | 詰将棋ゲームフック | 🔄 書き換え予定 |
+| `hooks/useTsumeshogiGame.ts` | 修正 | 詰将棋フック + AI応手 | 🔄 書き換え予定 |
 | `components/shogi/ShogiBoard.tsx` | 修正 | タップ対応 | ✅ 完了 |
 | `components/shogi/PieceStand.tsx` | 修正 | タップ対応 | ✅ 完了 |
 | `app/tsumeshogi/[id].tsx` | 修正 | 統合 | ✅ 完了 |
