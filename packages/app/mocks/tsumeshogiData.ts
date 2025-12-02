@@ -51,7 +51,7 @@ export const MOCK_TSUMESHOGI_PROBLEMS: TsumeshogiProblem[] = [
   },
   {
     id: '3-003',
-    sfen: '7nl/6Gk1/6p1p/9/9/9/9/9/9 b S 1',
+    sfen: 'l5+R1l/4kS3/p4pnpp/2Pppb3/6p1P/P2s5/NP2+nPPR1/2+bS2GK1/L6NL b 3GSP4p 93',
     moves: 3,
     status: 'in_progress',
   },

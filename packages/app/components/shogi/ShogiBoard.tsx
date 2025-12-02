@@ -22,6 +22,12 @@ const BOARD_COLORS = {
   label: '#8B7355',
 } as const
 
+/** 最後に指された手（ハイライト用） */
+interface LastMoveHighlight {
+  from?: Position
+  to: Position
+}
+
 interface ShogiBoardProps {
   board: Board
   perspective: Perspective
@@ -32,6 +38,8 @@ interface ShogiBoardProps {
   selectedPosition?: Position | null
   /** 移動可能なマス一覧（元の盤面座標） */
   possibleMoves?: Position[]
+  /** 最後に指された手（ハイライト用） */
+  lastMove?: LastMoveHighlight | null
 }
 
 // 星の位置（罫線の交点）
@@ -64,6 +72,7 @@ export function ShogiBoard({
   onCellPress,
   selectedPosition,
   possibleMoves = [],
+  lastMove,
 }: ShogiBoardProps) {
   const labelSize = 12
   const transformedBoard = transformBoardForPerspective(board, perspective)
@@ -91,6 +100,20 @@ export function ShogiBoard({
     return possibleMoves.some((p) => p.row === orig.row && p.col === orig.col)
   }
 
+  // 最後に指された手のハイライト（移動元）
+  const isLastMoveFrom = (displayRow: number, displayCol: number): boolean => {
+    if (!lastMove?.from) return false
+    const orig = toOriginalCoord(displayRow, displayCol)
+    return orig.row === lastMove.from.row && orig.col === lastMove.from.col
+  }
+
+  // 最後に指された手のハイライト（移動先）
+  const isLastMoveTo = (displayRow: number, displayCol: number): boolean => {
+    if (!lastMove) return false
+    const orig = toOriginalCoord(displayRow, displayCol)
+    return orig.row === lastMove.to.row && orig.col === lastMove.to.col
+  }
+
   const handleCellPress = (displayRow: number, displayCol: number) => {
     if (!onCellPress) return
     const orig = toOriginalCoord(displayRow, displayCol)
@@ -115,6 +138,8 @@ export function ShogiBoard({
           {row.map((piece, colIndex) => {
             const selected = isSelected(rowIndex, colIndex)
             const possible = isPossibleMove(rowIndex, colIndex)
+            const lastFrom = isLastMoveFrom(rowIndex, colIndex)
+            const lastTo = isLastMoveTo(rowIndex, colIndex)
 
             return (
               <TouchableOpacity
@@ -122,6 +147,8 @@ export function ShogiBoard({
                 style={[
                   styles.cell,
                   { width: cellSize, height: cellSize },
+                  lastFrom && styles.lastMoveFromCell,
+                  lastTo && styles.lastMoveToCell,
                   selected && styles.selectedCell,
                   possible && styles.possibleCell,
                 ]}
@@ -181,6 +208,12 @@ const styles = StyleSheet.create({
   },
   possibleCell: {
     backgroundColor: Colors.palette.greenLight,
+  },
+  lastMoveFromCell: {
+    backgroundColor: '#FFE4B5',  // 薄いオレンジ（移動元）
+  },
+  lastMoveToCell: {
+    backgroundColor: '#FFDAB9',  // 少し濃いオレンジ（移動先）
   },
   star: {
     position: 'absolute',

@@ -164,6 +164,7 @@ export default function TsumeshogiPlayScreen() {
               onCellPress={game.handleCellPress}
               selectedPosition={game.selectedPosition}
               possibleMoves={game.possibleMoves}
+              lastMove={game.lastMove}
             />
             <PieceStand
               pieces={bottomStand.pieces}

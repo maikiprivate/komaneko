@@ -29,6 +29,12 @@ interface TsumeshogiCallbacks {
   onIncorrect?: () => void
 }
 
+/** 最後に指された手（ハイライト用） */
+interface LastMoveHighlight {
+  from?: Position  // 移動元（打ち駒の場合はなし）
+  to: Position     // 移動先
+}
+
 /** フックの戻り値 */
 interface UseTsumeshogiGameReturn {
   /** 盤面状態 */
@@ -45,6 +51,8 @@ interface UseTsumeshogiGameReturn {
   currentMoveCount: number
   /** 相手思考中フラグ */
   isThinking: boolean
+  /** 最後に指された手（ハイライト用） */
+  lastMove: LastMoveHighlight | null
   /** セルタップ処理 */
   handleCellPress: (row: number, col: number) => void
   /** 持ち駒タップ処理 */
@@ -120,6 +128,8 @@ export function useTsumeshogiGame(
   const [currentMoveCount, setCurrentMoveCount] = useState(1)
   // 相手思考中フラグ
   const [isThinking, setIsThinking] = useState(false)
+  // 最後に指された手（ハイライト用）
+  const [lastMove, setLastMove] = useState<LastMoveHighlight | null>(null)
 
   // 選択をクリア
   const clearSelection = useCallback(() => {
@@ -135,11 +145,12 @@ export function useTsumeshogiGame(
     setPendingPromotion(null)
     setCurrentMoveCount(1)
     setIsThinking(false)
+    setLastMove(null)
   }, [initialState, clearSelection])
 
   // 手を実行して結果を処理
   const executeMove = useCallback(
-    (newState: BoardState, incrementMoveCount: boolean) => {
+    (newState: BoardState, moveHighlight: LastMoveHighlight) => {
       // 1. 王手チェック
       if (!isCheck(newState.board, 'gote')) {
         // 王手でない → 不正解
@@ -148,13 +159,14 @@ export function useTsumeshogiGame(
         return
       }
 
+      // ユーザーの手をハイライト
+      setLastMove(moveHighlight)
+
       // 2. 詰みチェック
       if (isCheckmate(newState, 'gote')) {
         // 詰み → 正解！
         setBoardState(newState)
-        if (incrementMoveCount) {
-          setCurrentMoveCount((prev) => prev + 1)
-        }
+        setCurrentMoveCount((prev) => prev + 1)
         clearSelection()
         callbacks?.onCorrect?.()
         return
@@ -162,9 +174,7 @@ export function useTsumeshogiGame(
 
       // 3. AI応手
       setBoardState(newState)
-      if (incrementMoveCount) {
-        setCurrentMoveCount((prev) => prev + 1)
-      }
+      setCurrentMoveCount((prev) => prev + 1)
       clearSelection()
       setIsThinking(true)
 
@@ -175,9 +185,15 @@ export function useTsumeshogiGame(
           const afterAI = applyMove(newState, evasion)
           setBoardState(afterAI)
           setCurrentMoveCount((prev) => prev + 1)
+          // AI の手をハイライト
+          if (evasion.type === 'move') {
+            setLastMove({ from: evasion.from, to: evasion.to })
+          } else {
+            setLastMove({ to: evasion.to })
+          }
         }
         setIsThinking(false)
-      }, 300)
+      }, 800)
     },
     [callbacks, reset, clearSelection],
   )
@@ -191,7 +207,7 @@ export function useTsumeshogiGame(
       setPendingPromotion(null)
 
       const newState = makeMove(boardState, from, to, promote)
-      executeMove(newState, true)
+      executeMove(newState, { from, to })
     },
     [pendingPromotion, boardState, executeMove],
   )
@@ -214,7 +230,7 @@ export function useTsumeshogiGame(
           if (canDrop) {
             const newState = makeDrop(boardState, selectedCaptured, targetPos, 'sente')
             clearSelection()
-            executeMove(newState, true)
+            executeMove(newState, { to: targetPos })
           } else {
             clearSelection()
           }
@@ -257,9 +273,10 @@ export function useTsumeshogiGame(
             clearSelection()
           } else {
             // 強制成りまたは成れない
+            const from = selectedPosition
             clearSelection()
-            const newState = makeMove(boardState, selectedPosition, targetPos, promotions[0])
-            executeMove(newState, true)
+            const newState = makeMove(boardState, from, targetPos, promotions[0])
+            executeMove(newState, { from, to: targetPos })
           }
         } else if (piece?.owner === 'sente') {
           // 別の自分の駒を選択
@@ -314,6 +331,7 @@ export function useTsumeshogiGame(
     pendingPromotion,
     currentMoveCount,
     isThinking,
+    lastMove,
     handleCellPress,
     handleCapturedPress,
     handlePromotionSelect,
