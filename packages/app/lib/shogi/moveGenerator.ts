@@ -2,7 +2,7 @@
  * 将棋の駒移動ロジック
  */
 
-import type { Board, BoardState, CapturedPieces, Piece, PieceType, Player, Position } from './types'
+import type { Board, BoardState, CapturedPieces, Move, Piece, PieceType, Player, Position } from './types'
 
 /** 移動方向（先手視点: row-は前進） */
 type Direction = [row: number, col: number]
@@ -378,4 +378,33 @@ export function makeDrop(
     capturedPieces: captured,
     turn: state.turn === 'sente' ? 'gote' : 'sente',
   }
+}
+
+/**
+ * 成りの選択肢を取得
+ * 成れる場合は [false, true]、強制成りなら [true]、成れない場合は [false]
+ */
+export function getPromotionOptions(
+  pieceType: PieceType,
+  from: Position,
+  to: Position,
+  player: Player,
+): boolean[] {
+  if (!canPromote(pieceType, from, to, player)) {
+    return [false]
+  }
+  if (mustPromote(pieceType, to, player)) {
+    return [true]
+  }
+  return [false, true]
+}
+
+/**
+ * Move型の手を盤面に適用して新しい盤面を返す
+ */
+export function applyMove(boardState: BoardState, move: Move): BoardState {
+  if (move.type === 'move') {
+    return makeMove(boardState, move.from, move.to, move.promote)
+  }
+  return makeDrop(boardState, move.piece, move.to, boardState.turn)
 }
