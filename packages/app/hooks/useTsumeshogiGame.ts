@@ -5,7 +5,7 @@
  * useShogiBoard は使用しない。
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { parseSfen } from '@/lib/shogi/sfen'
 import {
@@ -27,6 +27,8 @@ interface TsumeshogiCallbacks {
   onCorrect?: () => void
   /** 不正解時 */
   onIncorrect?: () => void
+  /** 王手でない手を指した時 */
+  onNotCheck?: () => void
 }
 
 /** 最後に指された手（ハイライト用） */
@@ -34,6 +36,10 @@ interface LastMoveHighlight {
   from?: Position  // 移動元（打ち駒の場合はなし）
   to: Position     // 移動先
 }
+
+/** タイミング定数 */
+const AI_RESPONSE_DELAY_MS = 800
+const FEEDBACK_DELAY_MS = 500
 
 /** フックの戻り値 */
 interface UseTsumeshogiGameReturn {
@@ -51,6 +57,8 @@ interface UseTsumeshogiGameReturn {
   currentMoveCount: number
   /** 相手思考中フラグ */
   isThinking: boolean
+  /** ゲーム終了フラグ（正解・不正解後） */
+  isFinished: boolean
   /** 最後に指された手（ハイライト用） */
   lastMove: LastMoveHighlight | null
   /** セルタップ処理 */
@@ -111,8 +119,11 @@ export function useTsumeshogiGame(
   problem: TsumeshogiProblem,
   callbacks?: TsumeshogiCallbacks,
 ): UseTsumeshogiGameReturn {
-  // 初期盤面をパース
-  const initialState = parseSfen(problem.sfen)
+  // 初期盤面をパース（メモ化）
+  const initialState = useMemo(() => parseSfen(problem.sfen), [problem.sfen])
+
+  // タイマーIDの参照（クリーンアップ用）
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 盤面状態
   const [boardState, setBoardState] = useState<BoardState>(initialState)
@@ -128,6 +139,8 @@ export function useTsumeshogiGame(
   const [currentMoveCount, setCurrentMoveCount] = useState(1)
   // 相手思考中フラグ
   const [isThinking, setIsThinking] = useState(false)
+  // ゲーム終了フラグ（正解・不正解後）
+  const [isFinished, setIsFinished] = useState(false)
   // 最後に指された手（ハイライト用）
   const [lastMove, setLastMove] = useState<LastMoveHighlight | null>(null)
 
@@ -138,24 +151,58 @@ export function useTsumeshogiGame(
     setPossibleMoves([])
   }, [])
 
+  // タイマークリーンアップ
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  // アンマウント時のクリーンアップ
+  useEffect(() => {
+    return () => clearTimer()
+  }, [clearTimer])
+
   // やり直し
   const reset = useCallback(() => {
+    clearTimer()
     setBoardState(initialState)
     clearSelection()
     setPendingPromotion(null)
     setCurrentMoveCount(1)
     setIsThinking(false)
+    setIsFinished(false)
     setLastMove(null)
-  }, [initialState, clearSelection])
+  }, [initialState, clearSelection, clearTimer])
+
+  // AI応手を実行する共通処理
+  const executeAIResponse = useCallback(
+    (state: BoardState, onComplete?: () => void) => {
+      const evasion = getBestEvasion(state)
+      if (evasion) {
+        const afterAI = applyMove(state, evasion)
+        setBoardState(afterAI)
+        // AI の手をハイライト
+        if (evasion.type === 'move') {
+          setLastMove({ from: evasion.from, to: evasion.to })
+        } else {
+          setLastMove({ to: evasion.to })
+        }
+      }
+      setIsThinking(false)
+      onComplete?.()
+    },
+    [],
+  )
 
   // 手を実行して結果を処理
   const executeMove = useCallback(
     (newState: BoardState, moveHighlight: LastMoveHighlight) => {
       // 1. 王手チェック
       if (!isCheck(newState.board, 'gote')) {
-        // 王手でない → 不正解
-        callbacks?.onIncorrect?.()
-        reset()
+        // 王手でない → アラートを出して手を戻す（不正解カウントはしない）
+        callbacks?.onNotCheck?.()
         return
       }
 
@@ -168,34 +215,46 @@ export function useTsumeshogiGame(
         setBoardState(newState)
         setCurrentMoveCount((prev) => prev + 1)
         clearSelection()
+        setIsFinished(true)
         callbacks?.onCorrect?.()
         return
       }
 
-      // 3. AI応手
+      // 3. 最終手で詰まなかった場合
+      if (currentMoveCount >= problem.moves) {
+        // 規定手数の最終手だが詰みではない
+        // 盤面を更新して相手の手を見せてから不正解にする
+        setBoardState(newState)
+        setCurrentMoveCount((prev) => prev + 1)
+        clearSelection()
+        setIsThinking(true)
+
+        timerRef.current = setTimeout(() => {
+          executeAIResponse(newState, () => {
+            setIsFinished(true)
+            // 相手の手を見せてから不正解
+            timerRef.current = setTimeout(() => {
+              callbacks?.onIncorrect?.()
+            }, FEEDBACK_DELAY_MS)
+          })
+        }, AI_RESPONSE_DELAY_MS)
+        return
+      }
+
+      // 4. AI応手（まだ手数が残っている場合）
       setBoardState(newState)
       setCurrentMoveCount((prev) => prev + 1)
       clearSelection()
       setIsThinking(true)
 
       // 少し遅延してAI応手を実行（UIの更新を見せるため）
-      setTimeout(() => {
-        const evasion = getBestEvasion(newState)
-        if (evasion) {
-          const afterAI = applyMove(newState, evasion)
-          setBoardState(afterAI)
+      timerRef.current = setTimeout(() => {
+        executeAIResponse(newState, () => {
           setCurrentMoveCount((prev) => prev + 1)
-          // AI の手をハイライト
-          if (evasion.type === 'move') {
-            setLastMove({ from: evasion.from, to: evasion.to })
-          } else {
-            setLastMove({ to: evasion.to })
-          }
-        }
-        setIsThinking(false)
-      }, 800)
+        })
+      }, AI_RESPONSE_DELAY_MS)
     },
-    [callbacks, reset, clearSelection],
+    [callbacks, clearSelection, currentMoveCount, problem.moves, executeAIResponse],
   )
 
   // 成り選択完了
@@ -215,7 +274,7 @@ export function useTsumeshogiGame(
   // セルタップ処理
   const handleCellPress = useCallback(
     (row: number, col: number) => {
-      if (isThinking) return
+      if (isThinking || isFinished) return
 
       const targetPos = { row, col }
       const piece = boardState.board[row][col]
@@ -296,13 +355,13 @@ export function useTsumeshogiGame(
         setPossibleMoves(moves)
       }
     },
-    [boardState, selectedPosition, selectedCaptured, possibleMoves, isThinking, clearSelection, executeMove],
+    [boardState, selectedPosition, selectedCaptured, possibleMoves, isThinking, isFinished, clearSelection, executeMove],
   )
 
   // 持ち駒タップ処理
   const handleCapturedPress = useCallback(
     (pieceType: PieceType) => {
-      if (isThinking) return
+      if (isThinking || isFinished) return
 
       const hand = boardState.capturedPieces.sente
       if (!hand[pieceType]) return
@@ -320,7 +379,7 @@ export function useTsumeshogiGame(
       const drops = getDropPositions(boardState.board, pieceType, 'sente')
       setPossibleMoves(drops)
     },
-    [boardState, selectedCaptured, isThinking, clearSelection],
+    [boardState, selectedCaptured, isThinking, isFinished, clearSelection],
   )
 
   return {
@@ -331,6 +390,7 @@ export function useTsumeshogiGame(
     pendingPromotion,
     currentMoveCount,
     isThinking,
+    isFinished,
     lastMove,
     handleCellPress,
     handleCapturedPress,

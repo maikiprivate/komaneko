@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
@@ -126,6 +126,7 @@ export default function TsumeshogiPlayScreen() {
   const game = useTsumeshogiGame(problem, {
     onCorrect: () => showFeedback('correct'),
     onIncorrect: () => showFeedback('incorrect'),
+    onNotCheck: () => Alert.alert('王手ではありません', '詰将棋では王手の連続で詰ませる必要があります'),
   })
 
   // 視点（詰将棋は常に先手視点）
