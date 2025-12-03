@@ -228,12 +228,12 @@ Course（コース）→ Section（セクション）→ Lesson（レッスン�
 - レッスン画面（`/lesson/[courseId]/[lessonId]`）- 盤面操作
 - 結果画面（正答数、復習機能）
 
-#### 実装ステップ
-- [ ] Step 1: データ構造・モックデータ（歩・金のみ）
-- [ ] Step 2: useLessonGame フック
-- [ ] Step 3: レッスン画面
-- [ ] Step 4: 結果画面
-- [ ] Step 5: 一覧画面
+#### 実装ステップ（画面先行）
+- [ ] Step 1: レッスン画面（UI先行、ハードコードデータ）
+- [ ] Step 2: 結果画面
+- [ ] Step 3: 一覧画面
+- [ ] Step 4: データ構造・モックデータ確定
+- [ ] Step 5: useLessonGame フック
 - [ ] Step 6: モックデータ拡充
 
 ### Phase 4（完了）- 詰将棋画面

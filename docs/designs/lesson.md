@@ -214,14 +214,41 @@ Duolingo風のツリー表示。
 
 ## 実装ステップ
 
-### Step 1: データ構造・モックデータ
+**方針**: 画面先行で実装し、データ構造の過不足を判断してから確定する
+
+### Step 1: レッスン画面（UI先行）
+
+**ファイル:** `packages/app/app/lesson/[courseId]/[lessonId].tsx`
+
+- プログレスバー
+- 問題文表示
+- 盤面操作（詰将棋UIを流用）
+- 正解/不正解フィードバック
+- ハードコードしたデータで動作確認
+
+### Step 2: 結果画面
+
+**ファイル:** `packages/app/app/lesson/result.tsx`
+
+- 正答数表示
+- 「間違えた問題を復習」ボタン
+- 「次のレッスンへ」ボタン
+
+### Step 3: 一覧画面
+
+**ファイル:**
+- `packages/app/app/(tabs)/lesson.tsx` - コース一覧
+- `packages/app/app/lesson/[courseId]/index.tsx` - セクション一覧
+
+### Step 4: データ構造・モックデータ確定
 
 **ファイル:** `packages/app/mocks/lessonData.ts`
 
+画面実装で判明した要件を元に型定義を確定：
 - Course, Section, Lesson, Problem の型定義
 - 「駒の動かし方」コースのモックデータ（歩・金のみで最小限）
 
-### Step 2: useLessonGame フック
+### Step 5: useLessonGame フック
 
 **ファイル:** `packages/app/hooks/useLessonGame.ts`
 
@@ -245,28 +272,6 @@ interface UseLessonGameReturn {
   skip: () => void
 }
 ```
-
-### Step 3: レッスン画面
-
-**ファイル:** `packages/app/app/lesson/[courseId]/[lessonId].tsx`
-
-- プログレスバー
-- 問題文表示
-- 盤面操作（詰将棋UIを流用）
-- 正解/不正解フィードバック
-
-### Step 4: 結果画面
-
-**ファイル:** `packages/app/app/lesson/result.tsx`
-
-- 正答数表示
-- 「間違えた問題を復習」機能（state経由で渡す）
-
-### Step 5: 一覧画面
-
-**ファイル:**
-- `packages/app/app/(tabs)/lesson.tsx` - コース一覧
-- `packages/app/app/lesson/[courseId]/index.tsx` - セクション一覧
 
 ### Step 6: モックデータ拡充
 
