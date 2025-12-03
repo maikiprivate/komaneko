@@ -2,7 +2,6 @@
  * 詰将棋ゲームフック
  *
  * 独立した状態管理を行い、検証先行パターンで実装。
- * useShogiBoard は使用しない。
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -16,10 +15,10 @@ import {
   getPromotionOptions,
   applyMove,
 } from '@/lib/shogi/moveGenerator'
-import { isCheck, isCheckmate, getAllLegalMoves } from '@/lib/shogi/rules'
-import { getPieceValue } from '@/lib/shogi/pieceValue'
+import { isCheck, isCheckmate } from '@/lib/shogi/rules'
+import { getBestEvasion } from '@/lib/shogi/ai'
 import type { TsumeshogiProblem } from '@/mocks/tsumeshogiData'
-import type { BoardState, Position, PieceType, Move } from '@/lib/shogi/types'
+import type { BoardState, Position, PieceType } from '@/lib/shogi/types'
 
 /** コールバック */
 interface TsumeshogiCallbacks {
@@ -85,47 +84,6 @@ interface UseTsumeshogiGameReturn {
   showHint: () => void
   /** 解答再生 */
   playSolution: () => void
-}
-
-/**
- * 手のスコアを計算（AI応手の優先順位）
- * 詰将棋専用ロジック
- */
-function getMoveScore(boardState: BoardState, move: Move): number {
-  if (move.type === 'move') {
-    const piece = boardState.board[move.from.row][move.from.col]
-
-    // 1. 玉の移動は最優先（逃げ）
-    if (piece?.type === 'ou') return 1000
-
-    // 2. 攻め駒を取る
-    const target = boardState.board[move.to.row][move.to.col]
-    if (target) return 500 + getPieceValue(target.type)
-
-    // 3. 合駒（ブロック）
-    return 100
-  }
-
-  // 持ち駒での合駒は低優先
-  return 50
-}
-
-/**
- * 最善の応手を選択（AI用）
- * 後手（gote）の視点で最善手を返す
- * 詰将棋専用ロジック
- */
-function getBestEvasion(boardState: BoardState): Move | null {
-  const legalMoves = getAllLegalMoves(boardState, 'gote')
-
-  if (legalMoves.length === 0) return null
-
-  // 優先順位でソート（降順）
-  const sorted = [...legalMoves].sort((a, b) => {
-    return getMoveScore(boardState, b) - getMoveScore(boardState, a)
-  })
-
-  return sorted[0]
 }
 
 /**
