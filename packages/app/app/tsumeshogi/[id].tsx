@@ -166,6 +166,7 @@ export default function TsumeshogiPlayScreen() {
               selectedPosition={game.selectedPosition}
               possibleMoves={game.possibleMoves}
               lastMove={game.lastMove}
+              hintHighlight={game.hintHighlight}
             />
             <PieceStand
               pieces={bottomStand.pieces}
@@ -174,6 +175,7 @@ export default function TsumeshogiPlayScreen() {
               width={boardWidth}
               onPiecePress={game.handleCapturedPress}
               selectedPiece={game.selectedCaptured}
+              hintPiece={game.hintHighlight?.piece}
             />
           </View>
 
@@ -267,7 +269,7 @@ export default function TsumeshogiPlayScreen() {
             <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>やり直し</Text>
           </TouchableOpacity>
           <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
-          <TouchableOpacity style={styles.actionButton} onPress={() => console.log('ヒント')}>
+          <TouchableOpacity style={styles.actionButton} onPress={game.showHint}>
             <FontAwesome name="lightbulb-o" size={20} color={palette.orange} />
             <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>ヒント</Text>
           </TouchableOpacity>

@@ -19,6 +19,8 @@ interface PieceStandProps {
   onPiecePress?: (pieceType: PieceType) => void
   /** 選択中の駒 */
   selectedPiece?: PieceType | null
+  /** ヒント表示中の駒 */
+  hintPiece?: string | null
 }
 
 export function PieceStand({
@@ -29,6 +31,7 @@ export function PieceStand({
   width,
   onPiecePress,
   selectedPiece,
+  hintPiece,
 }: PieceStandProps) {
   // 相手は右から左へ（row-reverse）、自分は左から右へ（row）
   const piecesDirection = isOpponent ? 'row-reverse' : 'row'
@@ -49,11 +52,12 @@ export function PieceStand({
           if (count === 0) return null
 
           const isSelected = selectedPiece === pieceType
+          const isHint = hintPiece === pieceType
 
           return (
             <TouchableOpacity
               key={pieceType}
-              style={[styles.pieceWrapper, isSelected && styles.selectedPiece]}
+              style={[styles.pieceWrapper, isHint && styles.hintPiece, isSelected && styles.selectedPiece]}
               onPress={() => isTappable && onPiecePress(pieceType)}
               disabled={!isTappable}
               activeOpacity={isTappable ? 0.7 : 1}
@@ -101,6 +105,9 @@ const styles = StyleSheet.create({
   },
   selectedPiece: {
     backgroundColor: Colors.palette.shogiSelected,
+  },
+  hintPiece: {
+    backgroundColor: '#FF9800',  // オレンジ（ヒント）
   },
   count: {
     position: 'absolute',

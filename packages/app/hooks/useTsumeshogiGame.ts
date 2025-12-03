@@ -37,6 +37,13 @@ interface LastMoveHighlight {
   to: Position     // 移動先
 }
 
+/** ヒントのハイライト情報 */
+interface HintHighlight {
+  from?: Position  // 移動元（打ち駒の場合はなし）
+  to: Position     // 移動先
+  piece?: string   // 打ち駒の場合の駒種
+}
+
 /** タイミング定数 */
 const AI_RESPONSE_DELAY_MS = 800
 const FEEDBACK_DELAY_MS = 500
@@ -61,6 +68,8 @@ interface UseTsumeshogiGameReturn {
   isFinished: boolean
   /** 最後に指された手（ハイライト用） */
   lastMove: LastMoveHighlight | null
+  /** ヒントのハイライト */
+  hintHighlight: HintHighlight | null
   /** セルタップ処理 */
   handleCellPress: (row: number, col: number) => void
   /** 持ち駒タップ処理 */
@@ -69,6 +78,8 @@ interface UseTsumeshogiGameReturn {
   handlePromotionSelect: (promote: boolean) => void
   /** やり直し */
   reset: () => void
+  /** ヒント表示 */
+  showHint: () => void
 }
 
 /**
@@ -143,6 +154,8 @@ export function useTsumeshogiGame(
   const [isFinished, setIsFinished] = useState(false)
   // 最後に指された手（ハイライト用）
   const [lastMove, setLastMove] = useState<LastMoveHighlight | null>(null)
+  // ヒントのハイライト
+  const [hintHighlight, setHintHighlight] = useState<HintHighlight | null>(null)
 
   // 選択をクリア
   const clearSelection = useCallback(() => {
@@ -174,7 +187,23 @@ export function useTsumeshogiGame(
     setIsThinking(false)
     setIsFinished(false)
     setLastMove(null)
+    setHintHighlight(null)
   }, [initialState, clearSelection, clearTimer])
+
+  // ヒント表示
+  const showHint = useCallback(() => {
+    if (isFinished || isThinking) return
+    if (!problem.hint) return
+
+    // 初手のみヒントを表示（2手目以降はヒントなし）
+    if (currentMoveCount !== 1) return
+
+    setHintHighlight({
+      from: problem.hint.from,
+      to: problem.hint.to,
+      piece: problem.hint.piece,
+    })
+  }, [isFinished, isThinking, problem.hint, currentMoveCount])
 
   // AI応手を実行する共通処理
   const executeAIResponse = useCallback(
@@ -199,6 +228,9 @@ export function useTsumeshogiGame(
   // 手を実行して結果を処理
   const executeMove = useCallback(
     (newState: BoardState, moveHighlight: LastMoveHighlight) => {
+      // ヒントをクリア
+      setHintHighlight(null)
+
       // 1. 王手チェック
       if (!isCheck(newState.board, 'gote')) {
         // 王手でない → アラートを出して手を戻す（不正解カウントはしない）
@@ -392,9 +424,11 @@ export function useTsumeshogiGame(
     isThinking,
     isFinished,
     lastMove,
+    hintHighlight,
     handleCellPress,
     handleCapturedPress,
     handlePromotionSelect,
     reset,
+    showHint,
   }
 }

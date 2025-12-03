@@ -5,12 +5,24 @@
 /** 問題のステータス */
 export type ProblemStatus = 'unsolved' | 'in_progress' | 'solved'
 
+/** ヒント用の手情報 */
+export interface HintMove {
+  /** 移動の場合: 移動元 */
+  from?: { row: number; col: number }
+  /** 移動先 */
+  to: { row: number; col: number }
+  /** 打ち駒の場合: 駒種 */
+  piece?: string
+}
+
 /** 詰将棋問題 */
 export interface TsumeshogiProblem {
   id: string
   sfen: string
   moves: number  // 手数（3, 5, 7）
   status: ProblemStatus
+  /** ヒント（初手） */
+  hint?: HintMove
 }
 
 /** 手数のオプション */
@@ -42,24 +54,28 @@ export const MOCK_TSUMESHOGI_PROBLEMS: TsumeshogiProblem[] = [
     sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
     moves: 3,
     status: 'solved',
+    hint: { piece: 'kin', to: { row: 0, col: 6 } },  // ▲3一金
   },
   {
     id: '3-002',
     sfen: '8l/7k1/7pp/9/9/9/9/9/9 b RG 1',
     moves: 3,
     status: 'solved',
+    hint: { piece: 'hi', to: { row: 0, col: 7 } },  // ▲2一飛（打ち駒）
   },
   {
     id: '3-003',
     sfen: 'l5+R1l/4kS3/p4pnpp/2Pppb3/6p1P/P2s5/NP2+nPPR1/2+bS2GK1/L6NL b 3GSP4p 93',
     moves: 3,
     status: 'in_progress',
+    hint: { from: { row: 0, col: 6 }, to: { row: 1, col: 6 } },  // ▲3二龍（盤上の駒）
   },
   {
     id: '3-004',
     sfen: '8k/7G1/9/9/9/9/9/9/9 b R 1',
     moves: 3,
     status: 'unsolved',
+    hint: { piece: 'hi', to: { row: 0, col: 7 } },  // ▲2一飛（打ち駒）
   },
   {
     id: '3-005',

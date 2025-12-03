@@ -28,6 +28,12 @@ interface LastMoveHighlight {
   to: Position
 }
 
+/** ヒントのハイライト情報 */
+interface HintHighlight {
+  from?: Position
+  to: Position
+}
+
 interface ShogiBoardProps {
   board: Board
   perspective: Perspective
@@ -40,6 +46,8 @@ interface ShogiBoardProps {
   possibleMoves?: Position[]
   /** 最後に指された手（ハイライト用） */
   lastMove?: LastMoveHighlight | null
+  /** ヒントのハイライト */
+  hintHighlight?: HintHighlight | null
 }
 
 // 星の位置（罫線の交点）
@@ -73,6 +81,7 @@ export function ShogiBoard({
   selectedPosition,
   possibleMoves = [],
   lastMove,
+  hintHighlight,
 }: ShogiBoardProps) {
   const labelSize = 12
   const transformedBoard = transformBoardForPerspective(board, perspective)
@@ -114,6 +123,13 @@ export function ShogiBoard({
     return orig.row === lastMove.to.row && orig.col === lastMove.to.col
   }
 
+  // ヒントのハイライト（動かす駒）
+  const isHint = (displayRow: number, displayCol: number): boolean => {
+    if (!hintHighlight?.from) return false
+    const orig = toOriginalCoord(displayRow, displayCol)
+    return orig.row === hintHighlight.from.row && orig.col === hintHighlight.from.col
+  }
+
   const handleCellPress = (displayRow: number, displayCol: number) => {
     if (!onCellPress) return
     const orig = toOriginalCoord(displayRow, displayCol)
@@ -140,6 +156,7 @@ export function ShogiBoard({
             const possible = isPossibleMove(rowIndex, colIndex)
             const lastFrom = isLastMoveFrom(rowIndex, colIndex)
             const lastTo = isLastMoveTo(rowIndex, colIndex)
+            const hint = isHint(rowIndex, colIndex)
 
             return (
               <TouchableOpacity
@@ -149,6 +166,7 @@ export function ShogiBoard({
                   { width: cellSize, height: cellSize },
                   lastFrom && styles.lastMoveFromCell,
                   lastTo && styles.lastMoveToCell,
+                  hint && styles.hintCell,
                   selected && styles.selectedCell,
                   possible && styles.possibleCell,
                 ]}
@@ -214,6 +232,9 @@ const styles = StyleSheet.create({
   },
   lastMoveToCell: {
     backgroundColor: '#FFDAB9',  // 少し濃いオレンジ（移動先）
+  },
+  hintCell: {
+    backgroundColor: '#FF9800',  // オレンジ（ヒント）
   },
   star: {
     position: 'absolute',
