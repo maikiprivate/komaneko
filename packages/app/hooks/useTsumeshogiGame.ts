@@ -47,6 +47,7 @@ interface HintHighlight {
 /** タイミング定数 */
 const AI_RESPONSE_DELAY_MS = 800
 const FEEDBACK_DELAY_MS = 500
+const SOLUTION_STEP_DELAY_MS = 1000
 
 /** フックの戻り値 */
 interface UseTsumeshogiGameReturn {
@@ -70,6 +71,8 @@ interface UseTsumeshogiGameReturn {
   lastMove: LastMoveHighlight | null
   /** ヒントのハイライト */
   hintHighlight: HintHighlight | null
+  /** 解答再生中フラグ */
+  isSolutionMode: boolean
   /** セルタップ処理 */
   handleCellPress: (row: number, col: number) => void
   /** 持ち駒タップ処理 */
@@ -80,6 +83,8 @@ interface UseTsumeshogiGameReturn {
   reset: () => void
   /** ヒント表示 */
   showHint: () => void
+  /** 解答再生 */
+  playSolution: () => void
 }
 
 /**
@@ -156,6 +161,8 @@ export function useTsumeshogiGame(
   const [lastMove, setLastMove] = useState<LastMoveHighlight | null>(null)
   // ヒントのハイライト
   const [hintHighlight, setHintHighlight] = useState<HintHighlight | null>(null)
+  // 解答再生中フラグ
+  const [isSolutionMode, setIsSolutionMode] = useState(false)
 
   // 選択をクリア
   const clearSelection = useCallback(() => {
@@ -188,11 +195,12 @@ export function useTsumeshogiGame(
     setIsFinished(false)
     setLastMove(null)
     setHintHighlight(null)
+    setIsSolutionMode(false)
   }, [initialState, clearSelection, clearTimer])
 
   // ヒント表示
   const showHint = useCallback(() => {
-    if (isFinished || isThinking) return
+    if (isFinished || isThinking || isSolutionMode) return
     if (!problem.hint) return
 
     // 初手のみヒントを表示（2手目以降はヒントなし）
@@ -203,7 +211,63 @@ export function useTsumeshogiGame(
       to: problem.hint.to,
       piece: problem.hint.piece,
     })
-  }, [isFinished, isThinking, problem.hint, currentMoveCount])
+  }, [isFinished, isThinking, isSolutionMode, problem.hint, currentMoveCount])
+
+  // 解答再生
+  const playSolution = useCallback(() => {
+    if (!problem.solutionMoves || problem.solutionMoves.length === 0) return
+    if (isSolutionMode) return
+
+    // 盤面を初期状態にリセット
+    clearTimer()
+    setBoardState(initialState)
+    clearSelection()
+    setPendingPromotion(null)
+    setCurrentMoveCount(1)
+    setIsThinking(false)
+    setIsFinished(false)
+    setLastMove(null)
+    setHintHighlight(null)
+    setIsSolutionMode(true)
+
+    // 解答を1手ずつ再生
+    let currentState = initialState
+    let stepIndex = 0
+    const solutionMoves = problem.solutionMoves
+
+    const playNextMove = () => {
+      if (stepIndex >= solutionMoves.length) {
+        // 全手順完了
+        setIsSolutionMode(false)
+        setIsFinished(true)
+        return
+      }
+
+      const move = solutionMoves[stepIndex]
+      const player = stepIndex % 2 === 0 ? 'sente' : 'gote'
+
+      // 手を適用
+      if (move.piece) {
+        // 打ち駒
+        currentState = makeDrop(currentState, move.piece as PieceType, move.to, player)
+        setLastMove({ to: move.to })
+      } else if (move.from) {
+        // 盤上の駒を移動
+        currentState = makeMove(currentState, move.from, move.to, move.promote ?? false)
+        setLastMove({ from: move.from, to: move.to })
+      }
+
+      setBoardState(currentState)
+      setCurrentMoveCount(stepIndex + 1)
+      stepIndex++
+
+      // 次の手を再生
+      timerRef.current = setTimeout(playNextMove, SOLUTION_STEP_DELAY_MS)
+    }
+
+    // 最初の手を少し遅延して開始
+    timerRef.current = setTimeout(playNextMove, 500)
+  }, [problem.solutionMoves, isSolutionMode, initialState, clearTimer, clearSelection])
 
   // AI応手を実行する共通処理
   const executeAIResponse = useCallback(
@@ -306,7 +370,7 @@ export function useTsumeshogiGame(
   // セルタップ処理
   const handleCellPress = useCallback(
     (row: number, col: number) => {
-      if (isThinking || isFinished) return
+      if (isThinking || isFinished || isSolutionMode) return
 
       const targetPos = { row, col }
       const piece = boardState.board[row][col]
@@ -387,13 +451,13 @@ export function useTsumeshogiGame(
         setPossibleMoves(moves)
       }
     },
-    [boardState, selectedPosition, selectedCaptured, possibleMoves, isThinking, isFinished, clearSelection, executeMove],
+    [boardState, selectedPosition, selectedCaptured, possibleMoves, isThinking, isFinished, isSolutionMode, clearSelection, executeMove],
   )
 
   // 持ち駒タップ処理
   const handleCapturedPress = useCallback(
     (pieceType: PieceType) => {
-      if (isThinking || isFinished) return
+      if (isThinking || isFinished || isSolutionMode) return
 
       const hand = boardState.capturedPieces.sente
       if (!hand[pieceType]) return
@@ -411,7 +475,7 @@ export function useTsumeshogiGame(
       const drops = getDropPositions(boardState.board, pieceType, 'sente')
       setPossibleMoves(drops)
     },
-    [boardState, selectedCaptured, isThinking, isFinished, clearSelection],
+    [boardState, selectedCaptured, isThinking, isFinished, isSolutionMode, clearSelection],
   )
 
   return {
@@ -425,10 +489,12 @@ export function useTsumeshogiGame(
     isFinished,
     lastMove,
     hintHighlight,
+    isSolutionMode,
     handleCellPress,
     handleCapturedPress,
     handlePromotionSelect,
     reset,
     showHint,
+    playSolution,
   }
 }

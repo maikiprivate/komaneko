@@ -225,8 +225,15 @@ export default function TsumeshogiPlayScreen() {
           )}
         </View>
         <View style={styles.progressArea}>
-          <Text style={[styles.progressText, { color: colors.text.secondary }]}>
-            {game.currentMoveCount}手目 / {problem.moves}手詰め
+          <Text
+            style={[
+              styles.progressText,
+              { color: game.isSolutionMode ? palette.orange : colors.text.secondary },
+            ]}
+          >
+            {game.isSolutionMode
+              ? '解答再生中...'
+              : `${game.currentMoveCount}手目 / ${problem.moves}手詰め`}
           </Text>
         </View>
         <View style={styles.navigationArea}>
@@ -274,7 +281,7 @@ export default function TsumeshogiPlayScreen() {
             <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>ヒント</Text>
           </TouchableOpacity>
           <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
-          <TouchableOpacity style={styles.actionButton} onPress={() => console.log('解答')}>
+          <TouchableOpacity style={styles.actionButton} onPress={game.playSolution}>
             <FontAwesome name="key" size={20} color={colors.gamification.heart} />
             <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>解答</Text>
           </TouchableOpacity>

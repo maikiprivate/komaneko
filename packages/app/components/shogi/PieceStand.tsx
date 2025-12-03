@@ -23,6 +23,10 @@ interface PieceStandProps {
   hintPiece?: string | null
 }
 
+// 駒台の高さを計算（駒の有無に関わらず一定）
+// pieceSize + pieceWrapper padding(4) + container paddingVertical(8) + border(2)
+const PIECE_STAND_PADDING = 14
+
 export function PieceStand({
   pieces,
   isOpponent = false,
@@ -41,8 +45,11 @@ export function PieceStand({
   // タップ可能かどうか（相手の駒台はタップ不可）
   const isTappable = !isOpponent && !!onPiecePress
 
+  // 駒台の高さ（駒の有無に関わらず一定）
+  const standHeight = pieceSize + PIECE_STAND_PADDING
+
   return (
-    <View style={[styles.container, { flexDirection: containerDirection }, width ? { width } : undefined]}>
+    <View style={[styles.container, { flexDirection: containerDirection, height: standHeight }, width ? { width } : undefined]}>
       {label && (
         <Text style={styles.label}>{label}</Text>
       )}
@@ -84,7 +91,7 @@ const styles = StyleSheet.create({
     borderColor: '#D4C4B0',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    minHeight: 44,
+    // height is set dynamically based on pieceSize
   },
   label: {
     fontSize: 14,

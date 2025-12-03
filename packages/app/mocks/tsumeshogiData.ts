@@ -15,6 +15,18 @@ export interface HintMove {
   piece?: string
 }
 
+/** 解答再生用の手情報 */
+export interface SolutionMove {
+  /** 移動の場合: 移動元 */
+  from?: { row: number; col: number }
+  /** 移動先 */
+  to: { row: number; col: number }
+  /** 打ち駒の場合: 駒種 */
+  piece?: string
+  /** 成りフラグ */
+  promote?: boolean
+}
+
 /** 詰将棋問題 */
 export interface TsumeshogiProblem {
   id: string
@@ -23,6 +35,10 @@ export interface TsumeshogiProblem {
   status: ProblemStatus
   /** ヒント（初手） */
   hint?: HintMove
+  /** 解答（棋譜表記の配列） */
+  solution?: string[]
+  /** 解答（再生用の手データ） */
+  solutionMoves?: SolutionMove[]
 }
 
 /** 手数のオプション */
@@ -55,6 +71,12 @@ export const MOCK_TSUMESHOGI_PROBLEMS: TsumeshogiProblem[] = [
     moves: 3,
     status: 'solved',
     hint: { piece: 'kin', to: { row: 0, col: 6 } },  // ▲3一金
+    solution: ['▲3一金', '△同玉', '▲2二銀'],
+    solutionMoves: [
+      { piece: 'kin', to: { row: 0, col: 6 } },        // ▲3一金
+      { from: { row: 1, col: 7 }, to: { row: 0, col: 6 } },  // △同玉
+      { piece: 'gin', to: { row: 1, col: 7 } },        // ▲2二銀
+    ],
   },
   {
     id: '3-002',
@@ -62,6 +84,7 @@ export const MOCK_TSUMESHOGI_PROBLEMS: TsumeshogiProblem[] = [
     moves: 3,
     status: 'solved',
     hint: { piece: 'hi', to: { row: 0, col: 7 } },  // ▲2一飛（打ち駒）
+    solution: ['▲2一飛', '△1二玉', '▲1一金'],
   },
   {
     id: '3-003',
@@ -69,6 +92,7 @@ export const MOCK_TSUMESHOGI_PROBLEMS: TsumeshogiProblem[] = [
     moves: 3,
     status: 'in_progress',
     hint: { from: { row: 0, col: 6 }, to: { row: 1, col: 6 } },  // ▲3二龍（盤上の駒）
+    solution: ['▲3二龍', '△同銀', '▲5二金'],
   },
   {
     id: '3-004',
@@ -76,6 +100,7 @@ export const MOCK_TSUMESHOGI_PROBLEMS: TsumeshogiProblem[] = [
     moves: 3,
     status: 'unsolved',
     hint: { piece: 'hi', to: { row: 0, col: 7 } },  // ▲2一飛（打ち駒）
+    solution: ['▲2一飛', '△同金', '▲同飛成'],
   },
   {
     id: '3-005',
