@@ -64,6 +64,12 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
+          name="lesson/[courseId]/index"
+          options={{
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
           name="lesson/[courseId]/[lessonId]"
           options={{
             headerShown: false,

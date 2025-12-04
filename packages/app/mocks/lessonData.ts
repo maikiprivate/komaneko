@@ -53,7 +53,6 @@ export interface Course {
   id: string
   title: string
   description: string
-  icon: string
   status: CourseStatus
   progress: number
   sections: Section[]
@@ -93,7 +92,6 @@ const PIECE_MOVEMENT_COURSE: Course = {
   id: 'piece-movement',
   title: '駒の動かし方',
   description: '将棋の基本、各駒の動き方を学ぼう',
-  icon: 'chess-pawn',
   status: 'available',
   progress: 0,
   sections: [
@@ -298,7 +296,6 @@ const BASIC_TESUJI_COURSE: Course = {
   id: 'basic-tesuji',
   title: '基本手筋',
   description: '実戦で役立つ基本的な手筋を学ぼう',
-  icon: 'lightbulb-o',
   status: 'locked',
   progress: 0,
   sections: [],
@@ -308,7 +305,6 @@ const JOSEKI_INTRO_COURSE: Course = {
   id: 'joseki-intro',
   title: '定跡入門',
   description: '序盤の基本的な駒組みを学ぼう',
-  icon: 'book',
   status: 'locked',
   progress: 0,
   sections: [],

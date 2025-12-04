@@ -1,52 +1,105 @@
+/**
+ * コース一覧画面（駒塾タブ）
+ */
+
+import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router } from 'expo-router'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
+import { MOCK_COURSES, type Course } from '@/mocks/lessonData'
+
+const textbookIcon = require('@/assets/images/icons/textbook.png')
 
 export default function LessonScreen() {
   const { colors, palette } = useTheme()
 
+  const handleCoursePress = (course: Course) => {
+    if (course.status === 'locked') return
+    router.push(`/lesson/${course.id}`)
+  }
+
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background.primary }]}
+      style={[styles.container, { backgroundColor: colors.background.secondary }]}
       edges={[]}
     >
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text.primary }]}>駒塾</Text>
-        <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
-          将棋の基本を学ぼう
-        </Text>
-
-        {/* コース一覧（仮） */}
-        <View style={styles.courseList}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {MOCK_COURSES.map((course) => (
           <TouchableOpacity
-            style={[styles.courseCard, { backgroundColor: colors.background.secondary, borderColor: colors.border }]}
-            onPress={() => router.push('/lesson/piece-movement/fu-basics')}
+            key={course.id}
+            style={[
+              styles.courseCard,
+              { backgroundColor: colors.card.background },
+              course.status === 'locked' && styles.lockedCard,
+            ]}
+            onPress={() => handleCoursePress(course)}
+            activeOpacity={course.status === 'locked' ? 1 : 0.7}
           >
-            <Text style={[styles.courseTitle, { color: colors.text.primary }]}>
-              駒の動かし方
-            </Text>
-            <Text style={[styles.courseDescription, { color: colors.text.secondary }]}>
-              基本の駒の動きを学ぼう
-            </Text>
-            <View style={[styles.progressBar, { backgroundColor: colors.background.primary }]}>
-              <View style={[styles.progressFill, { width: '0%', backgroundColor: palette.orange }]} />
+            <View style={styles.cardHeader}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  {
+                    backgroundColor: course.status === 'locked'
+                      ? colors.border
+                      : palette.orange,
+                  },
+                ]}
+              >
+                <Image
+                  source={textbookIcon}
+                  style={styles.iconImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.cardTitleContainer}>
+                <Text
+                  style={[
+                    styles.courseTitle,
+                    { color: course.status === 'locked' ? colors.text.secondary : colors.text.primary },
+                  ]}
+                >
+                  {course.title}
+                </Text>
+                <Text style={[styles.courseDescription, { color: colors.text.secondary }]}>
+                  {course.description}
+                </Text>
+                <Text style={[styles.sectionCount, { color: colors.text.secondary }]}>
+                  {course.sections.length > 0 ? `${course.sections.length}セクション` : '準備中'}
+                </Text>
+              </View>
+              {course.status === 'locked' && (
+                <FontAwesome name="lock" size={20} color={colors.text.secondary} />
+              )}
             </View>
-          </TouchableOpacity>
 
-          <View
-            style={[styles.courseCard, styles.lockedCard, { backgroundColor: colors.background.secondary, borderColor: colors.border }]}
-          >
-            <Text style={[styles.courseTitle, { color: colors.text.secondary }]}>
-              基本手筋
-            </Text>
-            <Text style={[styles.courseDescription, { color: colors.text.secondary }]}>
-              準備中
-            </Text>
-          </View>
-        </View>
-      </View>
+            {course.status !== 'locked' && (
+              <View style={styles.progressSection}>
+                <View style={[styles.progressBar, { backgroundColor: colors.background.secondary }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${course.progress}%`,
+                        backgroundColor: course.progress === 100 ? palette.green : palette.orange,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.progressText, { color: colors.text.secondary }]}>
+                  {course.progress}%
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -55,41 +108,66 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     paddingHorizontal: 16,
-    paddingTop: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 24,
-  },
-  courseList: {
-    gap: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    gap: 12,
   },
   courseCard: {
     padding: 16,
     borderRadius: 12,
-    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
   lockedCard: {
-    opacity: 0.5,
+    opacity: 0.6,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconImage: {
+    width: 24,
+    height: 24,
+  },
+  cardTitleContainer: {
+    flex: 1,
   },
   courseTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   courseDescription: {
-    fontSize: 14,
-    marginBottom: 12,
+    fontSize: 13,
+  },
+  sectionCount: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  progressSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
   },
   progressBar: {
+    flex: 1,
     height: 8,
     borderRadius: 4,
     overflow: 'hidden',
@@ -97,5 +175,11 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    minWidth: 32,
+    textAlign: 'right',
   },
 })
