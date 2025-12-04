@@ -63,6 +63,12 @@ function RootLayoutNav() {
             headerBackButtonDisplayMode: 'minimal',
           }}
         />
+        <Stack.Screen
+          name="lesson/[courseId]/[lessonId]"
+          options={{
+            headerShown: false,
+          }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
