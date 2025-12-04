@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { Position } from '@/lib/shogi/types'
+import type { PieceType, Position } from '@/lib/shogi/types'
 
 // =============================================================================
 // 型定義
@@ -20,7 +20,7 @@ export interface MoveHighlight {
   from?: Position
   to: Position
   /** 持ち駒のヒント表示用（打つ駒の種類） */
-  piece?: string
+  piece?: PieceType
 }
 
 /** 解答再生の設定 */

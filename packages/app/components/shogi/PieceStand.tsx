@@ -20,7 +20,7 @@ interface PieceStandProps {
   /** 選択中の駒 */
   selectedPiece?: PieceType | null
   /** ヒント表示中の駒 */
-  hintPiece?: string | null
+  hintPiece?: PieceType | null
 }
 
 // 駒台の高さを計算（駒の有無に関わらず一定）
@@ -81,6 +81,8 @@ export function PieceStand({
   )
 }
 
+// TODO: ハードコード色をColors.tsのpaletteに移動して一元管理する
+// 対象: #D6B891, #B8956E, #6D4C41, #FF9800, #5D4037, #FFF8E1
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
