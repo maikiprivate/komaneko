@@ -172,23 +172,35 @@ Duolingo風のツリー表示。
 
 ### 3. レッスン画面（`/lesson/[courseId]/[lessonId]`）
 
+詰将棋画面と同じフッター（やり直し/ヒント/解答）を使用し、UIを共通化する。
+
 ```
 +----------------------------------+
 | ×                   1/5 ████░░░  |
 +----------------------------------+
-|                                  |
-|   歩を1マス前に動かしてください   |
-|                                  |
+| 🐱「歩を1マス前に動かしてにゃ！」 |
++----------------------------------+
+|       相手駒台                    |
 |       +-------------+            |
 |       |             |            |
 |       |   将棋盤    |            |
 |       |             |            |
 |       +-------------+            |
-|                                  |
+|       自分駒台                    |
 +----------------------------------+
-|  [スキップ]        [わからない]  |
+| [やり直し] | [ヒント] | [解答]   |
 +----------------------------------+
 ```
+
+**詰将棋との共通点:**
+- フッター（やり直し/ヒント/解答）
+- 正解/不正解フィードバック（○×表示）
+- 成り選択ダイアログ
+- 駒猫コメント
+
+**詰将棋との違い:**
+- ヘッダー: タイトル → ×ボタン + プログレスバー
+- 進捗表示: 手数カウント → 問題番号/全問題数
 
 ### 4. 結果画面
 
@@ -216,15 +228,28 @@ Duolingo風のツリー表示。
 
 **方針**: 画面先行で実装し、データ構造の過不足を判断してから確定する
 
-### Step 1: レッスン画面（UI先行）
+### Step 1: レッスン画面（UI先行）✅ 完了
 
 **ファイル:** `packages/app/app/lesson/[courseId]/[lessonId].tsx`
 
 - プログレスバー
-- 問題文表示
-- 盤面操作（詰将棋UIを流用）
+- 駒猫による問題文表示
+- 盤面操作（詰将棋ロジック流用）
 - 正解/不正解フィードバック
 - ハードコードしたデータで動作確認
+
+### Step 1.5: UI共通化
+
+**目的:** 詰将棋画面とレッスン画面で共通のUIコンポーネントを抽出
+
+**作成ファイル:**
+- `components/shogi/GameFooter.tsx` - やり直し/ヒント/解答ボタン
+- `components/shogi/FeedbackOverlay.tsx` - ○×フィードバック
+- `components/shogi/PromotionDialog.tsx` - 成り選択ダイアログ
+
+**修正ファイル:**
+- `app/tsumeshogi/[id].tsx` - 共通コンポーネント使用
+- `app/lesson/[courseId]/[lessonId].tsx` - 共通コンポーネント使用
 
 ### Step 2: 結果画面
 
@@ -294,11 +319,45 @@ packages/app/
 ├── mocks/
 │   └── lessonData.ts               # モックデータ
 └── components/
+    ├── shogi/                      # 詰将棋・駒塾共通
+    │   ├── GameFooter.tsx          # やり直し/ヒント/解答ボタン
+    │   ├── FeedbackOverlay.tsx     # ○×フィードバック
+    │   └── PromotionDialog.tsx     # 成り選択ダイアログ
     └── lesson/
         ├── CourseCard.tsx          # コースカード
         ├── SectionTree.tsx         # セクションツリー
-        ├── LessonProgress.tsx      # プログレスバー
-        └── LessonResult.tsx        # 結果表示
+        └── LessonProgress.tsx      # プログレスバー
+```
+
+## 共通コンポーネント（詰将棋・駒塾）
+
+詰将棋画面とレッスン画面で共通のUIコンポーネントを抽出。
+
+### GameFooter
+
+```typescript
+interface GameFooterProps {
+  onReset: () => void
+  onHint: () => void
+  onSolution: () => void
+}
+```
+
+### FeedbackOverlay
+
+```typescript
+interface FeedbackOverlayProps {
+  type: 'correct' | 'incorrect' | 'none'
+}
+```
+
+### PromotionDialog
+
+```typescript
+interface PromotionDialogProps {
+  visible: boolean
+  onSelect: (promote: boolean) => void
+}
 ```
 
 ## 参照ファイル
