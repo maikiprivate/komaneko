@@ -6,19 +6,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { parseSfen } from '@/lib/shogi/sfen'
+import { getBestEvasion } from '@/lib/shogi/ai'
 import {
-  getPossibleMoves,
-  getDropPositions,
-  makeMove,
-  makeDrop,
-  getPromotionOptions,
   applyMove,
+  getDropPositions,
+  getPossibleMoves,
+  getPromotionOptions,
+  makeDrop,
+  makeMove,
 } from '@/lib/shogi/moveGenerator'
 import { isCheck, isCheckmate } from '@/lib/shogi/rules'
-import { getBestEvasion } from '@/lib/shogi/ai'
+import { parseSfen } from '@/lib/shogi/sfen'
+import type { BoardState, PieceType, Position } from '@/lib/shogi/types'
 import type { TsumeshogiProblem } from '@/mocks/tsumeshogiData'
-import type { BoardState, Position, PieceType } from '@/lib/shogi/types'
 
 /** コールバック */
 interface TsumeshogiCallbacks {
@@ -32,15 +32,15 @@ interface TsumeshogiCallbacks {
 
 /** 最後に指された手（ハイライト用） */
 interface LastMoveHighlight {
-  from?: Position  // 移動元（打ち駒の場合はなし）
-  to: Position     // 移動先
+  from?: Position // 移動元（打ち駒の場合はなし）
+  to: Position // 移動先
 }
 
 /** ヒントのハイライト情報 */
 interface HintHighlight {
-  from?: Position  // 移動元（打ち駒の場合はなし）
-  to: Position     // 移動先
-  piece?: string   // 打ち駒の場合の駒種
+  from?: Position // 移動元（打ち駒の場合はなし）
+  to: Position // 移動先
+  piece?: string // 打ち駒の場合の駒種
 }
 
 /** タイミング定数 */
@@ -108,7 +108,9 @@ export function useTsumeshogiGame(
   // 移動可能なマス一覧
   const [possibleMoves, setPossibleMoves] = useState<Position[]>([])
   // 成り選択待ち
-  const [pendingPromotion, setPendingPromotion] = useState<{ from: Position; to: Position } | null>(null)
+  const [pendingPromotion, setPendingPromotion] = useState<{ from: Position; to: Position } | null>(
+    null,
+  )
   // 手数カウント
   const [currentMoveCount, setCurrentMoveCount] = useState(1)
   // 相手思考中フラグ
@@ -228,24 +230,21 @@ export function useTsumeshogiGame(
   }, [problem.solutionMoves, isSolutionMode, initialState, clearTimer, clearSelection])
 
   // AI応手を実行する共通処理
-  const executeAIResponse = useCallback(
-    (state: BoardState, onComplete?: () => void) => {
-      const evasion = getBestEvasion(state)
-      if (evasion) {
-        const afterAI = applyMove(state, evasion)
-        setBoardState(afterAI)
-        // AI の手をハイライト
-        if (evasion.type === 'move') {
-          setLastMove({ from: evasion.from, to: evasion.to })
-        } else {
-          setLastMove({ to: evasion.to })
-        }
+  const executeAIResponse = useCallback((state: BoardState, onComplete?: () => void) => {
+    const evasion = getBestEvasion(state)
+    if (evasion) {
+      const afterAI = applyMove(state, evasion)
+      setBoardState(afterAI)
+      // AI の手をハイライト
+      if (evasion.type === 'move') {
+        setLastMove({ from: evasion.from, to: evasion.to })
+      } else {
+        setLastMove({ to: evasion.to })
       }
-      setIsThinking(false)
-      onComplete?.()
-    },
-    [],
-  )
+    }
+    setIsThinking(false)
+    onComplete?.()
+  }, [])
 
   // 手を実行して結果を処理
   const executeMove = useCallback(
@@ -378,7 +377,12 @@ export function useTsumeshogiGame(
           }
 
           // 成りの選択肢を確認
-          const promotions = getPromotionOptions(selectedPiece.type, selectedPosition, targetPos, 'sente')
+          const promotions = getPromotionOptions(
+            selectedPiece.type,
+            selectedPosition,
+            targetPos,
+            'sente',
+          )
 
           if (promotions.length === 2) {
             // 成り/不成り選択が必要
@@ -409,7 +413,17 @@ export function useTsumeshogiGame(
         setPossibleMoves(moves)
       }
     },
-    [boardState, selectedPosition, selectedCaptured, possibleMoves, isThinking, isFinished, isSolutionMode, clearSelection, executeMove],
+    [
+      boardState,
+      selectedPosition,
+      selectedCaptured,
+      possibleMoves,
+      isThinking,
+      isFinished,
+      isSolutionMode,
+      clearSelection,
+      executeMove,
+    ],
   )
 
   // 持ち駒タップ処理
