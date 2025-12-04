@@ -1,6 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { Stack, router } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { Stack, router, useLocalSearchParams } from 'expo-router'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -23,7 +23,7 @@ import {
 } from '@/lib/shogi/moveGenerator'
 import type { BoardState, Perspective, PieceType, Position } from '@/lib/shogi/types'
 
-// ハードコードのモックデータ（後でmocksに移動）
+// TODO: mocks/lessonData.tsに移動する
 const MOCK_PROBLEMS = [
   {
     id: 'fu-1',
@@ -49,11 +49,16 @@ export default function LessonPlayScreen() {
   const { colors, palette } = useTheme()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
+  const { courseId, lessonId } = useLocalSearchParams<{ courseId: string; lessonId: string }>()
 
   // 問題の状態
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0)
+  const [correctCount, setCorrectCount] = useState(0)
   const totalProblems = MOCK_PROBLEMS.length
   const currentProblem = MOCK_PROBLEMS[currentProblemIndex]
+
+  // 開始時刻（完了時間計算用）
+  const startTimeRef = useRef(Date.now())
 
   // 初期盤面をパース（メモ化）
   const initialState = useMemo(() => parseSfen(currentProblem.sfen), [currentProblem.sfen])
@@ -71,10 +76,14 @@ export default function LessonPlayScreen() {
 
   // フィードバック
   const [feedback, setFeedback] = useState<FeedbackType>('none')
-  const [pendingNextAction, setPendingNextAction] = useState<(() => void) | null>(null)
+  // フィードバック後のアクション（'advance': 次の問題へ, 'reset': 盤面リセット）
+  const [pendingAction, setPendingAction] = useState<'advance' | 'reset' | null>(null)
 
   // ヒントのハイライト
   const [hintHighlight, setHintHighlight] = useState<MoveHighlight | null>(null)
+
+  // 現在の問題で間違えたかどうか（初回正解判定用）
+  const [hasAttemptedWrong, setHasAttemptedWrong] = useState(false)
 
   // 解答再生フック
   const solutionPlayback = useSolutionPlayback()
@@ -102,26 +111,48 @@ export default function LessonPlayScreen() {
 
   // フィードバック完了時の処理
   const handleFeedbackComplete = useCallback(() => {
-    if (pendingNextAction) {
-      pendingNextAction()
-      setPendingNextAction(null)
-    }
-    setFeedback('none')
-  }, [pendingNextAction])
+    if (pendingAction === 'advance') {
+      // 次の問題へ進む（常に最新の状態を使用）
+      const isFirstTryCorrect = !hasAttemptedWrong
+      const newCorrectCount = isFirstTryCorrect ? correctCount + 1 : correctCount
+      if (isFirstTryCorrect) {
+        setCorrectCount(newCorrectCount)
+      }
 
-  // 次の問題へ
-  const goToNextProblem = useCallback(() => {
-    if (currentProblemIndex < totalProblems - 1) {
-      const nextIndex = currentProblemIndex + 1
-      const nextProblem = MOCK_PROBLEMS[nextIndex]
-      setCurrentProblemIndex(nextIndex)
-      setBoardState(parseSfen(nextProblem.sfen))
-      clearSelection()
-    } else {
-      // 結果画面へ（仮）
-      router.back()
+      if (currentProblemIndex < totalProblems - 1) {
+        const nextIndex = currentProblemIndex + 1
+        const nextProblem = MOCK_PROBLEMS[nextIndex]
+        setCurrentProblemIndex(nextIndex)
+        setBoardState(parseSfen(nextProblem.sfen))
+        clearSelection()
+        setHasAttemptedWrong(false)
+      } else {
+        // 完了時間を計算
+        const elapsedMs = Date.now() - startTimeRef.current
+        const totalSeconds = Math.floor(elapsedMs / 1000)
+        const minutes = Math.floor(totalSeconds / 60)
+        const seconds = totalSeconds % 60
+        const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`
+
+        router.replace({
+          pathname: '/lesson/result',
+          params: {
+            correct: String(newCorrectCount),
+            total: String(totalProblems),
+            courseId: courseId ?? '',
+            lessonId: lessonId ?? '',
+            time: timeString,
+          },
+        })
+      }
+    } else if (pendingAction === 'reset') {
+      // 盤面をリセット
+      setBoardState(parseSfen(currentProblem.sfen))
     }
-  }, [currentProblemIndex, totalProblems, clearSelection])
+
+    setPendingAction(null)
+    setFeedback('none')
+  }, [pendingAction, hasAttemptedWrong, correctCount, currentProblemIndex, totalProblems, clearSelection, courseId, lessonId, currentProblem.sfen])
 
   // 正解判定
   const checkAnswer = useCallback(
@@ -142,14 +173,16 @@ export default function LessonPlayScreen() {
         const newState = makeMove(boardState, from, to, promote ?? false)
         setBoardState(newState)
         setFeedback('correct')
-        setPendingNextAction(() => goToNextProblem)
+        setPendingAction('advance')
       } else {
+        // 間違えたことを記録
+        setHasAttemptedWrong(true)
         setFeedback('incorrect')
-        setPendingNextAction(() => () => setBoardState(parseSfen(currentProblem.sfen)))
+        setPendingAction('reset')
       }
       clearSelection()
     },
-    [currentProblem, boardState, goToNextProblem, clearSelection],
+    [currentProblem, boardState, clearSelection],
   )
 
   // セルタップ処理（詰将棋と共通ロジック）
@@ -296,6 +329,14 @@ export default function LessonPlayScreen() {
 
   // 解答表示（カットイン→駒移動→カットイン→リセット）
   const handleSolution = useCallback(() => {
+    // 既に再生中なら何もしない
+    if (solutionPlayback.phase !== 'none') {
+      return
+    }
+
+    // 解答を見た場合も間違えとしてカウント
+    setHasAttemptedWrong(true)
+
     solutionPlayback.play(
       {
         correctMove: currentProblem.correctMove,
