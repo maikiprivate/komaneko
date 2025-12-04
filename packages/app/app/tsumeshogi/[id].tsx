@@ -120,7 +120,7 @@ export default function TsumeshogiPlayScreen() {
   return (
     <>
       <Stack.Screen options={{ title: headerTitle }} />
-      <View style={[styles.container, { backgroundColor: colors.background.secondary }]}>
+      <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
         <View style={styles.commentArea}>
           <KomanekoComment message="王手の連続で玉を詰ませるにゃ！持ち駒を上手く使ってにゃ〜" />
         </View>

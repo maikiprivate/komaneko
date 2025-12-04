@@ -37,6 +37,9 @@ const palette = {
 
   // 将棋盤インタラクション
   shogiSelected: '#FFE0B2',
+
+  // ゲーム画面背景
+  gameBackground: '#FFF3E0',
 } as const
 
 // ライトモードテーマ

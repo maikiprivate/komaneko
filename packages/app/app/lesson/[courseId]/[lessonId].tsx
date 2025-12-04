@@ -23,10 +23,6 @@ import {
 } from '@/lib/shogi/moveGenerator'
 import type { BoardState, Perspective, PieceType, Position } from '@/lib/shogi/types'
 
-// =============================================================================
-// 定数
-// =============================================================================
-
 // ハードコードのモックデータ（後でmocksに移動）
 const MOCK_PROBLEMS = [
   {
@@ -332,7 +328,7 @@ export default function LessonPlayScreen() {
           headerShown: false,
         }}
       />
-      <View style={[styles.container, { backgroundColor: colors.background.secondary }]}>
+      <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
         {/* ヘッダー */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
