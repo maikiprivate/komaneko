@@ -84,6 +84,21 @@ export function getAllLessons(course: Course): Lesson[] {
   return course.sections.flatMap((s) => s.lessons)
 }
 
+/** 次のレッスンを取得（なければundefined） */
+export function getNextLesson(courseId: string, currentLessonId: string): Lesson | undefined {
+  const course = getCourseById(courseId)
+  if (!course) return undefined
+
+  const allLessons = getAllLessons(course)
+  const currentIndex = allLessons.findIndex((l) => l.id === currentLessonId)
+
+  if (currentIndex === -1 || currentIndex >= allLessons.length - 1) {
+    return undefined
+  }
+
+  return allLessons[currentIndex + 1]
+}
+
 // =============================================================================
 // モックデータ: 駒の動かし方コース
 // =============================================================================

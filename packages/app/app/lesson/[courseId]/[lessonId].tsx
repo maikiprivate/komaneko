@@ -22,28 +22,7 @@ import {
   getPromotionOptions,
 } from '@/lib/shogi/moveGenerator'
 import type { BoardState, Perspective, PieceType, Position } from '@/lib/shogi/types'
-
-// TODO: mocks/lessonData.tsに移動する
-const MOCK_PROBLEMS = [
-  {
-    id: 'fu-1',
-    sfen: '9/9/9/9/4P4/9/9/9/9 b - 1',
-    instruction: '歩を1マス前に動かしてにゃ！',
-    correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } },
-  },
-  {
-    id: 'fu-2',
-    sfen: '9/9/9/4p4/4P4/9/9/9/9 b - 1',
-    instruction: '歩で相手の歩を取ってにゃ！',
-    correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } },
-  },
-  {
-    id: 'fu-3',
-    sfen: '9/9/4P4/9/9/9/9/9/9 b - 1',
-    instruction: '歩を成らせてにゃ！（と金にする）',
-    correctMove: { from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, promote: true },
-  },
-]
+import { getLessonById } from '@/mocks/lessonData'
 
 export default function LessonPlayScreen() {
   const { colors, palette } = useTheme()
@@ -51,11 +30,15 @@ export default function LessonPlayScreen() {
   const insets = useSafeAreaInsets()
   const { courseId, lessonId } = useLocalSearchParams<{ courseId: string; lessonId: string }>()
 
+  // レッスンデータを取得
+  const lesson = getLessonById(courseId ?? '', lessonId ?? '')
+  const problems = lesson?.problems ?? []
+
   // 問題の状態
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
-  const totalProblems = MOCK_PROBLEMS.length
-  const currentProblem = MOCK_PROBLEMS[currentProblemIndex]
+  const totalProblems = problems.length
+  const currentProblem = problems[currentProblemIndex]
 
   // 開始時刻（完了時間計算用）
   const startTimeRef = useRef(Date.now())
@@ -121,7 +104,7 @@ export default function LessonPlayScreen() {
 
       if (currentProblemIndex < totalProblems - 1) {
         const nextIndex = currentProblemIndex + 1
-        const nextProblem = MOCK_PROBLEMS[nextIndex]
+        const nextProblem = problems[nextIndex]
         setCurrentProblemIndex(nextIndex)
         setBoardState(parseSfen(nextProblem.sfen))
         clearSelection()
@@ -362,6 +345,24 @@ export default function LessonPlayScreen() {
   // プログレスバーの幅
   const progressPercent = ((currentProblemIndex + 1) / totalProblems) * 100
 
+  // レッスンまたは問題が見つからない場合
+  if (!lesson || !currentProblem) {
+    return (
+      <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+            <FontAwesome name="times" size={24} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: colors.text.primary }]}>
+            レッスンが見つかりません
+          </Text>
+        </View>
+      </View>
+    )
+  }
+
   return (
     <>
       <Stack.Screen
@@ -505,5 +506,13 @@ const styles = StyleSheet.create({
   },
   homeIndicatorArea: {
     // height is set dynamically using insets.bottom
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
   },
 })

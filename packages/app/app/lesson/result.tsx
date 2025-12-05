@@ -10,6 +10,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
+import { getNextLesson } from '@/mocks/lessonData'
 
 const confettiBackground = require('@/assets/images/background/confetti.png')
 const characterImage = require('@/assets/images/character/sitting.png')
@@ -47,14 +48,20 @@ export default function LessonResultScreen() {
 
   // 同じレッスンをもう一度（復習）
   const handleRetry = () => {
-    router.dismissAll()
+    // セクション一覧まで戻り、レッスン画面を開く
+    router.dismissTo(`/lesson/${params.courseId}`)
     router.push(`/lesson/${params.courseId}/${params.lessonId}`)
   }
 
-  // 次のレッスンへ（仮：今はホームに戻る）
+  // 次のレッスンへ
+  const nextLesson = getNextLesson(params.courseId ?? '', params.lessonId ?? '')
+
   const handleNextLesson = () => {
-    // TODO: 次のレッスンIDを取得して遷移
-    router.dismissAll()
+    if (nextLesson) {
+      // セクション一覧まで戻り、次のレッスン画面を開く
+      router.dismissTo(`/lesson/${params.courseId}`)
+      router.push(`/lesson/${params.courseId}/${nextLesson.id}`)
+    }
   }
 
   return (
@@ -176,10 +183,10 @@ export default function LessonResultScreen() {
           )}
           <TouchableOpacity
             style={[styles.button, styles.primaryButton, { backgroundColor: palette.orange }]}
-            onPress={isPerfect ? handleNextLesson : handleGoHome}
+            onPress={isPerfect && nextLesson ? handleNextLesson : handleGoHome}
           >
             <Text style={[styles.buttonText, { color: palette.white }]}>
-              {isPerfect ? '次のレッスンへ' : '終了する'}
+              {isPerfect && nextLesson ? '次のレッスンへ' : '終了する'}
             </Text>
           </TouchableOpacity>
         </View>
