@@ -97,12 +97,12 @@ const PIECE_MOVEMENT_COURSE: Course = {
   sections: [
     {
       id: 'fu',
-      title: '歩',
+      title: '歩の動かし方',
       lessons: [
         {
           id: 'fu-basics',
-          title: '歩の基本',
-          status: 'available',
+          title: '歩の動き方',
+          status: 'completed',
           problems: [
             {
               id: 'fu-1',
@@ -110,14 +110,28 @@ const PIECE_MOVEMENT_COURSE: Course = {
               instruction: '歩を1マス前に動かしてにゃ！',
               correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } },
             },
+          ],
+        },
+        {
+          id: 'fu-capture',
+          title: '歩で取る',
+          status: 'completed',
+          problems: [
             {
-              id: 'fu-2',
+              id: 'fu-cap-1',
               sfen: '9/9/9/4p4/4P4/9/9/9/9 b - 1',
               instruction: '歩で相手の歩を取ってにゃ！',
               correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } },
             },
+          ],
+        },
+        {
+          id: 'fu-promote',
+          title: '歩を成る',
+          status: 'available',
+          problems: [
             {
-              id: 'fu-3',
+              id: 'fu-pro-1',
               sfen: '9/9/4P4/9/9/9/9/9/9 b - 1',
               instruction: '歩を成らせてにゃ！（と金にする）',
               correctMove: { from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, promote: true },
@@ -125,15 +139,28 @@ const PIECE_MOVEMENT_COURSE: Course = {
           ],
         },
         {
-          id: 'fu-capture',
-          title: '歩で取る',
+          id: 'fu-practice',
+          title: '歩の練習',
           status: 'locked',
           problems: [
             {
-              id: 'fu-cap-1',
+              id: 'fu-pra-1',
               sfen: '9/9/9/3p5/3P5/9/9/9/9 b - 1',
               instruction: '相手の駒を取ってにゃ！',
               correctMove: { from: { row: 4, col: 3 }, to: { row: 3, col: 3 } },
+            },
+          ],
+        },
+        {
+          id: 'fu-master',
+          title: '歩のマスター',
+          status: 'locked',
+          problems: [
+            {
+              id: 'fu-mas-1',
+              sfen: '9/9/9/9/4P4/9/9/9/9 b - 1',
+              instruction: '歩を1マス前に動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } },
             },
           ],
         },
@@ -141,11 +168,11 @@ const PIECE_MOVEMENT_COURSE: Course = {
     },
     {
       id: 'kin',
-      title: '金',
+      title: '金の動かし方',
       lessons: [
         {
           id: 'kin-basics',
-          title: '金の基本',
+          title: '金の動き方',
           status: 'locked',
           problems: [
             {
@@ -157,6 +184,19 @@ const PIECE_MOVEMENT_COURSE: Course = {
           ],
         },
         {
+          id: 'kin-diagonal',
+          title: '金の斜め移動',
+          status: 'locked',
+          problems: [
+            {
+              id: 'kin-dia-1',
+              sfen: '9/9/9/9/4G4/9/9/9/9 b - 1',
+              instruction: '金を斜め前に動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } },
+            },
+          ],
+        },
+        {
           id: 'kin-defense',
           title: '金で守る',
           status: 'locked',
@@ -164,8 +204,21 @@ const PIECE_MOVEMENT_COURSE: Course = {
             {
               id: 'kin-def-1',
               sfen: '9/9/9/9/4G4/9/9/9/9 b - 1',
-              instruction: '金を斜め前に動かしてにゃ！',
-              correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } },
+              instruction: '金を横に動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 4, col: 3 } },
+            },
+          ],
+        },
+        {
+          id: 'kin-practice',
+          title: '金の練習',
+          status: 'locked',
+          problems: [
+            {
+              id: 'kin-pra-1',
+              sfen: '9/9/9/9/4G4/9/9/9/9 b - 1',
+              instruction: '金を後ろに動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 5, col: 4 } },
             },
           ],
         },
@@ -173,11 +226,11 @@ const PIECE_MOVEMENT_COURSE: Course = {
     },
     {
       id: 'gin',
-      title: '銀',
+      title: '銀の動かし方',
       lessons: [
         {
           id: 'gin-basics',
-          title: '銀の基本',
+          title: '銀の動き方',
           status: 'locked',
           problems: [
             {
@@ -188,15 +241,41 @@ const PIECE_MOVEMENT_COURSE: Course = {
             },
           ],
         },
+        {
+          id: 'gin-forward',
+          title: '銀の前進',
+          status: 'locked',
+          problems: [
+            {
+              id: 'gin-fwd-1',
+              sfen: '9/9/9/9/4S4/9/9/9/9 b - 1',
+              instruction: '銀を前に動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } },
+            },
+          ],
+        },
+        {
+          id: 'gin-retreat',
+          title: '銀の引き',
+          status: 'locked',
+          problems: [
+            {
+              id: 'gin-ret-1',
+              sfen: '9/9/9/9/4S4/9/9/9/9 b - 1',
+              instruction: '銀を斜め後ろに動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 5, col: 3 } },
+            },
+          ],
+        },
       ],
     },
     {
       id: 'kei',
-      title: '桂',
+      title: '桂の動かし方',
       lessons: [
         {
           id: 'kei-basics',
-          title: '桂の基本',
+          title: '桂の動き方',
           status: 'locked',
           problems: [
             {
@@ -207,15 +286,41 @@ const PIECE_MOVEMENT_COURSE: Course = {
             },
           ],
         },
+        {
+          id: 'kei-jump',
+          title: '桂馬の跳躍',
+          status: 'locked',
+          problems: [
+            {
+              id: 'kei-jmp-1',
+              sfen: '9/9/9/9/9/9/4N4/9/9 b - 1',
+              instruction: '桂馬を右に跳ねてにゃ！',
+              correctMove: { from: { row: 6, col: 4 }, to: { row: 4, col: 5 } },
+            },
+          ],
+        },
+        {
+          id: 'kei-attack',
+          title: '桂で攻める',
+          status: 'locked',
+          problems: [
+            {
+              id: 'kei-atk-1',
+              sfen: '9/9/9/9/9/9/4N4/9/9 b - 1',
+              instruction: '桂馬を跳ねてにゃ！',
+              correctMove: { from: { row: 6, col: 4 }, to: { row: 4, col: 3 } },
+            },
+          ],
+        },
       ],
     },
     {
       id: 'kyo',
-      title: '香',
+      title: '香の動かし方',
       lessons: [
         {
           id: 'kyo-basics',
-          title: '香の基本',
+          title: '香の動き方',
           status: 'locked',
           problems: [
             {
@@ -226,15 +331,28 @@ const PIECE_MOVEMENT_COURSE: Course = {
             },
           ],
         },
+        {
+          id: 'kyo-attack',
+          title: '香で攻める',
+          status: 'locked',
+          problems: [
+            {
+              id: 'kyo-atk-1',
+              sfen: '9/9/9/9/9/9/9/4L4/9 b - 1',
+              instruction: '香車を一気に進めてにゃ！',
+              correctMove: { from: { row: 7, col: 4 }, to: { row: 1, col: 4 } },
+            },
+          ],
+        },
       ],
     },
     {
       id: 'hisha',
-      title: '飛',
+      title: '飛の動かし方',
       lessons: [
         {
           id: 'hisha-basics',
-          title: '飛の基本',
+          title: '飛の動き方',
           status: 'locked',
           problems: [
             {
@@ -245,15 +363,41 @@ const PIECE_MOVEMENT_COURSE: Course = {
             },
           ],
         },
+        {
+          id: 'hisha-side',
+          title: '飛の横移動',
+          status: 'locked',
+          problems: [
+            {
+              id: 'hisha-side-1',
+              sfen: '9/9/9/9/4R4/9/9/9/9 b - 1',
+              instruction: '飛車を横に動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 4, col: 0 } },
+            },
+          ],
+        },
+        {
+          id: 'hisha-promote',
+          title: '飛を成る（竜）',
+          status: 'locked',
+          problems: [
+            {
+              id: 'hisha-pro-1',
+              sfen: '9/9/4R4/9/9/9/9/9/9 b - 1',
+              instruction: '飛車を成らせてにゃ！',
+              correctMove: { from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, promote: true },
+            },
+          ],
+        },
       ],
     },
     {
       id: 'kaku',
-      title: '角',
+      title: '角の動かし方',
       lessons: [
         {
           id: 'kaku-basics',
-          title: '角の基本',
+          title: '角の動き方',
           status: 'locked',
           problems: [
             {
@@ -264,15 +408,41 @@ const PIECE_MOVEMENT_COURSE: Course = {
             },
           ],
         },
+        {
+          id: 'kaku-diagonal',
+          title: '角の対角移動',
+          status: 'locked',
+          problems: [
+            {
+              id: 'kaku-dia-1',
+              sfen: '9/9/9/9/4B4/9/9/9/9 b - 1',
+              instruction: '角を逆方向に動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 0, col: 8 } },
+            },
+          ],
+        },
+        {
+          id: 'kaku-promote',
+          title: '角を成る（馬）',
+          status: 'locked',
+          problems: [
+            {
+              id: 'kaku-pro-1',
+              sfen: '9/9/4B4/9/9/9/9/9/9 b - 1',
+              instruction: '角を成らせてにゃ！',
+              correctMove: { from: { row: 2, col: 4 }, to: { row: 0, col: 2 }, promote: true },
+            },
+          ],
+        },
       ],
     },
     {
       id: 'ou',
-      title: '王',
+      title: '王の動かし方',
       lessons: [
         {
           id: 'ou-basics',
-          title: '王の基本',
+          title: '王の動き方',
           status: 'locked',
           problems: [
             {
@@ -280,6 +450,32 @@ const PIECE_MOVEMENT_COURSE: Course = {
               sfen: '9/9/9/9/4K4/9/9/9/9 b - 1',
               instruction: '王を1マス動かしてにゃ！',
               correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } },
+            },
+          ],
+        },
+        {
+          id: 'ou-escape',
+          title: '王の逃げ方',
+          status: 'locked',
+          problems: [
+            {
+              id: 'ou-esc-1',
+              sfen: '9/9/9/9/4K4/9/9/9/9 b - 1',
+              instruction: '王を斜めに逃げてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } },
+            },
+          ],
+        },
+        {
+          id: 'ou-safety',
+          title: '王の安全',
+          status: 'locked',
+          problems: [
+            {
+              id: 'ou-saf-1',
+              sfen: '9/9/9/9/4K4/9/9/9/9 b - 1',
+              instruction: '王を安全な場所に動かしてにゃ！',
+              correctMove: { from: { row: 4, col: 4 }, to: { row: 5, col: 4 } },
             },
           ],
         },

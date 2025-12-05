@@ -1,14 +1,17 @@
 /**
- * セクション一覧画面（Duolingo風ツリーUI）
+ * セクション一覧画面
+ * - セクションごとにグループ化
+ * - タイムライン風のレッスンリスト
+ * - スティッキーセクションヘッダー
  */
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
-import { getCourseById, getAllLessons, type Lesson } from '@/mocks/lessonData'
+import { getCourseById, type Lesson } from '@/mocks/lessonData'
 
 export default function SectionListScreen() {
   const { colors, palette } = useTheme()
@@ -16,156 +19,157 @@ export default function SectionListScreen() {
   const { courseId } = useLocalSearchParams<{ courseId: string }>()
 
   const course = getCourseById(courseId ?? '')
-  const allLessons = course ? getAllLessons(course) : []
 
   const handleLessonPress = (lesson: Lesson) => {
     if (lesson.status === 'locked' || !courseId) return
     router.push(`/lesson/${courseId}/${lesson.id}`)
   }
 
-  // レッスンの状態に応じたスタイルを取得
-  const getNodeStyle = (status: Lesson['status']) => {
+  // レッスンの状態に応じたスタイル
+  const getLessonStyle = (status: Lesson['status']) => {
     switch (status) {
       case 'completed':
         return {
-          backgroundColor: palette.green,
-          borderColor: palette.green,
-          size: 56,
+          nodeBg: palette.green,
+          nodeColor: palette.white,
+          textColor: colors.text.primary,
+          lineColor: palette.green,
         }
       case 'available':
         return {
-          backgroundColor: palette.orange,
-          borderColor: palette.orange,
-          size: 64,
+          nodeBg: palette.orange,
+          nodeColor: palette.white,
+          textColor: colors.text.primary,
+          lineColor: palette.orange,
         }
       case 'locked':
         return {
-          backgroundColor: colors.background.primary,
-          borderColor: colors.border,
-          size: 56,
+          nodeBg: colors.border,
+          nodeColor: colors.text.secondary,
+          textColor: colors.text.secondary,
+          lineColor: colors.border,
         }
-    }
-  }
-
-  // レッスンのアイコンを取得
-  const getNodeIcon = (status: Lesson['status']) => {
-    switch (status) {
-      case 'completed':
-        return { name: 'check' as const, color: palette.white }
-      case 'available':
-        return { name: 'star' as const, color: palette.white }
-      case 'locked':
-        return { name: 'lock' as const, color: colors.text.secondary }
     }
   }
 
   if (!course) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background.secondary }]}>
+      <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
         <Text style={{ color: colors.text.primary }}>コースが見つかりません</Text>
       </View>
     )
   }
 
+  // SectionList用のデータ形式に変換
+  const sections = course.sections.map((section, sectionIndex) => ({
+    ...section,
+    sectionNumber: sectionIndex + 1,
+    data: section.lessons.map((lesson, lessonIndex) => ({
+      ...lesson,
+      lessonIndex,
+      isFirst: lessonIndex === 0,
+      isLast: lessonIndex === section.lessons.length - 1,
+      prevLesson: lessonIndex > 0 ? section.lessons[lessonIndex - 1] : null,
+    })),
+  }))
+
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerTitle: course.title,
-          headerBackTitle: '戻る',
-          headerStyle: { backgroundColor: colors.background.secondary },
-          headerTintColor: colors.text.primary,
-        }}
-      />
-      <View style={[styles.container, { backgroundColor: colors.background.secondary }]}>
-        <ScrollView
-          style={styles.scrollView}
+      <Stack.Screen options={{ title: course.title }} />
+      <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
+        <SectionList
+          sections={sections}
+          stickySectionHeadersEnabled={true}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={[
             styles.content,
             { paddingBottom: insets.bottom + 24 },
           ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {course.sections.map((section, sectionIndex) => (
-            <View key={section.id} style={styles.sectionContainer}>
-              {/* セクション見出し */}
-              <View style={styles.sectionHeader}>
-                <View style={[styles.sectionBadge, { backgroundColor: palette.orange }]}>
-                  <Text style={[styles.sectionBadgeText, { color: palette.white }]}>
-                    {section.title}
-                  </Text>
-                </View>
-              </View>
+          renderSectionHeader={({ section }) => (
+            <View style={[styles.sectionHeader, { backgroundColor: '#FFFFFF' }]}>
+              <Text style={[styles.sectionLabel, { color: palette.orange }]}>
+                セクション {section.sectionNumber}
+              </Text>
+              <Text style={[styles.sectionTitle, { color: '#333333' }]}>
+                {section.title}
+              </Text>
+              <View style={[styles.sectionAccentBar, { backgroundColor: palette.orange }]} />
+            </View>
+          )}
+          renderItem={({ item: lesson }) => {
+            const style = getLessonStyle(lesson.status)
+            const prevStyle = lesson.prevLesson ? getLessonStyle(lesson.prevLesson.status) : null
 
-              {/* レッスンノード */}
-              {section.lessons.map((lesson, lessonIndex) => {
-                const nodeStyle = getNodeStyle(lesson.status)
-                const icon = getNodeIcon(lesson.status)
-                const isLastInSection = lessonIndex === section.lessons.length - 1
-                const isLastSection = sectionIndex === course.sections.length - 1
-
-                return (
-                  <View key={lesson.id} style={styles.nodeContainer}>
-                    {/* 接続線（上） */}
-                    {(lessonIndex > 0 || sectionIndex > 0) && (
-                      <View
-                        style={[
-                          styles.connectorTop,
-                          { backgroundColor: colors.border },
-                        ]}
-                      />
-                    )}
-
-                    {/* ノード本体 */}
-                    <TouchableOpacity
+            return (
+              <View
+                style={[
+                  styles.lessonItem,
+                  { backgroundColor: colors.background.primary },
+                  lesson.isFirst && styles.lessonItemFirst,
+                  lesson.isLast && styles.lessonItemLast,
+                ]}
+              >
+                {/* タイムライン（左側の線とノード） */}
+                <View style={styles.timeline}>
+                  {/* 上部の線 */}
+                  {!lesson.isFirst && (
+                    <View
                       style={[
-                        styles.node,
-                        {
-                          width: nodeStyle.size,
-                          height: nodeStyle.size,
-                          borderRadius: nodeStyle.size / 2,
-                          backgroundColor: nodeStyle.backgroundColor,
-                          borderColor: nodeStyle.borderColor,
-                          borderWidth: lesson.status === 'locked' ? 2 : 0,
-                        },
+                        styles.lineTop,
+                        { backgroundColor: prevStyle?.lineColor ?? colors.border },
                       ]}
-                      onPress={() => handleLessonPress(lesson)}
-                      activeOpacity={lesson.status === 'locked' ? 1 : 0.7}
-                    >
-                      <FontAwesome name={icon.name} size={24} color={icon.color} />
-                    </TouchableOpacity>
+                    />
+                  )}
 
-                    {/* レッスン名 */}
-                    <Text
-                      style={[
-                        styles.lessonTitle,
-                        {
-                          color: lesson.status === 'locked'
-                            ? colors.text.secondary
-                            : colors.text.primary,
-                          fontWeight: lesson.status === 'available' ? '700' : '500',
-                        },
-                      ]}
-                    >
-                      {lesson.title}
-                    </Text>
-
-                    {/* 接続線（下） */}
-                    {!(isLastInSection && isLastSection) && (
-                      <View
-                        style={[
-                          styles.connectorBottom,
-                          { backgroundColor: colors.border },
-                        ]}
-                      />
+                  {/* ノード（丸） */}
+                  <View style={[styles.node, { backgroundColor: style.nodeBg }]}>
+                    {lesson.status === 'locked' ? (
+                      <FontAwesome name="lock" size={12} color={style.nodeColor} />
+                    ) : lesson.status === 'completed' ? (
+                      <FontAwesome name="check" size={12} color={style.nodeColor} />
+                    ) : (
+                      <Text style={[styles.nodeNumber, { color: style.nodeColor }]}>
+                        {lesson.lessonIndex + 1}
+                      </Text>
                     )}
                   </View>
-                )
-              })}
-            </View>
-          ))}
-        </ScrollView>
+
+                  {/* 下部の線 */}
+                  {!lesson.isLast && (
+                    <View
+                      style={[
+                        styles.lineBottom,
+                        { backgroundColor: style.lineColor },
+                      ]}
+                    />
+                  )}
+                </View>
+
+                {/* レッスン情報（右側） */}
+                <TouchableOpacity
+                  style={[
+                    styles.lessonContent,
+                    lesson.status === 'available' && styles.lessonContentActive,
+                    lesson.status === 'available' && { borderColor: palette.orange },
+                  ]}
+                  onPress={() => handleLessonPress(lesson)}
+                  activeOpacity={lesson.status === 'locked' ? 1 : 0.7}
+                >
+                  <Text style={[styles.lessonTitle, { color: style.textColor }]}>
+                    {lesson.title}
+                  </Text>
+                  {lesson.status === 'available' && (
+                    <FontAwesome name="play-circle" size={20} color={palette.orange} />
+                  )}
+                  {lesson.status === 'completed' && (
+                    <FontAwesome name="check-circle" size={20} color={palette.green} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )
+          }}
+          showsVerticalScrollIndicator={false}
+        />
       </View>
     </>
   )
@@ -175,56 +179,97 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollView: {
-    flex: 1,
-  },
   content: {
-    paddingTop: 24,
-    alignItems: 'center',
-  },
-  sectionContainer: {
-    alignItems: 'center',
-    width: '100%',
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   sectionHeader: {
-    marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
     marginTop: 8,
-  },
-  sectionBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  sectionBadgeText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  nodeContainer: {
-    alignItems: 'center',
-    position: 'relative',
-  },
-  connectorTop: {
-    width: 3,
-    height: 20,
-    marginBottom: 4,
-  },
-  connectorBottom: {
-    width: 3,
-    height: 20,
-    marginTop: 4,
-  },
-  node: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  sectionAccentBar: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 4,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+  },
+  lessonItem: {
+    flexDirection: 'row',
+    minHeight: 56,
+    paddingRight: 16,
+  },
+  lessonItemFirst: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    paddingTop: 16,
+  },
+  lessonItemLast: {
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    paddingBottom: 16,
+  },
+  timeline: {
+    width: 56,
+    alignItems: 'center',
+  },
+  lineTop: {
+    width: 3,
+    height: 12,
+  },
+  lineBottom: {
+    width: 3,
+    flex: 1,
+    minHeight: 12,
+  },
+  node: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nodeNumber: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  lessonContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  lessonContentActive: {
+    borderWidth: 2,
+    backgroundColor: 'rgba(255, 149, 0, 0.05)',
   },
   lessonTitle: {
-    marginTop: 8,
-    fontSize: 14,
-    textAlign: 'center',
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    marginRight: 8,
   },
 })

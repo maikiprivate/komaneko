@@ -67,6 +67,9 @@ function RootLayoutNav() {
           name="lesson/[courseId]/index"
           options={{
             headerShown: true,
+            headerStyle: { backgroundColor: palette.orange },
+            headerTintColor: '#FFFFFF',
+            headerBackButtonDisplayMode: 'minimal',
           }}
         />
         <Stack.Screen
