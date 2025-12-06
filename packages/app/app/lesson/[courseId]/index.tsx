@@ -7,6 +7,7 @@
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
+import { useMemo } from 'react'
 import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -60,18 +61,22 @@ export default function SectionListScreen() {
     )
   }
 
-  // SectionList用のデータ形式に変換
-  const sections = course.sections.map((section, sectionIndex) => ({
-    ...section,
-    sectionNumber: sectionIndex + 1,
-    data: section.lessons.map((lesson, lessonIndex) => ({
-      ...lesson,
-      lessonIndex,
-      isFirst: lessonIndex === 0,
-      isLast: lessonIndex === section.lessons.length - 1,
-      prevLesson: lessonIndex > 0 ? section.lessons[lessonIndex - 1] : null,
-    })),
-  }))
+  // SectionList用のデータ形式に変換（メモ化）
+  const sections = useMemo(
+    () =>
+      course.sections.map((section, sectionIndex) => ({
+        ...section,
+        sectionNumber: sectionIndex + 1,
+        data: section.lessons.map((lesson, lessonIndex) => ({
+          ...lesson,
+          lessonIndex,
+          isFirst: lessonIndex === 0,
+          isLast: lessonIndex === section.lessons.length - 1,
+          prevLesson: lessonIndex > 0 ? section.lessons[lessonIndex - 1] : null,
+        })),
+      })),
+    [course.sections]
+  )
 
   return (
     <>
@@ -86,11 +91,11 @@ export default function SectionListScreen() {
             { paddingBottom: insets.bottom + 24 },
           ]}
           renderSectionHeader={({ section }) => (
-            <View style={[styles.sectionHeader, { backgroundColor: '#FFFFFF' }]}>
+            <View style={[styles.sectionHeader, { backgroundColor: colors.background.primary }]}>
               <Text style={[styles.sectionLabel, { color: palette.orange }]}>
                 セクション {section.sectionNumber}
               </Text>
-              <Text style={[styles.sectionTitle, { color: '#333333' }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
                 {section.title}
               </Text>
               <View style={[styles.sectionAccentBar, { backgroundColor: palette.orange }]} />

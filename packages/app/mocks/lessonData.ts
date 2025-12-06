@@ -2,6 +2,8 @@
  * 駒塾（レッスン）モックデータ
  */
 
+import type { Position } from '@/lib/shogi/types'
+
 // =============================================================================
 // 型定義
 // =============================================================================
@@ -11,12 +13,6 @@ export type LessonStatus = 'locked' | 'available' | 'completed'
 
 /** コースのステータス */
 export type CourseStatus = 'locked' | 'available' | 'completed'
-
-/** 問題の位置情報 */
-export interface Position {
-  row: number
-  col: number
-}
 
 /** 正解の手 */
 export interface CorrectMove {

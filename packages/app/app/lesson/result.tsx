@@ -27,6 +27,25 @@ export default function LessonResultScreen() {
     time: string
   }>()
 
+  // 必須パラメータの検証
+  if (!params.courseId || !params.lessonId) {
+    return (
+      <View style={[styles.background, { backgroundColor: palette.gameBackground }]}>
+        <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+          <Text style={[styles.title, { color: colors.text.primary }]}>
+            パラメータが不足しています
+          </Text>
+          <TouchableOpacity
+            style={[styles.button, styles.primaryButton, { backgroundColor: palette.orange }]}
+            onPress={() => router.dismissAll()}
+          >
+            <Text style={[styles.buttonText, { color: palette.white }]}>ホームに戻る</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
   const correctCount = Number(params.correct) || 0
   const totalCount = Number(params.total) || 0
   const percentage = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0
@@ -47,18 +66,19 @@ export default function LessonResultScreen() {
   }
 
   // 同じレッスンをもう一度（復習）
+  // dismissTo + push: スタックをセクション一覧まで戻してから新画面を開く
+  // これにより「戻る」でセクション一覧に戻れる正しいスタック構造になる
   const handleRetry = () => {
-    // セクション一覧まで戻り、レッスン画面を開く
     router.dismissTo(`/lesson/${params.courseId}`)
     router.push(`/lesson/${params.courseId}/${params.lessonId}`)
   }
 
   // 次のレッスンへ
-  const nextLesson = getNextLesson(params.courseId ?? '', params.lessonId ?? '')
+  const nextLesson = getNextLesson(params.courseId, params.lessonId)
 
   const handleNextLesson = () => {
     if (nextLesson) {
-      // セクション一覧まで戻り、次のレッスン画面を開く
+      // dismissTo + push: スタックをセクション一覧まで戻してから次のレッスンを開く
       router.dismissTo(`/lesson/${params.courseId}`)
       router.push(`/lesson/${params.courseId}/${nextLesson.id}`)
     }

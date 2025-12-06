@@ -100,7 +100,7 @@ export default function LessonPlayScreen() {
 
         {/* 駒猫の指示 */}
         <View style={styles.commentArea}>
-          <KomanekoComment message={game.problem.current!.instruction} />
+          <KomanekoComment message={game.problem.current?.instruction ?? ''} />
         </View>
 
         {/* 盤面 */}

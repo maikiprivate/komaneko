@@ -8,7 +8,7 @@
  * - 盤面状態管理
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { router } from 'expo-router'
 
 import {
@@ -128,6 +128,12 @@ export function useLessonGame({
 
   // 盤面の状態
   const [boardState, setBoardState] = useState<BoardState>(initialState)
+
+  // 問題が変わったら盤面をリセット（外部からのインデックス変更にも対応）
+  useEffect(() => {
+    setBoardState(initialState)
+  }, [initialState])
+
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [selectedCaptured, setSelectedCaptured] = useState<PieceType | null>(null)
   const [possibleMoves, setPossibleMoves] = useState<Position[]>([])
@@ -197,7 +203,7 @@ export function useLessonGame({
           },
         })
       }
-    } else if (pendingAction === 'reset') {
+    } else if (pendingAction === 'reset' && currentProblem) {
       // 盤面をリセット
       setBoardState(parseSfen(currentProblem.sfen))
     }
@@ -214,12 +220,14 @@ export function useLessonGame({
     clearSelection,
     courseId,
     lessonId,
-    currentProblem.sfen,
+    currentProblem,
   ])
 
   // 正解判定
   const checkAnswer = useCallback(
     (from: Position, to: Position, promote?: boolean) => {
+      if (!currentProblem) return
+
       // ヒントをクリア
       setHintHighlight(null)
 
@@ -374,23 +382,29 @@ export function useLessonGame({
 
   // やり直し
   const handleReset = useCallback(() => {
+    if (!currentProblem) return
+
     solutionPlayback.reset()
     setBoardState(parseSfen(currentProblem.sfen))
     clearSelection()
     setHintHighlight(null)
-  }, [currentProblem.sfen, clearSelection, solutionPlayback])
+  }, [currentProblem, clearSelection, solutionPlayback])
 
   // ヒント表示
   const handleHint = useCallback(() => {
+    if (!currentProblem) return
+
     const correct = currentProblem.correctMove
     setHintHighlight({
       from: correct.from,
       to: correct.to,
     })
-  }, [currentProblem.correctMove])
+  }, [currentProblem])
 
   // 解答表示
   const handleSolution = useCallback(() => {
+    if (!currentProblem) return
+
     // 既に再生中なら何もしない
     if (solutionPlayback.phase !== 'none') {
       return
