@@ -20,7 +20,7 @@ interface PieceStandProps {
   /** 選択中の駒 */
   selectedPiece?: PieceType | null
   /** ヒント表示中の駒 */
-  hintPiece?: string | null
+  hintPiece?: PieceType | null
 }
 
 // 駒台の高さを計算（駒の有無に関わらず一定）
@@ -81,14 +81,16 @@ export function PieceStand({
   )
 }
 
+// TODO: ハードコード色をColors.tsのpaletteに移動して一元管理する
+// 対象: #D6B891, #B8956E, #6D4C41, #FF9800, #5D4037, #FFF8E1
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EDE0D0',
+    backgroundColor: '#D6B891',
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#D4C4B0',
+    borderColor: '#B8956E',
     paddingHorizontal: 8,
     paddingVertical: 4,
     // height is set dynamically based on pieceSize
@@ -96,7 +98,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#5D4037',
+    color: '#6D4C41',
     marginHorizontal: 8,
   },
   piecesArea: {
@@ -121,9 +123,9 @@ const styles = StyleSheet.create({
     bottom: -4,
     right: -6,
     fontSize: 11,
-    fontWeight: 'normal',
-    color: '#666',
-    backgroundColor: '#FFF',
+    fontWeight: 'bold',
+    color: '#5D4037',
+    backgroundColor: '#FFF8E1',
     borderRadius: 6,
     minWidth: 14,
     textAlign: 'center',

@@ -1,11 +1,14 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
+import { FeedbackOverlay } from '@/components/shogi/FeedbackOverlay'
+import { GameFooter } from '@/components/shogi/GameFooter'
 import { PieceStand } from '@/components/shogi/PieceStand'
+import { PromotionDialog } from '@/components/shogi/PromotionDialog'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { useTheme } from '@/components/useTheme'
 import { useTsumeshogiGame } from '@/hooks/useTsumeshogiGame'
@@ -65,43 +68,14 @@ export default function TsumeshogiPlayScreen() {
 
   // アニメーション用
   const scaleAnim = useRef(new Animated.Value(1)).current
-  const feedbackOpacity = useRef(new Animated.Value(0)).current
-  const feedbackScale = useRef(new Animated.Value(0.5)).current
 
-  // フィードバック表示関数
-  const showFeedback = (type: 'correct' | 'incorrect') => {
-    setFeedback(type)
-    feedbackOpacity.setValue(0)
-    feedbackScale.setValue(0.5)
-
-    // 表示アニメーション
-    Animated.parallel([
-      Animated.timing(feedbackOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.spring(feedbackScale, {
-        toValue: 1,
-        friction: 6,
-        useNativeDriver: true,
-      }),
-    ]).start()
-
-    // 1.5秒後に非表示
-    setTimeout(() => {
-      Animated.timing(feedbackOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => {
-        setFeedback('none')
-        if (type === 'correct') {
-          setIsSolved(true)
-        }
-      })
-    }, 1500)
-  }
+  // フィードバック完了時の処理
+  const handleFeedbackComplete = useCallback(() => {
+    if (feedback === 'correct') {
+      setIsSolved(true)
+    }
+    setFeedback('none')
+  }, [feedback])
 
   // 正解時の「次の問題へ」ボタンアニメーション
   useEffect(() => {
@@ -124,8 +98,8 @@ export default function TsumeshogiPlayScreen() {
 
   // ゲームフックを使用
   const game = useTsumeshogiGame(problem, {
-    onCorrect: () => showFeedback('correct'),
-    onIncorrect: () => showFeedback('incorrect'),
+    onCorrect: () => setFeedback('correct'),
+    onIncorrect: () => setFeedback('incorrect'),
     onNotCheck: () => Alert.alert('王手ではありません', '詰将棋では王手の連続で詰ませる必要があります'),
   })
 
@@ -146,7 +120,7 @@ export default function TsumeshogiPlayScreen() {
   return (
     <>
       <Stack.Screen options={{ title: headerTitle }} />
-      <View style={[styles.container, { backgroundColor: colors.background.secondary }]}>
+      <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
         <View style={styles.commentArea}>
           <KomanekoComment message="王手の連続で玉を詰ませるにゃ！持ち駒を上手く使ってにゃ〜" />
         </View>
@@ -179,50 +153,14 @@ export default function TsumeshogiPlayScreen() {
             />
           </View>
 
-          {/* フィードバックオーバーレイ（将棋盤エリア基準） */}
-          {feedback !== 'none' && (
-            <Animated.View style={[styles.feedbackOverlay, { opacity: feedbackOpacity }]}>
-              <Animated.Text
-                style={[
-                  styles.feedbackSymbol,
-                  {
-                    color:
-                      feedback === 'correct'
-                        ? palette.correctFeedback
-                        : colors.gamification.error,
-                    transform: [{ scale: feedbackScale }],
-                  },
-                ]}
-              >
-                {feedback === 'correct' ? '○' : '×'}
-              </Animated.Text>
-            </Animated.View>
-          )}
+          {/* フィードバックオーバーレイ */}
+          <FeedbackOverlay type={feedback} onComplete={handleFeedbackComplete} />
 
           {/* 成り選択ダイアログ */}
-          {game.pendingPromotion && (
-            <View style={styles.promotionOverlay}>
-              <View style={[styles.promotionDialog, { backgroundColor: colors.background.primary }]}>
-                <Text style={[styles.promotionTitle, { color: colors.text.primary }]}>
-                  成りますか？
-                </Text>
-                <View style={styles.promotionButtons}>
-                  <TouchableOpacity
-                    style={[styles.promotionButton, { backgroundColor: palette.orange }]}
-                    onPress={() => game.handlePromotionSelect(true)}
-                  >
-                    <Text style={[styles.promotionButtonText, { color: palette.white }]}>成る</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.promotionButton, { backgroundColor: colors.background.secondary, borderWidth: 1, borderColor: colors.border }]}
-                    onPress={() => game.handlePromotionSelect(false)}
-                  >
-                    <Text style={[styles.promotionButtonText, { color: colors.text.primary }]}>不成</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
+          <PromotionDialog
+            visible={!!game.pendingPromotion}
+            onSelect={game.handlePromotionSelect}
+          />
         </View>
         <View style={styles.progressArea}>
           <Text
@@ -270,22 +208,11 @@ export default function TsumeshogiPlayScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.spacer} />
-        <View style={[styles.footer, { backgroundColor: colors.background.primary, borderTopColor: palette.orange }]}>
-          <TouchableOpacity style={styles.actionButton} onPress={game.reset}>
-            <FontAwesome name="refresh" size={20} color={colors.gamification.success} />
-            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>やり直し</Text>
-          </TouchableOpacity>
-          <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
-          <TouchableOpacity style={styles.actionButton} onPress={game.showHint}>
-            <FontAwesome name="lightbulb-o" size={20} color={palette.orange} />
-            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>ヒント</Text>
-          </TouchableOpacity>
-          <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
-          <TouchableOpacity style={styles.actionButton} onPress={game.playSolution}>
-            <FontAwesome name="key" size={20} color={colors.gamification.heart} />
-            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>解答</Text>
-          </TouchableOpacity>
-        </View>
+        <GameFooter
+          onReset={game.reset}
+          onHint={game.showHint}
+          onSolution={game.playSolution}
+        />
         <View style={[styles.homeIndicatorArea, { backgroundColor: colors.background.primary, height: insets.bottom }]} />
       </View>
     </>
@@ -317,27 +244,6 @@ const styles = StyleSheet.create({
   spacer: {
     flex: 1,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 2,
-  },
-  actionButton: {
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  footerDivider: {
-    width: 1,
-    height: 32,
-  },
   homeIndicatorArea: {
     // height is set dynamically using insets.bottom
   },
@@ -359,54 +265,5 @@ const styles = StyleSheet.create({
   navButtonText: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  feedbackOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-  },
-  feedbackSymbol: {
-    fontSize: 280,
-    fontWeight: 'bold',
-  },
-  promotionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 200,
-  },
-  promotionDialog: {
-    padding: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    gap: 16,
-  },
-  promotionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  promotionButtons: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  promotionButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  promotionButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    // Note: デフォルトは白（成るボタン用）、不成ボタンではインラインで上書き
   },
 })

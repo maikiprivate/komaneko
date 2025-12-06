@@ -27,3 +27,4 @@
 | ファイル | 概要 | 作成日 |
 |----------|------|--------|
 | [tsumeshogi-logic.md](./tsumeshogi-logic.md) | 詰将棋ロジック（駒移動、詰み判定、AI応手） | 2025-12-01 |
+| [lesson.md](./lesson.md) | 駒塾（Duolingo風学習システム） | 2025-12-03 |
