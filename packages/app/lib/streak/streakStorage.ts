@@ -38,9 +38,16 @@ export async function getStreakData(): Promise<StreakData> {
 
 /**
  * ストリークデータを保存
+ * @returns 保存成功時はtrue、失敗時はfalse
  */
-export async function saveStreakData(data: StreakData): Promise<void> {
-  await AsyncStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(data))
+export async function saveStreakData(data: StreakData): Promise<boolean> {
+  try {
+    await AsyncStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(data))
+    return true
+  } catch (error) {
+    console.error('[streakStorage] Failed to save streak data:', error)
+    return false
+  }
 }
 
 /**
