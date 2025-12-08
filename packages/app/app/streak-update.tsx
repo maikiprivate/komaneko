@@ -14,6 +14,7 @@ import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
 import {
   calculateWeeklyProgress,
+  getDemoToday,
   getStreakData,
   type WeeklyStreakInfo,
 } from '@/lib/streak/streakStorage'
@@ -32,7 +33,8 @@ export default function StreakUpdateScreen() {
   useEffect(() => {
     const loadStreakData = async () => {
       const data = await getStreakData()
-      const info = calculateWeeklyProgress(data)
+      const demoToday = await getDemoToday()
+      const info = calculateWeeklyProgress(data, demoToday)
       // 今日のデータをfalseにしてアニメーションで表示させる
       const modifiedProgress = info.weeklyProgress.map((day, index) => ({
         ...day,

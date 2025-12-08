@@ -8,13 +8,9 @@ import { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, Text, View } from 'react-native'
 
 import { useTheme } from '@/components/useTheme'
+import type { DayProgress } from '@/lib/streak/streakStorage'
 
 const DAY_LABELS = ['月', '火', '水', '木', '金', '土', '日']
-
-export interface DayProgress {
-  date: number
-  completed: boolean
-}
 
 interface WeeklyStreakProgressProps {
   /** 週間の進捗データ（月曜始まり、7日分） */

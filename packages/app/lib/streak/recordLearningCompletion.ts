@@ -4,9 +4,9 @@
  */
 
 import {
+  getDemoToday,
   getStreakData,
   getTodayDateString,
-  getYesterdayDateString,
   saveStreakData,
 } from './streakStorage'
 
@@ -30,7 +30,11 @@ export interface LearningCompletionResult {
  */
 export async function recordLearningCompletion(): Promise<LearningCompletionResult> {
   const streakData = await getStreakData()
-  const today = getTodayDateString()
+
+  // デモモードの場合は仮の今日を使用
+  const demoToday = await getDemoToday()
+  const today = demoToday ?? getTodayDateString()
+  const yesterday = getYesterdayFromDate(today)
 
   // 今日すでに学習済みなら更新なし
   if (streakData.lastActiveDate === today) {
@@ -38,7 +42,6 @@ export async function recordLearningCompletion(): Promise<LearningCompletionResu
   }
 
   // ストリーク計算
-  const yesterday = getYesterdayDateString()
   let newCount: number
 
   if (streakData.lastActiveDate === yesterday) {
@@ -49,12 +52,53 @@ export async function recordLearningCompletion(): Promise<LearningCompletionResu
     newCount = 1
   }
 
+  // completedDatesを更新（今日を追加し、14日以上前のデータを削除）
+  const updatedCompletedDates = updateCompletedDates(streakData.completedDates, today)
+
   // 保存
   await saveStreakData({
     currentCount: newCount,
     longestCount: Math.max(streakData.longestCount, newCount),
     lastActiveDate: today,
+    completedDates: updatedCompletedDates,
   })
 
   return { updated: true, newCount }
+}
+
+/**
+ * 指定した日付の前日を取得（YYYY-MM-DD形式）
+ */
+function getYesterdayFromDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() - 1)
+  return formatDate(date)
+}
+
+/**
+ * completedDatesを更新（今日を追加し、14日以上前のデータを削除）
+ */
+function updateCompletedDates(currentDates: string[], today: string): string[] {
+  // 今日を追加
+  const updatedDates = currentDates.includes(today)
+    ? currentDates
+    : [...currentDates, today]
+
+  // 14日以上前のデータを削除
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - 14)
+  const cutoffString = formatDate(cutoffDate)
+
+  return updatedDates.filter(date => date >= cutoffString)
+}
+
+/**
+ * Dateを YYYY-MM-DD 形式にフォーマット
+ */
+function formatDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }

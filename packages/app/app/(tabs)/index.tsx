@@ -8,8 +8,11 @@ import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
 import {
   calculateWeeklyProgress,
+  clearDemoToday,
+  getDemoToday,
   getStreakData,
   resetStreakData,
+  setDemoStreakData,
   type WeeklyStreakInfo,
 } from '@/lib/streak/streakStorage'
 import { mockHomeData } from '@/mocks/homeData'
@@ -44,7 +47,8 @@ export default function HomeScreen() {
     useCallback(() => {
       const loadStreak = async () => {
         const data = await getStreakData()
-        const info = calculateWeeklyProgress(data)
+        const demoToday = await getDemoToday()
+        const info = calculateWeeklyProgress(data, demoToday)
         setStreakInfo(info)
       }
       loadStreak()
@@ -54,11 +58,23 @@ export default function HomeScreen() {
   // TODO: テスト用 - 後で削除
   const handleResetStreak = async () => {
     await resetStreakData()
+    await clearDemoToday() // デモ用の仮の今日もクリア
     // リセット後に再読み込み
     const data = await getStreakData()
     const info = calculateWeeklyProgress(data)
     setStreakInfo(info)
     Alert.alert('リセット完了', 'ストリークデータをリセットしました')
+  }
+
+  // TODO: テスト用 - 後で削除
+  const handleSetDemoData = async () => {
+    await setDemoStreakData()
+    // 設定後に再読み込み（デモ用の仮の今日を使用）
+    const data = await getStreakData()
+    const demoToday = await getDemoToday()
+    const info = calculateWeeklyProgress(data, demoToday)
+    setStreakInfo(info)
+    Alert.alert('デモデータ設定完了', '仮の今日を金曜日に設定し、月曜と木曜に学習したデータを設定しました')
   }
 
   return (
@@ -115,15 +131,26 @@ export default function HomeScreen() {
         </View>
 
         {/* TODO: テスト用ボタン - 後で削除 */}
-        <TouchableOpacity
-          style={[styles.testButton, { backgroundColor: palette.red }]}
-          onPress={handleResetStreak}
-        >
-          <FontAwesome name="refresh" size={16} color={palette.white} />
-          <Text style={[styles.testButtonText, { color: palette.white }]}>
-            ストリークリセット（テスト用）
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.testButtonRow}>
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: palette.red }]}
+            onPress={handleResetStreak}
+          >
+            <FontAwesome name="refresh" size={14} color={palette.white} />
+            <Text style={[styles.testButtonText, { color: palette.white }]}>
+              リセット
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: palette.orange }]}
+            onPress={handleSetDemoData}
+          >
+            <FontAwesome name="database" size={14} color={palette.white} />
+            <Text style={[styles.testButtonText, { color: palette.white }]}>
+              デモデータ
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* キャラクター表示 */}
         <View style={styles.characterArea}>
@@ -238,18 +265,23 @@ const styles = StyleSheet.create({
     height: 320,
   },
   // TODO: テスト用スタイル - 後で削除
+  testButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
   testButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
   testButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
 })
