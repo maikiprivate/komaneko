@@ -12,7 +12,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
-import { mockHomeData } from '@/mocks/homeData'
+import {
+  calculateWeeklyProgress,
+  getStreakData,
+  type WeeklyStreakInfo,
+} from '@/lib/streak/streakStorage'
 
 const characterImage = require('@/assets/images/character/sitting.png')
 
@@ -22,8 +26,25 @@ export default function StreakUpdateScreen() {
   const params = useLocalSearchParams<{ count: string }>()
   const streakCount = Number(params.count) || 1
 
-  // TODO: 実際のストリークデータから取得
-  const { weeklyProgress, todayIndex } = mockHomeData.streak
+  // AsyncStorageからストリークデータを取得
+  const [streakInfo, setStreakInfo] = useState<WeeklyStreakInfo | null>(null)
+
+  useEffect(() => {
+    const loadStreakData = async () => {
+      const data = await getStreakData()
+      const info = calculateWeeklyProgress(data)
+      // 今日のデータをfalseにしてアニメーションで表示させる
+      const modifiedProgress = info.weeklyProgress.map((day, index) => ({
+        ...day,
+        completed: index === info.todayIndex ? false : day.completed,
+      }))
+      setStreakInfo({
+        ...info,
+        weeklyProgress: modifiedProgress,
+      })
+    }
+    loadStreakData()
+  }, [])
 
   // 週間進捗のアニメーション開始フラグ（親アニメーション完了後にtrue）
   const [startWeeklyAnimation, setStartWeeklyAnimation] = useState(false)
@@ -84,10 +105,17 @@ export default function StreakUpdateScreen() {
 
   // 励ましメッセージ
   const getMessage = () => {
-    const completedDays = weeklyProgress.filter(d => d.completed).length
+    if (!streakInfo) return ''
+    // 今日を含めた完了日数（アニメーション前なので+1）
+    const completedDays = streakInfo.weeklyProgress.filter(d => d.completed).length + 1
     if (completedDays >= 7) return 'パーフェクトウィーク達成にゃ！'
-    if (todayIndex < 6) return 'この調子でパーフェクトウィークを目指すにゃ！'
+    if (streakInfo.todayIndex < 6) return 'この調子でパーフェクトウィークを目指すにゃ！'
     return '今週もよく頑張ったにゃ！'
+  }
+
+  // データ読み込み中は何も表示しない
+  if (!streakInfo) {
+    return null
   }
 
   return (
@@ -156,8 +184,8 @@ export default function StreakUpdateScreen() {
             ]}
           >
             <WeeklyStreakProgress
-              weeklyProgress={weeklyProgress}
-              todayIndex={todayIndex}
+              weeklyProgress={streakInfo.weeklyProgress}
+              todayIndex={streakInfo.todayIndex}
               animateTodayCheck={startWeeklyAnimation}
             />
             <View style={[styles.messageDivider, { backgroundColor: colors.border }]} />

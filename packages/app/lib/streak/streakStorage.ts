@@ -88,6 +88,14 @@ function formatDateString(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+/**
+ * YYYY-MM-DD形式の文字列をローカル時間のDateにパース
+ */
+function parseDateString(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
 export interface DayProgress {
   date: number
   completed: boolean
@@ -104,6 +112,7 @@ export interface WeeklyStreakInfo {
  */
 export function calculateWeeklyProgress(streakData: StreakData): WeeklyStreakInfo {
   const today = new Date()
+  const todayString = formatDateString(today)
   const dayOfWeek = today.getDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
   // 月曜始まりに変換 (0=月曜, 6=日曜)
   const todayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1
@@ -112,6 +121,17 @@ export function calculateWeeklyProgress(streakData: StreakData): WeeklyStreakInf
   const monday = new Date(today)
   monday.setDate(today.getDate() - todayIndex)
 
+  // 完了日のセットを作成（lastActiveDateから遡ってcurrentCount日分）
+  const completedDates = new Set<string>()
+  if (streakData.lastActiveDate && streakData.currentCount > 0) {
+    const lastActive = parseDateString(streakData.lastActiveDate)
+    for (let i = 0; i < streakData.currentCount; i++) {
+      const completedDate = new Date(lastActive)
+      completedDate.setDate(lastActive.getDate() - i)
+      completedDates.add(formatDateString(completedDate))
+    }
+  }
+
   const weeklyProgress: DayProgress[] = []
 
   for (let i = 0; i < 7; i++) {
@@ -119,20 +139,8 @@ export function calculateWeeklyProgress(streakData: StreakData): WeeklyStreakInf
     date.setDate(monday.getDate() + i)
     const dateString = formatDateString(date)
 
-    let completed = false
-
-    if (streakData.lastActiveDate && streakData.currentCount > 0) {
-      // lastActiveDateから遡ってcurrentCount日分が完了済み
-      const lastActive = new Date(streakData.lastActiveDate)
-      const daysDiff = Math.floor(
-        (lastActive.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-      )
-
-      // この日が連続学習の範囲内（0〜currentCount-1日前）かつ未来でない
-      if (daysDiff >= 0 && daysDiff < streakData.currentCount && dateString <= formatDateString(today)) {
-        completed = true
-      }
-    }
+    // 未来でなく、完了日セットに含まれていれば完了
+    const completed = dateString <= todayString && completedDates.has(dateString)
 
     weeklyProgress.push({
       date: date.getDate(),
