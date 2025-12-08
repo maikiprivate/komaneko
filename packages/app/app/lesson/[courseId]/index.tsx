@@ -116,15 +116,17 @@ export default function SectionListScreen() {
               >
                 {/* タイムライン（左側の線とノード） */}
                 <View style={styles.timeline}>
-                  {/* 上部の線 */}
-                  {!lesson.isFirst && (
-                    <View
-                      style={[
-                        styles.lineTop,
-                        { backgroundColor: prevStyle?.lineColor ?? colors.border },
-                      ]}
-                    />
-                  )}
+                  {/* 上部の線（1番目はスペーサーで高さを揃える） */}
+                  <View
+                    style={[
+                      styles.lineTop,
+                      {
+                        backgroundColor: lesson.isFirst
+                          ? 'transparent'
+                          : (prevStyle?.lineColor ?? colors.border),
+                      },
+                    ]}
+                  />
 
                   {/* ノード（丸） */}
                   <View style={[styles.node, { backgroundColor: style.nodeBg }]}>
@@ -139,15 +141,17 @@ export default function SectionListScreen() {
                     )}
                   </View>
 
-                  {/* 下部の線 */}
-                  {!lesson.isLast && (
-                    <View
-                      style={[
-                        styles.lineBottom,
-                        { backgroundColor: style.lineColor },
-                      ]}
-                    />
-                  )}
+                  {/* 下部の線（最後はスペーサーで高さを揃える） */}
+                  <View
+                    style={[
+                      styles.lineBottom,
+                      {
+                        backgroundColor: lesson.isLast
+                          ? 'transparent'
+                          : style.lineColor,
+                      },
+                    ]}
+                  />
                 </View>
 
                 {/* レッスン情報（右側） */}
