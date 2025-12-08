@@ -5,6 +5,7 @@ import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDim
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
+import { recordLearningCompletion } from '@/lib/streak/recordLearningCompletion'
 import { FeedbackOverlay } from '@/components/shogi/FeedbackOverlay'
 import { GameFooter } from '@/components/shogi/GameFooter'
 import { PieceStand } from '@/components/shogi/PieceStand'
@@ -95,6 +96,23 @@ export default function TsumeshogiPlayScreen() {
       ]).start()
     }
   }, [isSolved, scaleAnim])
+
+  // 正解時のストリーク更新チェック
+  useEffect(() => {
+    if (isSolved) {
+      const checkStreak = async () => {
+        try {
+          const result = await recordLearningCompletion()
+          if (result.updated) {
+            router.push(`/streak-update?count=${result.newCount}`)
+          }
+        } catch (error) {
+          console.error('[Tsumeshogi] Failed to check streak:', error)
+        }
+      }
+      checkStreak()
+    }
+  }, [isSolved])
 
   // ゲームフックを使用
   const game = useTsumeshogiGame(problem, {
