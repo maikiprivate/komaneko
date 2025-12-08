@@ -51,6 +51,17 @@ export async function saveStreakData(data: StreakData): Promise<boolean> {
 }
 
 /**
+ * ストリークデータをリセット（テスト用）
+ */
+export async function resetStreakData(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(STREAK_STORAGE_KEY)
+  } catch (error) {
+    console.error('[streakStorage] Failed to reset streak data:', error)
+  }
+}
+
+/**
  * 今日の日付文字列を取得 (YYYY-MM-DD形式)
  */
 export function getTodayDateString(): string {

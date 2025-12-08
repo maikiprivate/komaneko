@@ -1,8 +1,9 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { Image, ImageBackground, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
+import { resetStreakData } from '@/lib/streak/streakStorage'
 import { mockHomeData } from '@/mocks/homeData'
 
 const characterSitting = require('@/assets/images/character/sitting.png')
@@ -21,9 +22,15 @@ function formatRecoveryTime(minutes: number): string {
 const DAY_LABELS = ['月', '火', '水', '木', '金', '土', '日']
 
 export default function HomeScreen() {
-  const { colors } = useTheme()
+  const { colors, palette } = useTheme()
   const { hearts, streak } = mockHomeData
   const heartsPercent = (hearts.current / hearts.max) * 100
+
+  // TODO: テスト用 - 後で削除
+  const handleResetStreak = async () => {
+    await resetStreakData()
+    Alert.alert('リセット完了', 'ストリークデータをリセットしました')
+  }
 
   return (
     <ImageBackground source={homeBackground} style={styles.backgroundImage} resizeMode="cover">
@@ -128,6 +135,17 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+
+        {/* TODO: テスト用ボタン - 後で削除 */}
+        <TouchableOpacity
+          style={[styles.testButton, { backgroundColor: palette.red }]}
+          onPress={handleResetStreak}
+        >
+          <FontAwesome name="refresh" size={16} color={palette.white} />
+          <Text style={[styles.testButtonText, { color: palette.white }]}>
+            ストリークリセット（テスト用）
+          </Text>
+        </TouchableOpacity>
 
         {/* キャラクター表示 */}
         <View style={styles.characterArea}>
@@ -275,5 +293,20 @@ const styles = StyleSheet.create({
   characterImage: {
     width: 320,
     height: 320,
+  },
+  // TODO: テスト用スタイル - 後で削除
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  testButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 })
