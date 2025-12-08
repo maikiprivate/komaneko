@@ -55,7 +55,7 @@ export default function HomeScreen() {
     }, [])
   )
 
-  // TODO: テスト用 - 後で削除
+  // 開発用: ストリークリセット
   const handleResetStreak = async () => {
     await resetStreakData()
     await clearDemoToday() // デモ用の仮の今日もクリア
@@ -66,7 +66,7 @@ export default function HomeScreen() {
     Alert.alert('リセット完了', 'ストリークデータをリセットしました')
   }
 
-  // TODO: テスト用 - 後で削除
+  // 開発用: デモデータ設定
   const handleSetDemoData = async () => {
     await setDemoStreakData()
     // 設定後に再読み込み（デモ用の仮の今日を使用）
@@ -130,27 +130,29 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* TODO: テスト用ボタン - 後で削除 */}
-        <View style={styles.testButtonRow}>
-          <TouchableOpacity
-            style={[styles.testButton, { backgroundColor: palette.red }]}
-            onPress={handleResetStreak}
-          >
-            <FontAwesome name="refresh" size={14} color={palette.white} />
-            <Text style={[styles.testButtonText, { color: palette.white }]}>
-              リセット
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.testButton, { backgroundColor: palette.orange }]}
-            onPress={handleSetDemoData}
-          >
-            <FontAwesome name="database" size={14} color={palette.white} />
-            <Text style={[styles.testButtonText, { color: palette.white }]}>
-              デモデータ
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* 開発用: ストリークテストボタン */}
+        {__DEV__ && (
+          <View style={styles.testButtonRow}>
+            <TouchableOpacity
+              style={[styles.testButton, { backgroundColor: palette.red }]}
+              onPress={handleResetStreak}
+            >
+              <FontAwesome name="refresh" size={14} color={palette.white} />
+              <Text style={[styles.testButtonText, { color: palette.white }]}>
+                リセット
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.testButton, { backgroundColor: palette.orange }]}
+              onPress={handleSetDemoData}
+            >
+              <FontAwesome name="database" size={14} color={palette.white} />
+              <Text style={[styles.testButtonText, { color: palette.white }]}>
+                デモデータ
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* キャラクター表示 */}
         <View style={styles.characterArea}>
@@ -264,7 +266,7 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
   },
-  // TODO: テスト用スタイル - 後で削除
+  // 開発用スタイル
   testButtonRow: {
     flexDirection: 'row',
     gap: 8,

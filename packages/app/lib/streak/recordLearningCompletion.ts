@@ -4,9 +4,12 @@
  */
 
 import {
+  COMPLETED_DATES_RETENTION_DAYS,
+  formatDateString,
   getDemoToday,
   getStreakData,
   getTodayDateString,
+  parseDateString,
   saveStreakData,
 } from './streakStorage'
 
@@ -56,12 +59,17 @@ export async function recordLearningCompletion(): Promise<LearningCompletionResu
   const updatedCompletedDates = updateCompletedDates(streakData.completedDates, today)
 
   // 保存
-  await saveStreakData({
+  const saved = await saveStreakData({
     currentCount: newCount,
     longestCount: Math.max(streakData.longestCount, newCount),
     lastActiveDate: today,
     completedDates: updatedCompletedDates,
   })
+
+  // 保存失敗時は更新なしとして扱う（UIでは正常動作を維持）
+  if (!saved) {
+    return { updated: false, newCount: streakData.currentCount }
+  }
 
   return { updated: true, newCount }
 }
@@ -70,14 +78,13 @@ export async function recordLearningCompletion(): Promise<LearningCompletionResu
  * 指定した日付の前日を取得（YYYY-MM-DD形式）
  */
 function getYesterdayFromDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
+  const date = parseDateString(dateStr)
   date.setDate(date.getDate() - 1)
-  return formatDate(date)
+  return formatDateString(date)
 }
 
 /**
- * completedDatesを更新（今日を追加し、14日以上前のデータを削除）
+ * completedDatesを更新（今日を追加し、保持期間を超えたデータを削除）
  */
 function updateCompletedDates(currentDates: string[], today: string): string[] {
   // 今日を追加
@@ -85,20 +92,10 @@ function updateCompletedDates(currentDates: string[], today: string): string[] {
     ? currentDates
     : [...currentDates, today]
 
-  // 14日以上前のデータを削除
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - 14)
-  const cutoffString = formatDate(cutoffDate)
+  // 保持期間を超えたデータを削除（デモモードでも正しく動作するようtodayを基準にする）
+  const cutoffDate = parseDateString(today)
+  cutoffDate.setDate(cutoffDate.getDate() - COMPLETED_DATES_RETENTION_DAYS)
+  const cutoffString = formatDateString(cutoffDate)
 
   return updatedDates.filter(date => date >= cutoffString)
-}
-
-/**
- * Dateを YYYY-MM-DD 形式にフォーマット
- */
-function formatDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }

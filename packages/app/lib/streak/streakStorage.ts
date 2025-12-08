@@ -7,6 +7,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 const STREAK_STORAGE_KEY = '@komaneko/streak'
 const DEMO_TODAY_KEY = '@komaneko/demo-today'
 
+/** completedDatesの保持日数 */
+export const COMPLETED_DATES_RETENTION_DAYS = 14
+
 export interface StreakData {
   /** 現在の連続日数 */
   currentCount: number
@@ -14,7 +17,7 @@ export interface StreakData {
   longestCount: number
   /** 最終学習日 (YYYY-MM-DD形式、未学習の場合はnull) */
   lastActiveDate: string | null
-  /** 学習完了日の配列（過去14日分を保持、週間カレンダー表示用） */
+  /** 学習完了日の配列（COMPLETED_DATES_RETENTION_DAYS日分を保持、週間カレンダー表示用） */
   completedDates: string[]
 }
 
@@ -158,7 +161,7 @@ export function getYesterdayDateString(): string {
 /**
  * Dateを YYYY-MM-DD 形式にフォーマット
  */
-function formatDateString(date: Date): string {
+export function formatDateString(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
@@ -168,7 +171,7 @@ function formatDateString(date: Date): string {
 /**
  * YYYY-MM-DD形式の文字列をローカル時間のDateにパース
  */
-function parseDateString(dateStr: string): Date {
+export function parseDateString(dateStr: string): Date {
   const [year, month, day] = dateStr.split('-').map(Number)
   return new Date(year, month - 1, day)
 }
