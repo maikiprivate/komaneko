@@ -87,3 +87,62 @@ function formatDateString(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
+
+export interface DayProgress {
+  date: number
+  completed: boolean
+}
+
+export interface WeeklyStreakInfo {
+  weeklyProgress: DayProgress[]
+  todayIndex: number
+  currentStreak: number
+}
+
+/**
+ * ストリークデータから週間進捗情報を計算
+ */
+export function calculateWeeklyProgress(streakData: StreakData): WeeklyStreakInfo {
+  const today = new Date()
+  const dayOfWeek = today.getDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
+  // 月曜始まりに変換 (0=月曜, 6=日曜)
+  const todayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+
+  // 今週の月曜日を取得
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - todayIndex)
+
+  const weeklyProgress: DayProgress[] = []
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + i)
+    const dateString = formatDateString(date)
+
+    let completed = false
+
+    if (streakData.lastActiveDate && streakData.currentCount > 0) {
+      // lastActiveDateから遡ってcurrentCount日分が完了済み
+      const lastActive = new Date(streakData.lastActiveDate)
+      const daysDiff = Math.floor(
+        (lastActive.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+      )
+
+      // この日が連続学習の範囲内（0〜currentCount-1日前）かつ未来でない
+      if (daysDiff >= 0 && daysDiff < streakData.currentCount && dateString <= formatDateString(today)) {
+        completed = true
+      }
+    }
+
+    weeklyProgress.push({
+      date: date.getDate(),
+      completed,
+    })
+  }
+
+  return {
+    weeklyProgress,
+    todayIndex,
+    currentStreak: streakData.currentCount,
+  }
+}

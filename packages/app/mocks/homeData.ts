@@ -22,19 +22,19 @@ export const mockHomeData = {
 
   // 連続学習（ストリーク）システム
   streak: {
-    current: 3, // 現在の連続日数
+    current: 1, // 現在の連続日数
     longest: 7, // 最長記録
     // 今週の学習状況（月〜日、0=月曜）
     weeklyProgress: [
-      { completed: true, date: 24 },
-      { completed: true, date: 25 },
-      { completed: true, date: 26 },
-      { completed: false, date: 27 }, // 今日
-      { completed: false, date: 28 },
-      { completed: false, date: 29 },
-      { completed: false, date: 30 },
+      { completed: false, date: 2 }, // 今日（月曜）- アニメーションで完了になる
+      { completed: false, date: 3 },
+      { completed: false, date: 4 },
+      { completed: false, date: 5 },
+      { completed: false, date: 6 },
+      { completed: false, date: 7 },
+      { completed: false, date: 8 },
     ],
-    todayIndex: 3, // 今日は木曜日（0=月曜）
+    todayIndex: 0, // 今日は月曜日（0=月曜）
   },
 
   // 今日の進捗

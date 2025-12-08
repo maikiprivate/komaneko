@@ -92,7 +92,10 @@ export function WeeklyStreakProgress({
           const isYesterdayConnector = animateTodayCheck && index === todayIndex - 1 && dayData?.completed
 
           return (
-            <View key={day} style={styles.dayColumnWrapper}>
+            <View key={day} style={[
+              styles.dayColumnWrapper,
+              index === DAY_LABELS.length - 1 && styles.dayColumnWrapperLast,
+            ]}>
               <View style={styles.dayColumn}>
                 {/* 曜日ラベル */}
                 <Text
@@ -227,7 +230,7 @@ const styles = StyleSheet.create({
   },
   containerCompact: {
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 20,
   },
   weekRow: {
     flexDirection: 'row',
@@ -238,6 +241,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     flex: 1,
+  },
+  dayColumnWrapperLast: {
+    flex: 0,
   },
   dayColumn: {
     alignItems: 'center',
