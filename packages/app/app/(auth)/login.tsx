@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
-import { mockLogin } from '@/lib/auth/authStorage'
+import { useAuth } from '@/lib/auth/AuthContext'
 import { authFormStyles as styles } from '@/lib/auth/authFormStyles'
 import {
   validateEmail as validateEmailFormat,
@@ -29,6 +29,7 @@ const { palette } = Colors
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -60,12 +61,11 @@ export default function LoginScreen() {
     setLoginError(null)
     setIsLoading(true)
     try {
-      const success = await mockLogin(email, password)
-      if (success) {
-        router.replace('/(tabs)')
-      } else {
+      const success = await login(email, password)
+      if (!success) {
         setLoginError('ログインに失敗しました')
       }
+      // 成功時は AuthContext の状態更新により自動的にホーム画面に切り替わる
     } catch {
       setLoginError('エラーが発生しました')
     } finally {

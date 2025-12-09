@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
-import { mockSignup } from '@/lib/auth/authStorage'
+import { useAuth } from '@/lib/auth/AuthContext'
 import { authFormStyles as styles } from '@/lib/auth/authFormStyles'
 import {
   MAX_USERNAME_LENGTH,
@@ -31,6 +31,7 @@ const { palette } = Colors
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets()
+  const { signup } = useAuth()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -87,12 +88,11 @@ export default function SignupScreen() {
     setApiError(null)
     setIsLoading(true)
     try {
-      const success = await mockSignup({ username, email, password })
-      if (success) {
-        router.replace('/(tabs)')
-      } else {
+      const success = await signup({ username, email, password })
+      if (!success) {
         setApiError('登録に失敗しました')
       }
+      // 成功時は AuthContext の状態更新により自動的にホーム画面に切り替わる
     } catch {
       setApiError('エラーが発生しました')
     } finally {

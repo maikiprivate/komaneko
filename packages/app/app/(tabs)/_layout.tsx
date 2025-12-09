@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { Tabs } from 'expo-router'
+import { Redirect, Tabs } from 'expo-router'
 import type React from 'react'
 import { Image, View } from 'react-native'
 
@@ -9,6 +9,7 @@ const tsumeshogiIcon = require('@/assets/images/tabs/tsumeshogi.png')
 import { LogoHeader } from '@/components/icons/LogoHeader'
 import { useClientOnlyValue } from '@/components/useClientOnlyValue'
 import { useTheme } from '@/components/useTheme'
+import { useAuth } from '@/lib/auth/AuthContext'
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name']
@@ -19,6 +20,17 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const { colors, palette } = useTheme()
+  const { isAuthenticated, isLoading } = useAuth()
+
+  // 認証状態の読み込み中は何も表示しない
+  if (isLoading) {
+    return null
+  }
+
+  // 未認証の場合はウェルカム画面へリダイレクト
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)" />
+  }
 
   return (
     <Tabs

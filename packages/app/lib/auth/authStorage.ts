@@ -58,52 +58,20 @@ export async function setAuthState(state: AuthState): Promise<boolean> {
 
 /**
  * 認証状態をクリア（ログアウト用）
+ * @returns 成功時は true、失敗時は false
  */
-export async function clearAuthState(): Promise<void> {
+export async function clearAuthState(): Promise<boolean> {
   try {
     await AsyncStorage.removeItem(AUTH_KEY)
+    return true
   } catch (error) {
     console.error('[authStorage] Failed to clear auth state:', error)
+    return false
   }
-}
-
-/**
- * モックログイン
- * TODO: 本番実装時はAPI呼び出しに置き換え
- */
-export async function mockLogin(email: string, password: string): Promise<boolean> {
-  // password はモック実装では使用しない（本番ではサーバーに送信）
-  void password
-  return setAuthState({
-    isAuthenticated: true,
-    userId: `user_${Date.now()}`,
-    email,
-  })
 }
 
 export interface SignupParams {
   username: string
   email: string
   password: string
-}
-
-/**
- * モック新規登録
- * TODO: 本番実装時は既存ユーザーチェック、メール確認フロー、パスワードハッシュ化を追加
- */
-export async function mockSignup(params: SignupParams): Promise<boolean> {
-  // パスワードはモック実装では保存しない（本番ではサーバーに送信）
-  return setAuthState({
-    isAuthenticated: true,
-    userId: `user_${Date.now()}`,
-    username: params.username,
-    email: params.email,
-  })
-}
-
-/**
- * ログアウト
- */
-export async function logout(): Promise<void> {
-  await clearAuthState()
 }
