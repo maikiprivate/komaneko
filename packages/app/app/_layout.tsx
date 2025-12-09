@@ -17,7 +17,8 @@ export {
 } from 'expo-router'
 
 export const unstable_settings = {
-  initialRouteName: '(tabs)',
+  // TODO: 認証フロー実装後、認証状態に応じて分岐する
+  initialRouteName: '(auth)',  // テスト用に一時的に変更
 }
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -58,6 +59,7 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="tsumeshogi/[id]"
