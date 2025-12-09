@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
+import Colors from '@/constants/Colors'
 import { useAuth } from '@/lib/auth/AuthContext'
 import {
   calculateWeeklyProgress,
@@ -272,10 +273,10 @@ const styles = StyleSheet.create({
     marginTop: -40,
     marginHorizontal: 16,
     borderWidth: 2,
-    borderColor: '#FF8C42',
+    borderColor: Colors.palette.orange,
   },
   dialogText: {
-    color: '#2D3436',
+    color: Colors.palette.gray800,
     fontSize: 16,
     fontWeight: '500',
     textAlign: 'center',

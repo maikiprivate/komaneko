@@ -8,6 +8,10 @@ import { router } from 'expo-router'
 import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import Colors from '@/constants/Colors'
+
+const { palette } = Colors
+
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets()
 
@@ -53,7 +57,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    backgroundColor: '#F5E6D3',
+    backgroundColor: palette.gameBackground,
   },
   buttonContainer: {
     position: 'absolute',
@@ -64,26 +68,26 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: '#FF8C42',
+    backgroundColor: palette.orange,
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: palette.white,
     fontSize: 17,
     fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: palette.white,
     borderWidth: 2,
-    borderColor: '#FF8C42',
+    borderColor: palette.orange,
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: '#FF8C42',
+    color: palette.orange,
     fontSize: 17,
     fontWeight: '700',
   },
