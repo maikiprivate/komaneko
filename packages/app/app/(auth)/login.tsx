@@ -10,7 +10,6 @@ import { useState } from 'react'
 import {
   Image,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -20,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
 import { mockLogin } from '@/lib/auth/authStorage'
+import { authFormStyles as styles } from '@/lib/auth/authFormStyles'
 import {
   validateEmail as validateEmailFormat,
   validatePassword as validatePasswordFormat,
@@ -156,10 +156,10 @@ export default function LoginScreen() {
               <Text style={styles.submitButtonText}>{isLoading ? 'ログイン中...' : 'ログイン'}</Text>
             </TouchableOpacity>
 
-            <View style={styles.signupLinkContainer}>
-              <Text style={styles.signupLinkText}>アカウントをお持ちでない方は</Text>
+            <View style={styles.linkContainer}>
+              <Text style={styles.linkText}>アカウントをお持ちでない方は</Text>
               <TouchableOpacity onPress={handleSignup} accessibilityRole="link">
-                <Text style={styles.signupLink}>新規登録</Text>
+                <Text style={styles.link}>新規登録</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -175,99 +175,3 @@ export default function LoginScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.gameBackground,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-  backButton: {
-    position: 'absolute',
-    left: 20,
-    padding: 8,
-    zIndex: 10,
-  },
-  characterContainer: {
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 32,
-  },
-  character: {
-    width: 200,
-    height: 200,
-  },
-  greeting: {
-    marginTop: 16,
-    fontSize: 30,
-    fontWeight: '700',
-    color: palette.gray800,
-  },
-  formContainer: {
-    gap: 20,
-  },
-  inputWrapper: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: palette.gray800,
-  },
-  input: {
-    backgroundColor: palette.white,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: palette.gray200,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: palette.gray800,
-  },
-  inputError: {
-    borderColor: palette.red,
-  },
-  fieldError: {
-    color: palette.red,
-    fontSize: 12,
-  },
-  errorText: {
-    color: palette.red,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  submitButton: {
-    backgroundColor: palette.orange,
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: palette.white,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  signupLinkContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
-  },
-  signupLinkText: {
-    fontSize: 14,
-    color: palette.gray600,
-  },
-  signupLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: palette.orange,
-  },
-})
