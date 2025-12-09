@@ -12,6 +12,8 @@ export interface AuthState {
   isAuthenticated: boolean
   /** ユーザーID */
   userId?: string
+  /** ユーザー名 */
+  username?: string
   /** メールアドレス */
   email?: string
 }
@@ -32,6 +34,7 @@ export async function getAuthState(): Promise<AuthState> {
     return {
       isAuthenticated: parsed.isAuthenticated ?? false,
       userId: parsed.userId,
+      username: parsed.username,
       email: parsed.email,
     }
   } catch (error) {
@@ -68,7 +71,9 @@ export async function clearAuthState(): Promise<void> {
  * モックログイン
  * TODO: 本番実装時はAPI呼び出しに置き換え
  */
-export async function mockLogin(email: string): Promise<boolean> {
+export async function mockLogin(email: string, password: string): Promise<boolean> {
+  // password はモック実装では使用しない（本番ではサーバーに送信）
+  void password
   return setAuthState({
     isAuthenticated: true,
     userId: `user_${Date.now()}`,
@@ -76,15 +81,23 @@ export async function mockLogin(email: string): Promise<boolean> {
   })
 }
 
+export interface SignupParams {
+  username: string
+  email: string
+  password: string
+}
+
 /**
  * モック新規登録
- * TODO: 本番実装時は既存ユーザーチェック、メール確認フローを追加
+ * TODO: 本番実装時は既存ユーザーチェック、メール確認フロー、パスワードハッシュ化を追加
  */
-export async function mockSignup(email: string): Promise<boolean> {
+export async function mockSignup(params: SignupParams): Promise<boolean> {
+  // パスワードはモック実装では保存しない（本番ではサーバーに送信）
   return setAuthState({
     isAuthenticated: true,
     userId: `user_${Date.now()}`,
-    email,
+    username: params.username,
+    email: params.email,
   })
 }
 

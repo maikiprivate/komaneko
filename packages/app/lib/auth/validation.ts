@@ -8,8 +8,33 @@ export function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
+/** ユーザー名の最小文字数 */
+export const MIN_USERNAME_LENGTH = 2
+
+/** ユーザー名の最大文字数 */
+export const MAX_USERNAME_LENGTH = 20
+
 /** パスワードの最小文字数 */
 export const MIN_PASSWORD_LENGTH = 8
+
+/**
+ * ユーザー名のバリデーション
+ * - 2文字以上20文字以下
+ * @returns エラーメッセージ（問題なければnull）
+ */
+export function validateUsername(username: string): string | null {
+  const trimmed = username.trim()
+  if (!trimmed) {
+    return 'ユーザー名を入力してください'
+  }
+  if (trimmed.length < MIN_USERNAME_LENGTH) {
+    return `ユーザー名は${MIN_USERNAME_LENGTH}文字以上で入力してください`
+  }
+  if (trimmed.length > MAX_USERNAME_LENGTH) {
+    return `ユーザー名は${MAX_USERNAME_LENGTH}文字以下で入力してください`
+  }
+  return null
+}
 
 /**
  * メールアドレスのバリデーション
