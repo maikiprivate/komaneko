@@ -28,7 +28,7 @@ packages/app/
 │   ├── _layout.tsx              # 修正: 認証状態で初期ルート分岐
 │   ├── (auth)/                  # 新規: 認証グループ
 │   │   ├── _layout.tsx          # 認証画面用レイアウト（ヘッダーなし）
-│   │   ├── welcome.tsx          # ウェルカム画面
+│   │   ├── index.tsx            # ウェルカム画面
 │   │   ├── login.tsx            # ログイン画面
 │   │   └── signup.tsx           # 新規登録画面
 │   └── (tabs)/                  # 既存: 認証後のメイン画面
