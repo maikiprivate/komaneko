@@ -64,6 +64,34 @@ export const authFormStyles = StyleSheet.create({
   inputError: {
     borderColor: palette.red,
   },
+  // パスワード入力用
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: palette.white,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.gray200,
+  },
+  passwordContainerError: {
+    borderColor: palette.red,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: palette.gray800,
+  },
+  passwordToggle: {
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  passwordToggleIcon: {
+    width: 24,
+    height: 24,
+    tintColor: palette.gray400,
+  },
   fieldError: {
     color: palette.red,
     fontSize: 12,

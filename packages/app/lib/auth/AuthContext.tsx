@@ -14,6 +14,16 @@ import {
   type SignupParams,
 } from './authStorage'
 
+/**
+ * モック用のユーザーID生成
+ * Date.now()のみだと同一ミリ秒で重複の可能性があるため、ランダム文字列を付加
+ */
+function generateMockUserId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 10)
+  return `user_${timestamp}_${randomPart}`
+}
+
 export interface AuthContextType {
   /** 認証済みかどうか */
   isAuthenticated: boolean
@@ -48,9 +58,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // 初回マウント時に認証状態を読み込み
   useEffect(() => {
     const loadAuthState = async () => {
-      const state = await getAuthState()
-      setAuthStateLocal(state)
-      setIsLoading(false)
+      try {
+        const state = await getAuthState()
+        setAuthStateLocal(state)
+      } catch (error) {
+        console.error('[AuthContext] Failed to load auth state:', error)
+        // エラー時はデフォルト状態（未認証）のまま継続
+      } finally {
+        setIsLoading(false)
+      }
     }
     loadAuthState()
   }, [])
@@ -61,7 +77,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const newState: AuthState = {
       isAuthenticated: true,
-      userId: `user_${Date.now()}`,
+      userId: generateMockUserId(),
       email,
     }
 
@@ -76,7 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // パスワードはモック実装では保存しない（本番ではサーバーに送信）
     const newState: AuthState = {
       isAuthenticated: true,
-      userId: `user_${Date.now()}`,
+      userId: generateMockUserId(),
       username: params.username,
       email: params.email,
     }

@@ -9,12 +9,17 @@ import { router } from 'expo-router'
 import { useState } from 'react'
 import {
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
+
+const visibleIcon = require('../../assets/images/icons/visible.png')
+const hideIcon = require('../../assets/images/icons/hide.png')
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
@@ -33,6 +38,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
@@ -85,7 +91,10 @@ export default function LoginScreen() {
   const isButtonDisabled = isLoading || !email.trim() || !password.trim() || hasValidationError
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 44 }]}
         keyboardShouldPersistTaps="handled"
@@ -123,22 +132,35 @@ export default function LoginScreen() {
 
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>パスワード</Text>
-              <TextInput
-                style={[styles.input, passwordError && styles.inputError]}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text)
-                  if (passwordError) setPasswordError(null)
-                }}
-                onBlur={validatePassword}
-                placeholder="パスワードを入力"
-                placeholderTextColor={palette.gray400}
-                textContentType="password"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel="パスワード入力"
-              />
+              <View style={[styles.passwordContainer, passwordError && styles.passwordContainerError]}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text)
+                    if (passwordError) setPasswordError(null)
+                  }}
+                  onBlur={validatePassword}
+                  placeholder="パスワードを入力"
+                  placeholderTextColor={palette.gray400}
+                  textContentType="oneTimeCode"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessibilityLabel="パスワード入力"
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword(!showPassword)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
+                >
+                  <Image
+                    source={showPassword ? hideIcon : visibleIcon}
+                    style={styles.passwordToggleIcon}
+                  />
+                </TouchableOpacity>
+              </View>
               {passwordError && <Text style={styles.fieldError}>{passwordError}</Text>}
             </View>
 
@@ -172,6 +194,6 @@ export default function LoginScreen() {
       >
         <FontAwesome name="chevron-left" size={20} color={palette.black} />
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   )
 }

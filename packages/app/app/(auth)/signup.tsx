@@ -9,12 +9,17 @@ import { router } from 'expo-router'
 import { useState } from 'react'
 import {
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
+
+const visibleIcon = require('../../assets/images/icons/visible.png')
+const hideIcon = require('../../assets/images/icons/hide.png')
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
@@ -37,6 +42,7 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [usernameError, setUsernameError] = useState<string | null>(null)
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -122,7 +128,10 @@ export default function SignupScreen() {
     hasValidationError
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 44 }]}
         keyboardShouldPersistTaps="handled"
@@ -181,44 +190,70 @@ export default function SignupScreen() {
 
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>パスワード</Text>
-              <TextInput
-                style={[styles.input, passwordError && styles.inputError]}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text)
-                  if (passwordError) setPasswordError(null)
-                  if (confirmPasswordError) setConfirmPasswordError(null)
-                }}
-                onBlur={validatePassword}
-                placeholder="パスワードを入力"
-                placeholderTextColor={palette.gray400}
-                textContentType="newPassword"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel="パスワード入力"
-              />
+              <View style={[styles.passwordContainer, passwordError && styles.passwordContainerError]}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text)
+                    if (passwordError) setPasswordError(null)
+                    if (confirmPasswordError) setConfirmPasswordError(null)
+                  }}
+                  onBlur={validatePassword}
+                  placeholder="パスワードを入力"
+                  placeholderTextColor={palette.gray400}
+                  textContentType="oneTimeCode"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessibilityLabel="パスワード入力"
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword(!showPassword)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
+                >
+                  <Image
+                    source={showPassword ? hideIcon : visibleIcon}
+                    style={styles.passwordToggleIcon}
+                  />
+                </TouchableOpacity>
+              </View>
               {passwordError && <Text style={styles.fieldError}>{passwordError}</Text>}
             </View>
 
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>パスワード（確認）</Text>
-              <TextInput
-                style={[styles.input, confirmPasswordError && styles.inputError]}
-                value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text)
-                  if (confirmPasswordError) setConfirmPasswordError(null)
-                }}
-                onBlur={validateConfirmPassword}
-                placeholder="パスワードを再入力"
-                placeholderTextColor={palette.gray400}
-                textContentType="newPassword"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel="パスワード確認入力"
-              />
+              <View style={[styles.passwordContainer, confirmPasswordError && styles.passwordContainerError]}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text)
+                    if (confirmPasswordError) setConfirmPasswordError(null)
+                  }}
+                  onBlur={validateConfirmPassword}
+                  placeholder="パスワードを再入力"
+                  placeholderTextColor={palette.gray400}
+                  textContentType="oneTimeCode"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessibilityLabel="パスワード確認入力"
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword(!showPassword)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
+                >
+                  <Image
+                    source={showPassword ? hideIcon : visibleIcon}
+                    style={styles.passwordToggleIcon}
+                  />
+                </TouchableOpacity>
+              </View>
               {confirmPasswordError && <Text style={styles.fieldError}>{confirmPasswordError}</Text>}
             </View>
 
@@ -252,6 +287,6 @@ export default function SignupScreen() {
       >
         <FontAwesome name="chevron-left" size={20} color={palette.black} />
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   )
 }

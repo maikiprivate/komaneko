@@ -129,7 +129,7 @@ interface AuthState {
 ```typescript
 // lib/auth/authStorage.ts
 
-const AUTH_KEY = 'komaneko_auth_state'
+const AUTH_KEY = '@komaneko/auth'
 
 // 取得
 export async function getAuthState(): Promise<AuthState>
