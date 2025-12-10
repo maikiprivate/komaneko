@@ -1,12 +1,14 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Redirect, Tabs } from 'expo-router'
 import type React from 'react'
-import { Image, View } from 'react-native'
+import { useState } from 'react'
+import { Image, TouchableOpacity, View } from 'react-native'
 
 const lessonIcon = require('@/assets/images/tabs/lesson.png')
 const tsumeshogiIcon = require('@/assets/images/tabs/tsumeshogi.png')
 
 import { LogoHeader } from '@/components/icons/LogoHeader'
+import { SettingsModal } from '@/components/settings/SettingsModal'
 import { useClientOnlyValue } from '@/components/useClientOnlyValue'
 import { useTheme } from '@/components/useTheme'
 import { useAuth } from '@/lib/auth/AuthContext'
@@ -21,6 +23,7 @@ function TabBarIcon(props: {
 export default function TabLayout() {
   const { colors, palette } = useTheme()
   const { isAuthenticated, isLoading } = useAuth()
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false)
 
   // 認証状態の読み込み中は何も表示しない
   if (isLoading) {
@@ -33,33 +36,44 @@ export default function TabLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.tabBar.active,
-        tabBarInactiveTintColor: colors.tabBar.inactive,
-        tabBarStyle: {
-          backgroundColor: colors.tabBar.background,
-        },
-        headerStyle: {
-          backgroundColor: palette.orange,
-        },
-        headerTintColor: '#FFFFFF',
-        headerShown: useClientOnlyValue(false, true),
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: '',
-          tabBarLabel: 'ホーム',
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
-          headerLeft: () => (
-            <View style={{ marginLeft: 15, marginTop: -2 }}>
-              <LogoHeader width={119} height={27} />
-            </View>
-          ),
+    <>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: colors.tabBar.active,
+          tabBarInactiveTintColor: colors.tabBar.inactive,
+          tabBarStyle: {
+            backgroundColor: colors.tabBar.background,
+          },
+          headerStyle: {
+            backgroundColor: palette.orange,
+          },
+          headerTintColor: '#FFFFFF',
+          headerShown: useClientOnlyValue(false, true),
         }}
-      />
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: '',
+            tabBarLabel: 'ホーム',
+            tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+            headerLeft: () => (
+              <View style={{ marginLeft: 15, marginTop: -2 }}>
+                <LogoHeader width={119} height={27} />
+              </View>
+            ),
+            headerRight: () => (
+              <TouchableOpacity
+                style={{ marginRight: 15, padding: 4 }}
+                onPress={() => setIsSettingsVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel="設定"
+              >
+                <FontAwesome name="gear" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            ),
+          }}
+        />
       <Tabs.Screen
         name="lesson"
         options={{
@@ -96,6 +110,8 @@ export default function TabLayout() {
           ),
         }}
       />
-    </Tabs>
+      </Tabs>
+      <SettingsModal visible={isSettingsVisible} onClose={() => setIsSettingsVisible(false)} />
+    </>
   )
 }
