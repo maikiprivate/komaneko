@@ -5,7 +5,7 @@
  */
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -30,43 +30,51 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   // ログアウト/退会時はアニメーションを無効にして白い画面が見えるのを防ぐ
   const [disableAnimation, setDisableAnimation] = useState(false)
 
+  // モーダルが閉じられたときにアニメーション状態をリセット
+  useEffect(() => {
+    if (!visible) {
+      setDisableAnimation(false)
+    }
+  }, [visible])
+
   const handleLogout = async () => {
     // アニメーションを無効にしてからログアウト
     setDisableAnimation(true)
-    await logout()
+    try {
+      await logout()
+    } catch (error) {
+      console.error('[SettingsModal] Logout failed:', error)
+      setDisableAnimation(false)
+      Alert.alert('エラー', 'ログアウトに失敗しました。もう一度お試しください。')
+    }
   }
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      '退会確認',
-      '本当に退会しますか？\nこの操作は取り消せません。',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '退会する',
-          style: 'destructive',
-          onPress: async () => {
-            // アニメーションを無効にしてから退会処理
-            setDisableAnimation(true)
-            // TODO: deleteAccount を AuthContext に追加後に有効化
-            // await deleteAccount()
-          },
-        },
-      ]
-    )
+    // 退会機能は未実装のため準備中メッセージを表示
+    Alert.alert('準備中', '退会機能は現在準備中です。')
   }
 
   // 開発用: ストリークリセット
   const handleResetStreak = async () => {
-    await resetStreakData()
-    await clearDemoToday()
-    Alert.alert('リセット完了', 'ストリークデータをリセットしました')
+    try {
+      await resetStreakData()
+      await clearDemoToday()
+      Alert.alert('リセット完了', 'ストリークデータをリセットしました')
+    } catch (error) {
+      console.error('[SettingsModal] Reset streak failed:', error)
+      Alert.alert('エラー', 'ストリークのリセットに失敗しました')
+    }
   }
 
   // 開発用: デモデータ設定
   const handleSetDemoData = async () => {
-    await setDemoStreakData()
-    Alert.alert('デモデータ設定完了', '仮の今日を金曜日に設定し、月曜と木曜に学習したデータを設定しました')
+    try {
+      await setDemoStreakData()
+      Alert.alert('デモデータ設定完了', '仮の今日を金曜日に設定し、月曜と木曜に学習したデータを設定しました')
+    } catch (error) {
+      console.error('[SettingsModal] Set demo data failed:', error)
+      Alert.alert('エラー', 'デモデータの設定に失敗しました')
+    }
   }
 
   return (

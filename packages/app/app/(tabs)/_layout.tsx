@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Redirect, Tabs } from 'expo-router'
 import type React from 'react'
 import { useState } from 'react'
-import { Image, TouchableOpacity, View } from 'react-native'
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 const lessonIcon = require('@/assets/images/tabs/lesson.png')
 const tsumeshogiIcon = require('@/assets/images/tabs/tsumeshogi.png')
@@ -13,11 +13,14 @@ import { useClientOnlyValue } from '@/components/useClientOnlyValue'
 import { useTheme } from '@/components/useTheme'
 import { useAuth } from '@/lib/auth/AuthContext'
 
+const HEADER_ICON_SIZE = 24
+const TAB_ICON_SIZE = 28
+
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name']
   color: string
 }) {
-  return <FontAwesome size={28} style={{ marginBottom: 4 }} {...props} />
+  return <FontAwesome size={TAB_ICON_SIZE} style={styles.tabIcon} {...props} />
 }
 
 export default function TabLayout() {
@@ -47,7 +50,7 @@ export default function TabLayout() {
           headerStyle: {
             backgroundColor: palette.orange,
           },
-          headerTintColor: '#FFFFFF',
+          headerTintColor: palette.white,
           headerShown: useClientOnlyValue(false, true),
         }}
       >
@@ -58,18 +61,18 @@ export default function TabLayout() {
             tabBarLabel: 'ホーム',
             tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
             headerLeft: () => (
-              <View style={{ marginLeft: 15, marginTop: -2 }}>
+              <View style={styles.headerLeft}>
                 <LogoHeader width={119} height={27} />
               </View>
             ),
             headerRight: () => (
               <TouchableOpacity
-                style={{ marginRight: 15, padding: 4 }}
+                style={styles.headerRight}
                 onPress={() => setIsSettingsVisible(true)}
                 accessibilityRole="button"
                 accessibilityLabel="設定"
               >
-                <FontAwesome name="gear" size={24} color="#FFFFFF" />
+                <FontAwesome name="gear" size={HEADER_ICON_SIZE} color={palette.white} />
               </TouchableOpacity>
             ),
           }}
@@ -82,11 +85,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Image
               source={lessonIcon}
-              style={{ width: 28, height: 28, tintColor: color, marginBottom: 4 }}
+              style={[styles.tabIconImage, { tintColor: color }]}
             />
           ),
           headerLeft: () => (
-            <View style={{ marginLeft: 15, marginTop: -2 }}>
+            <View style={styles.headerLeft}>
               <LogoHeader width={119} height={27} />
             </View>
           ),
@@ -100,11 +103,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Image
               source={tsumeshogiIcon}
-              style={{ width: 28, height: 28, tintColor: color, marginBottom: 4 }}
+              style={[styles.tabIconImage, { tintColor: color }]}
             />
           ),
           headerLeft: () => (
-            <View style={{ marginLeft: 15, marginTop: -2 }}>
+            <View style={styles.headerLeft}>
               <LogoHeader width={119} height={27} />
             </View>
           ),
@@ -115,3 +118,22 @@ export default function TabLayout() {
     </>
   )
 }
+
+const styles = StyleSheet.create({
+  headerLeft: {
+    marginLeft: 15,
+    marginTop: -2,
+  },
+  headerRight: {
+    marginRight: 15,
+    padding: 4,
+  },
+  tabIcon: {
+    marginBottom: 4,
+  },
+  tabIconImage: {
+    width: TAB_ICON_SIZE,
+    height: TAB_ICON_SIZE,
+    marginBottom: 4,
+  },
+})
