@@ -10,6 +10,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
 import { useAuth } from '@/lib/auth/AuthContext'
+import {
+  clearDemoToday,
+  resetStreakData,
+  setDemoStreakData,
+} from '@/lib/streak/streakStorage'
 
 const { palette } = Colors
 
@@ -44,6 +49,19 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         },
       ]
     )
+  }
+
+  // 開発用: ストリークリセット
+  const handleResetStreak = async () => {
+    await resetStreakData()
+    await clearDemoToday()
+    Alert.alert('リセット完了', 'ストリークデータをリセットしました')
+  }
+
+  // 開発用: デモデータ設定
+  const handleSetDemoData = async () => {
+    await setDemoStreakData()
+    Alert.alert('デモデータ設定完了', '仮の今日を金曜日に設定し、月曜と木曜に学習したデータを設定しました')
   }
 
   return (
@@ -93,7 +111,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <View style={styles.sectionSpacer} />
 
           {/* アカウントセクション */}
-          <View style={styles.sectionLast}>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>アカウント</Text>
             <TouchableOpacity
               style={styles.listItem}
@@ -115,6 +133,38 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               <Text style={styles.linkText}>退会</Text>
             </TouchableOpacity>
           </View>
+
+          {/* 開発用セクション（DEVモードのみ） */}
+          {__DEV__ && (
+            <>
+              <View style={styles.sectionSpacer} />
+              <View style={styles.sectionLast}>
+                <Text style={styles.sectionTitle}>開発用</Text>
+                <TouchableOpacity
+                  style={styles.listItem}
+                  onPress={handleResetStreak}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="ストリークリセット"
+                >
+                  <Text style={styles.listItemText}>ストリークリセット</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.listItem}
+                  onPress={handleSetDemoData}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="デモデータ設定"
+                >
+                  <Text style={styles.listItemText}>デモデータ設定</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* 開発用セクションがない場合、アカウントセクションを最後まで伸ばす */}
+          {!__DEV__ && <View style={styles.sectionLastSpacer} />}
         </ScrollView>
       </View>
     </Modal>
@@ -177,6 +227,10 @@ const styles = StyleSheet.create({
   sectionSpacer: {
     height: 8,
     backgroundColor: palette.gray100,
+  },
+  sectionLastSpacer: {
+    flex: 1,
+    backgroundColor: palette.white,
   },
   listItem: {
     paddingVertical: 14,

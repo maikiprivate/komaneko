@@ -1,20 +1,16 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
-import { Alert, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, ImageBackground, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
 import Colors from '@/constants/Colors'
-import { useAuth } from '@/lib/auth/AuthContext'
 import {
   calculateWeeklyProgress,
-  clearDemoToday,
   getDemoToday,
   getStreakData,
-  resetStreakData,
-  setDemoStreakData,
   type WeeklyStreakInfo,
 } from '@/lib/streak/streakStorage'
 import { mockHomeData } from '@/mocks/homeData'
@@ -33,8 +29,7 @@ function formatRecoveryTime(minutes: number): string {
 }
 
 export default function HomeScreen() {
-  const { colors, palette } = useTheme()
-  const { logout } = useAuth()
+  const { colors } = useTheme()
   const { hearts } = mockHomeData
   const heartsPercent = (hearts.current / hearts.max) * 100
 
@@ -57,34 +52,6 @@ export default function HomeScreen() {
       loadStreak()
     }, [])
   )
-
-  // 開発用: ストリークリセット
-  const handleResetStreak = async () => {
-    await resetStreakData()
-    await clearDemoToday() // デモ用の仮の今日もクリア
-    // リセット後に再読み込み
-    const data = await getStreakData()
-    const info = calculateWeeklyProgress(data)
-    setStreakInfo(info)
-    Alert.alert('リセット完了', 'ストリークデータをリセットしました')
-  }
-
-  // 開発用: デモデータ設定
-  const handleSetDemoData = async () => {
-    await setDemoStreakData()
-    // 設定後に再読み込み（デモ用の仮の今日を使用）
-    const data = await getStreakData()
-    const demoToday = await getDemoToday()
-    const info = calculateWeeklyProgress(data, demoToday)
-    setStreakInfo(info)
-    Alert.alert('デモデータ設定完了', '仮の今日を金曜日に設定し、月曜と木曜に学習したデータを設定しました')
-  }
-
-  // 開発用: ログアウト（認証リセット）
-  const handleLogout = async () => {
-    await logout()
-    // AuthContext の状態更新により自動的にウェルカム画面に切り替わる
-  }
 
   return (
     <ImageBackground source={homeBackground} style={styles.backgroundImage} resizeMode="cover">
@@ -138,41 +105,6 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
-
-        {/* 開発用: テストボタン */}
-        {__DEV__ && (
-          <View style={styles.testButtonContainer}>
-            <View style={styles.testButtonRow}>
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: palette.red }]}
-                onPress={handleResetStreak}
-              >
-                <FontAwesome name="refresh" size={14} color={palette.white} />
-                <Text style={[styles.testButtonText, { color: palette.white }]}>
-                  リセット
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: palette.orange }]}
-                onPress={handleSetDemoData}
-              >
-                <FontAwesome name="database" size={14} color={palette.white} />
-                <Text style={[styles.testButtonText, { color: palette.white }]}>
-                  デモデータ
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={[styles.testButton, { backgroundColor: palette.gray600 }]}
-              onPress={handleLogout}
-            >
-              <FontAwesome name="sign-out" size={14} color={palette.white} />
-              <Text style={[styles.testButtonText, { color: palette.white }]}>
-                ログアウト
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* キャラクター表示 */}
         <View style={styles.characterArea}>
@@ -285,28 +217,5 @@ const styles = StyleSheet.create({
   characterImage: {
     width: 320,
     height: 320,
-  },
-  // 開発用スタイル
-  testButtonContainer: {
-    gap: 8,
-    marginTop: 12,
-  },
-  testButtonRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  testButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  testButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
 })
