@@ -45,7 +45,8 @@ export async function getStreakData(): Promise<StreakData> {
       }
     }
     return DEFAULT_STREAK_DATA
-  } catch {
+  } catch (error) {
+    console.error('[streakStorage] Failed to get streak data:', error)
     return DEFAULT_STREAK_DATA
   }
 }
@@ -125,7 +126,8 @@ export async function setDemoStreakData(): Promise<void> {
 export async function getDemoToday(): Promise<string | null> {
   try {
     return await AsyncStorage.getItem(DEMO_TODAY_KEY)
-  } catch {
+  } catch (error) {
+    console.error('[streakStorage] Failed to get demo today:', error)
     return null
   }
 }
