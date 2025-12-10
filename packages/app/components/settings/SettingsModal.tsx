@@ -5,6 +5,7 @@
  */
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { useState } from 'react'
 import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -26,9 +27,12 @@ interface SettingsModalProps {
 export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const insets = useSafeAreaInsets()
   const { user, logout } = useAuth()
+  // ログアウト/退会時はアニメーションを無効にして白い画面が見えるのを防ぐ
+  const [disableAnimation, setDisableAnimation] = useState(false)
 
   const handleLogout = async () => {
-    onClose()
+    // アニメーションを無効にしてからログアウト
+    setDisableAnimation(true)
     await logout()
   }
 
@@ -42,7 +46,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           text: '退会する',
           style: 'destructive',
           onPress: async () => {
-            onClose()
+            // アニメーションを無効にしてから退会処理
+            setDisableAnimation(true)
             // TODO: deleteAccount を AuthContext に追加後に有効化
             // await deleteAccount()
           },
@@ -67,7 +72,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={disableAnimation ? 'none' : 'slide'}
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
