@@ -8,6 +8,9 @@ export const ErrorCodes = {
   SESSION_EXPIRED: { status: 401, message: 'セッションが期限切れです' },
   INVALID_TOKEN: { status: 401, message: 'トークンが無効です' },
   TOKEN_EXPIRED: { status: 401, message: 'トークンが期限切れです' },
+  INVALID_CREDENTIALS: { status: 401, message: 'メールアドレスまたはパスワードが正しくありません' },
+  EMAIL_ALREADY_EXISTS: { status: 409, message: 'このメールアドレスは既に使用されています' },
+  USERNAME_ALREADY_EXISTS: { status: 409, message: 'このユーザー名は既に使用されています' },
 
   // ========== 設定 ==========
   MISSING_JWT_SECRET: { status: 500, message: 'JWT_SECRETが設定されていません' },
