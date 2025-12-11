@@ -1,17 +1,17 @@
-# 認証設計（Phase 7 + Phase 9）
+# 認証設計（Phase 7〜9）
 
 ## 概要
 
 アプリ起動時のウェルカム画面と、ログイン/新規登録画面を実装。
-Phase 7でアプリUI（モック認証）、Phase 9でバックエンドAPIを実装済み。
+認証機能は「アプリUI → API → 連携」の3フェーズで実装。
 
 ### 実装状況
 
 | Phase | 内容 | 状態 |
 |-------|------|------|
 | Phase 7 | アプリUI（モック認証） | 完了 |
-| Phase 9 | バックエンドAPI | 完了 |
-| Phase 12 | アプリ-API連携 | 未着手 |
+| Phase 8 | バックエンドAPI | 完了 |
+| Phase 9 | アプリ-API連携 | 作業中 |
 
 ## 画面フロー
 
@@ -266,7 +266,7 @@ router.replace('/(auth)/welcome')
 
 ---
 
-## バックエンドAPI設計（Phase 9）
+## バックエンドAPI設計（Phase 8）
 
 ### エンドポイント
 
@@ -307,17 +307,92 @@ router.replace('/(auth)/welcome')
 
 ---
 
+## アプリ-API連携設計（Phase 9）
+
+### 概要
+
+Phase 7で作成したモック認証を、Phase 8で作成したAPIに接続する。
+
+### 実装タスク
+
+1. **APIクライアント設定**
+   - ベースURL設定（環境変数で切り替え）
+   - 共通ヘッダー設定
+   - エラーハンドリング
+
+2. **トークン管理**
+   - `expo-secure-store` でJWTを安全に保存
+   - AsyncStorageからSecureStoreへの移行
+
+3. **認証API連携**
+   - 新規登録（POST /api/auth/register）
+   - ログイン（POST /api/auth/login）
+   - ログアウト（POST /api/auth/logout）
+   - ユーザー情報取得（GET /api/auth/me）
+   - アカウント削除（DELETE /api/auth/me）
+
+4. **UI改善**
+   - ローディング状態の表示
+   - APIエラーメッセージの表示
+   - ネットワークエラーハンドリング
+
+### ファイル構成（追加予定）
+
+```
+packages/app/
+├── lib/
+│   ├── api/
+│   │   ├── client.ts           # APIクライアント（fetch wrapper）
+│   │   ├── config.ts           # ベースURL等の設定
+│   │   └── auth.ts             # 認証API関数
+│   └── auth/
+│       ├── AuthContext.tsx     # 既存（API連携に修正）
+│       ├── authStorage.ts      # 既存（SecureStore対応に修正）
+│       └── tokenStorage.ts     # JWTトークン管理（新規）
+```
+
+### API呼び出しフロー
+
+```
+[新規登録]
+signup.tsx → lib/api/auth.ts → POST /api/auth/register
+          ↓
+          成功: トークン保存 → AuthContext更新 → ホーム画面へ
+          失敗: エラーメッセージ表示
+
+[ログイン]
+login.tsx → lib/api/auth.ts → POST /api/auth/login
+          ↓
+          成功: トークン保存 → AuthContext更新 → ホーム画面へ
+          失敗: エラーメッセージ表示
+
+[ログアウト]
+設定画面 → lib/api/auth.ts → POST /api/auth/logout
+          ↓
+          トークン削除 → AuthContext更新 → ウェルカム画面へ
+```
+
+### エラーハンドリング
+
+| APIエラーコード | 表示メッセージ |
+|----------------|---------------|
+| EMAIL_ALREADY_EXISTS | このメールアドレスは既に使用されています |
+| USERNAME_ALREADY_EXISTS | このユーザー名は既に使用されています |
+| INVALID_CREDENTIALS | メールアドレスまたはパスワードが正しくありません |
+| VALIDATION_ERROR | 入力内容を確認してください |
+| NETWORK_ERROR | ネットワークに接続できません |
+
+---
+
 ## 将来の拡張
 
-### 実装済み（Phase 9）
-- [x] バックエンドAPI連携（実際の認証）
+### 実装済み（Phase 8）
+- [x] バックエンドAPI（実際の認証）
 - [x] 入力バリデーション
 - [x] エラーメッセージ表示
 
 ### 未実装
-- [ ] アプリ-API連携（Phase 12）
 - [ ] ソーシャルログイン（Google, Apple）
 - [ ] パスワードリセット機能
-- [ ] ログアウト機能（設定画面に追加）
 - [ ] 匿名ユーザー → 登録ユーザーへの移行
 - [ ] トークンリフレッシュ
