@@ -17,6 +17,8 @@ describe('AuthService', () => {
     mockRepository = {
       findUserByEmail: vi.fn(),
       findUserByUsername: vi.fn(),
+      findUserById: vi.fn(),
+      findActiveSessionByUserId: vi.fn(),
       createUser: vi.fn(),
       deleteUser: vi.fn(),
       createSession: vi.fn(),
@@ -240,6 +242,79 @@ describe('AuthService', () => {
 
       // Act & Assert
       await expect(authService.deleteAccount(userId)).resolves.toBeUndefined()
+    })
+  })
+
+  describe('getCurrentUser', () => {
+    it('存在するユーザーの情報を取得できる', async () => {
+      // Arrange
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        username: 'testuser',
+        passwordHash: 'hashed-password',
+        isAnonymous: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      vi.mocked(mockRepository.findUserById).mockResolvedValue(mockUser)
+
+      // Act
+      const result = await authService.getCurrentUser('user-123')
+
+      // Assert
+      expect(result.id).toBe('user-123')
+      expect(result.email).toBe('test@example.com')
+      expect(result.username).toBe('testuser')
+      expect(mockRepository.findUserById).toHaveBeenCalledWith('user-123')
+    })
+
+    it('存在しないユーザーでUSER_NOT_FOUNDエラーをスローする', async () => {
+      // Arrange
+      vi.mocked(mockRepository.findUserById).mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(authService.getCurrentUser('non-existent-user')).rejects.toMatchObject({
+        code: 'USER_NOT_FOUND',
+      })
+    })
+
+    it('emailが未設定のユーザーでUSER_NOT_FOUNDエラーをスローする', async () => {
+      // Arrange（匿名ユーザーなど）
+      const mockUser = {
+        id: 'user-123',
+        email: null,
+        username: 'testuser',
+        passwordHash: null,
+        isAnonymous: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      vi.mocked(mockRepository.findUserById).mockResolvedValue(mockUser)
+
+      // Act & Assert
+      await expect(authService.getCurrentUser('user-123')).rejects.toMatchObject({
+        code: 'USER_NOT_FOUND',
+      })
+    })
+
+    it('usernameが未設定のユーザーでUSER_NOT_FOUNDエラーをスローする', async () => {
+      // Arrange
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        username: null,
+        passwordHash: null,
+        isAnonymous: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      vi.mocked(mockRepository.findUserById).mockResolvedValue(mockUser)
+
+      // Act & Assert
+      await expect(authService.getCurrentUser('user-123')).rejects.toMatchObject({
+        code: 'USER_NOT_FOUND',
+      })
     })
   })
 })
