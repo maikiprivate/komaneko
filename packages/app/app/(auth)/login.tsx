@@ -1,7 +1,6 @@
 /**
  * ログイン画面
  * - メールアドレスとパスワードでログイン
- * - モック認証を使用（本番APIができるまでの暫定）
  */
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
@@ -23,6 +22,7 @@ const hideIcon = require('../../assets/images/icons/hide.png')
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
+import { ApiError, getErrorMessage } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { authFormStyles as styles } from '@/lib/auth/authFormStyles'
 import {
@@ -67,13 +67,14 @@ export default function LoginScreen() {
     setLoginError(null)
     setIsLoading(true)
     try {
-      const success = await login(email, password)
-      if (!success) {
-        setLoginError('ログインに失敗しました')
-      }
+      await login(email, password)
       // 成功時は AuthContext の状態更新により自動的にホーム画面に切り替わる
-    } catch {
-      setLoginError('エラーが発生しました')
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setLoginError(getErrorMessage(error.code))
+      } else {
+        setLoginError('エラーが発生しました')
+      }
     } finally {
       setIsLoading(false)
     }

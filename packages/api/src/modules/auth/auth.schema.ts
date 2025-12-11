@@ -19,7 +19,10 @@ export const registerSchema = z.object({
     .string()
     .min(2, 'ユーザー名は2文字以上で入力してください')
     .max(20, 'ユーザー名は20文字以内で入力してください')
-    .regex(/^[a-zA-Z0-9_]+$/, '英数字とアンダースコアのみ使用できます'),
+    .regex(
+      /^[a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+$/,
+      '使用できない文字が含まれています'
+    ),
 })
 
 export type RegisterInput = z.infer<typeof registerSchema>

@@ -4,25 +4,29 @@
  * - ログイン/ログアウト時に状態を更新
  */
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-
 import {
-  getAuthState,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react'
+
+import { ApiError } from '../api/client'
+import {
+  deleteAccountApi,
+  getMeApi,
+  loginApi,
+  logoutApi,
+  registerApi,
+} from '../api/auth'
+import { clearToken, getToken, saveToken } from './tokenStorage'
+import {
   setAuthState,
   clearAuthState,
   type AuthState,
   type SignupParams,
 } from './authStorage'
-
-/**
- * モック用のユーザーID生成
- * Date.now()のみだと同一ミリ秒で重複の可能性があるため、ランダム文字列を付加
- */
-function generateMockUserId(): string {
-  const timestamp = Date.now().toString(36)
-  const randomPart = Math.random().toString(36).substring(2, 10)
-  return `user_${timestamp}_${randomPart}`
-}
 
 export interface AuthContextType {
   /** 認証済みかどうか */
@@ -35,12 +39,14 @@ export interface AuthContextType {
     username?: string
     email?: string
   } | null
-  /** ログイン */
-  login: (email: string, password: string) => Promise<boolean>
-  /** 新規登録 */
-  signup: (params: SignupParams) => Promise<boolean>
+  /** ログイン（エラー時はApiErrorをthrow） */
+  login: (email: string, password: string) => Promise<void>
+  /** 新規登録（エラー時はApiErrorをthrow） */
+  signup: (params: SignupParams) => Promise<void>
   /** ログアウト */
   logout: () => Promise<void>
+  /** 退会（アカウント削除） */
+  deleteAccount: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -59,11 +65,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const loadAuthState = async () => {
       try {
-        const state = await getAuthState()
-        setAuthStateLocal(state)
+        // まずトークンの存在確認
+        const token = await getToken()
+        if (!token) {
+          // トークンがなければ未認証
+          setAuthStateLocal({ isAuthenticated: false })
+          return
+        }
+
+        // トークンがあればAPIでユーザー情報を取得
+        const user = await getMeApi()
+        const newState: AuthState = {
+          isAuthenticated: true,
+          userId: user.id,
+          username: user.username,
+          email: user.email,
+        }
+        setAuthStateLocal(newState)
+        await setAuthState(newState)
       } catch (error) {
         console.error('[AuthContext] Failed to load auth state:', error)
-        // エラー時はデフォルト状態（未認証）のまま継続
+        // トークンが無効な場合はクリアして未認証状態に
+        await clearToken()
+        await clearAuthState()
+        setAuthStateLocal({ isAuthenticated: false })
       } finally {
         setIsLoading(false)
       }
@@ -71,45 +96,60 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loadAuthState()
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // パスワードはモック実装では使用しない（本番ではサーバーに送信）
-    void password
+  const login = async (email: string, password: string): Promise<void> => {
+    const result = await loginApi(email, password)
 
+    // トークンを保存
+    await saveToken(result.accessToken)
+
+    // 認証状態を更新
     const newState: AuthState = {
       isAuthenticated: true,
-      userId: generateMockUserId(),
-      email,
+      userId: result.user.id,
+      username: result.user.username,
+      email: result.user.email,
     }
-
-    const success = await setAuthState(newState)
-    if (success) {
-      setAuthStateLocal(newState)
-    }
-    return success
+    await setAuthState(newState)
+    setAuthStateLocal(newState)
   }
 
-  const signup = async (params: SignupParams): Promise<boolean> => {
-    // パスワードはモック実装では保存しない（本番ではサーバーに送信）
+  const signup = async (params: SignupParams): Promise<void> => {
+    const result = await registerApi(params.email, params.password, params.username)
+
+    // トークンを保存
+    await saveToken(result.accessToken)
+
+    // 認証状態を更新
     const newState: AuthState = {
       isAuthenticated: true,
-      userId: generateMockUserId(),
-      username: params.username,
-      email: params.email,
+      userId: result.user.id,
+      username: result.user.username,
+      email: result.user.email,
     }
-
-    const success = await setAuthState(newState)
-    if (success) {
-      setAuthStateLocal(newState)
-    }
-    return success
+    await setAuthState(newState)
+    setAuthStateLocal(newState)
   }
 
   const logout = async (): Promise<void> => {
-    const success = await clearAuthState()
-    if (!success) {
-      console.error('[AuthContext] Logout failed, but clearing local state anyway')
+    try {
+      await logoutApi()
+    } catch (error) {
+      // ログアウトAPIが失敗してもローカル状態はクリアする
+      console.error('[AuthContext] Logout API failed:', error)
     }
-    // ローカル状態は常にクリア（UXを優先し、ストレージエラーがあっても画面はログアウト状態に）
+
+    // トークンと認証状態をクリア
+    await clearToken()
+    await clearAuthState()
+    setAuthStateLocal({ isAuthenticated: false })
+  }
+
+  const deleteAccount = async (): Promise<void> => {
+    await deleteAccountApi()
+
+    // トークンと認証状態をクリア
+    await clearToken()
+    await clearAuthState()
     setAuthStateLocal({ isAuthenticated: false })
   }
 
@@ -126,6 +166,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     signup,
     logout,
+    deleteAccount,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -138,3 +179,6 @@ export function useAuth(): AuthContextType {
   }
   return context
 }
+
+// エラーハンドリング用にApiErrorを再エクスポート
+export { ApiError }

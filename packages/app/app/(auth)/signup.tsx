@@ -1,7 +1,6 @@
 /**
  * 新規登録画面
  * - メールアドレスとパスワードで新規登録
- * - モック認証を使用（本番APIができるまでの暫定）
  */
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
@@ -23,6 +22,7 @@ const hideIcon = require('../../assets/images/icons/hide.png')
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
+import { ApiError, getErrorMessage } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { authFormStyles as styles } from '@/lib/auth/authFormStyles'
 import {
@@ -94,13 +94,14 @@ export default function SignupScreen() {
     setApiError(null)
     setIsLoading(true)
     try {
-      const success = await signup({ username, email, password })
-      if (!success) {
-        setApiError('登録に失敗しました')
-      }
+      await signup({ username, email, password })
       // 成功時は AuthContext の状態更新により自動的にホーム画面に切り替わる
-    } catch {
-      setApiError('エラーが発生しました')
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setApiError(getErrorMessage(error.code))
+      } else {
+        setApiError('エラーが発生しました')
+      }
     } finally {
       setIsLoading(false)
     }
