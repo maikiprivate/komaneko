@@ -2,18 +2,48 @@
  * 認証APIルーター
  */
 
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 
 import { prisma } from '../../db/client.js'
 import { AppError } from '../../shared/errors/AppError.js'
+import { createAuthMiddleware } from '../../shared/middleware/auth.middleware.js'
 import { createAuthRepository } from './auth.repository.js'
 import { loginSchema, registerSchema } from './auth.schema.js'
 import { AuthService } from './auth.service.js'
+
+// Fastifyの型拡張は src/types/fastify.d.ts で定義
+
+/** 認証不要なルート（明示的に除外） */
+const PUBLIC_ROUTES = ['/register', '/login']
+
+/**
+ * 認証済みユーザーIDを取得するヘルパー
+ * preHandlerで設定されたuserが存在しない場合はエラーをスロー
+ */
+function getAuthenticatedUserId(request: FastifyRequest): string {
+  if (!request.user) {
+    throw new AppError('UNAUTHORIZED')
+  }
+  return request.user.userId
+}
 
 export async function authRouter(app: FastifyInstance) {
   // 依存関係の初期化
   const repository = createAuthRepository(prisma)
   const authService = new AuthService(repository)
+  const authMiddleware = createAuthMiddleware(repository)
+
+  // 認証フック: PUBLIC_ROUTES以外は自動的に認証を要求
+  app.addHook('preHandler', async (request) => {
+    // request.urlから認証不要ルートをチェック
+    // /api/auth/register -> /register にマッチさせるため、prefixを除去
+    const urlPath = request.url.split('?')[0] // クエリパラメータを除去
+    const routePath = urlPath.replace(/^\/api\/auth/, '') // prefix除去
+    if (PUBLIC_ROUTES.includes(routePath)) {
+      return
+    }
+    request.user = await authMiddleware.authenticate(request.headers.authorization)
+  })
 
   /**
    * POST /api/auth/register - 新規登録
@@ -55,12 +85,45 @@ export async function authRouter(app: FastifyInstance) {
     })
   })
 
-  // TODO: 認証ミドルウェア実装後に追加
-  // - POST /api/auth/logout
-  // - GET /api/auth/me
-  // - DELETE /api/auth/me
-  //
-  // 重要: 認証ミドルウェアではJWTの検証に加えて、
-  // DBセッションの存在確認も行うこと。
-  // これによりログアウト後のJWTを無効化できる。
+  /**
+   * POST /api/auth/logout - ログアウト
+   * 認証必須（preHandlerで自動認証）
+   */
+  app.post('/logout', async (request, reply) => {
+    const userId = getAuthenticatedUserId(request)
+    await authService.logout(userId)
+
+    return reply.send({
+      data: { message: 'ログアウトしました' },
+      meta: { timestamp: new Date().toISOString() },
+    })
+  })
+
+  /**
+   * GET /api/auth/me - 現在のユーザー情報取得
+   * 認証必須（preHandlerで自動認証）
+   */
+  app.get('/me', async (request, reply) => {
+    const userId = getAuthenticatedUserId(request)
+    const user = await authService.getCurrentUser(userId)
+
+    return reply.send({
+      data: { user },
+      meta: { timestamp: new Date().toISOString() },
+    })
+  })
+
+  /**
+   * DELETE /api/auth/me - アカウント削除（退会）
+   * 認証必須（preHandlerで自動認証）
+   */
+  app.delete('/me', async (request, reply) => {
+    const userId = getAuthenticatedUserId(request)
+    await authService.deleteAccount(userId)
+
+    return reply.send({
+      data: { message: 'アカウントを削除しました' },
+      meta: { timestamp: new Date().toISOString() },
+    })
+  })
 }

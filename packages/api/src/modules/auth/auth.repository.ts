@@ -7,12 +7,14 @@ import type { PrismaClient, Session, User } from '@prisma/client'
 export interface AuthRepository {
   findUserByEmail(email: string): Promise<User | null>
   findUserByUsername(username: string): Promise<User | null>
+  findUserById(userId: string): Promise<User | null>
   createUser(data: {
     email: string
     username: string
     passwordHash: string
   }): Promise<User>
   deleteUser(userId: string): Promise<void>
+  findActiveSessionByUserId(userId: string): Promise<Session | null>
   createSession(data: {
     userId: string
     token: string
@@ -29,6 +31,10 @@ export function createAuthRepository(prisma: PrismaClient): AuthRepository {
 
     async findUserByUsername(username: string): Promise<User | null> {
       return prisma.user.findUnique({ where: { username } })
+    },
+
+    async findUserById(userId: string): Promise<User | null> {
+      return prisma.user.findUnique({ where: { id: userId } })
     },
 
     async createUser(data: {
@@ -48,6 +54,13 @@ export function createAuthRepository(prisma: PrismaClient): AuthRepository {
 
     async deleteUser(userId: string): Promise<void> {
       await prisma.user.delete({ where: { id: userId } })
+    },
+
+    async findActiveSessionByUserId(userId: string): Promise<Session | null> {
+      return prisma.session.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+      })
     },
 
     async createSession(data: {
