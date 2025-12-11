@@ -2,17 +2,13 @@
  * JWT生成・検証ユーティリティ
  */
 
-import jwt, {
-  JsonWebTokenError,
-  type Secret,
-  type SignOptions,
-  TokenExpiredError,
-} from 'jsonwebtoken'
+import jwt from 'jsonwebtoken'
+import type { Secret, SignOptions } from 'jsonwebtoken'
 import { z } from 'zod'
 
 import { AppError } from '../errors/AppError.js'
 
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d'
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as string
 
 /**
  * JWT_SECRETを取得する
@@ -51,11 +47,9 @@ export function generateAccessToken(userId: string): string {
     userId,
   }
 
-  const options: SignOptions = {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn: JWT_EXPIRES_IN,
-  }
-
-  return jwt.sign(payload, getJwtSecret(), options)
+  } as SignOptions)
 }
 
 /**
@@ -77,12 +71,13 @@ export function verifyAccessToken(token: string): JwtPayload {
     if (error instanceof AppError) {
       throw error
     }
-    if (error instanceof TokenExpiredError) {
-      throw new AppError('TOKEN_EXPIRED')
+    // jsonwebtokenのエラーはnameプロパティで判別
+    if (error instanceof Error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new AppError('TOKEN_EXPIRED')
+      }
     }
-    if (error instanceof JsonWebTokenError) {
-      throw new AppError('INVALID_TOKEN')
-    }
-    throw error
+    // その他の予期せぬエラーも INVALID_TOKEN として扱う
+    throw new AppError('INVALID_TOKEN')
   }
 }

@@ -8,20 +8,10 @@ import { AppError } from '../../shared/errors/AppError.js'
 import { generateAccessToken } from '../../shared/utils/jwt.js'
 import { hashPassword, verifyPassword } from '../../shared/utils/password.js'
 import type { AuthRepository } from './auth.repository.js'
+import type { LoginInput, RegisterInput } from './auth.schema.js'
 
 /** セッション有効期限（日数） */
 const SESSION_EXPIRES_DAYS = 30
-
-interface RegisterInput {
-  email: string
-  password: string
-  username: string
-}
-
-interface LoginInput {
-  email: string
-  password: string
-}
 
 interface AuthResult {
   user: {
@@ -39,14 +29,15 @@ export class AuthService {
    * 新規ユーザー登録
    */
   async register(input: RegisterInput): Promise<AuthResult> {
-    // メールアドレスの重複チェック
-    const existingEmail = await this.repository.findUserByEmail(input.email)
+    // メールアドレスとユーザー名の重複チェック（並列実行）
+    const [existingEmail, existingUsername] = await Promise.all([
+      this.repository.findUserByEmail(input.email),
+      this.repository.findUserByUsername(input.username),
+    ])
+
     if (existingEmail) {
       throw new AppError('EMAIL_ALREADY_EXISTS')
     }
-
-    // ユーザー名の重複チェック
-    const existingUsername = await this.repository.findUserByUsername(input.username)
     if (existingUsername) {
       throw new AppError('USERNAME_ALREADY_EXISTS')
     }

@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import Fastify from 'fastify'
 import { prisma } from './db/client.js'
+import { authRouter } from './modules/auth/auth.router.js'
 import { errorHandler } from './shared/errors/index.js'
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -36,7 +37,7 @@ export async function buildApp() {
   })
 
   // ヘルスチェック
-  app.get('/api/health', async () => {
+  app.get('/api/health', async (request, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`
       return {
@@ -45,13 +46,16 @@ export async function buildApp() {
         db: 'connected',
       }
     } catch {
-      return {
+      return reply.status(503).send({
         status: 'error',
         timestamp: new Date().toISOString(),
         db: 'disconnected',
-      }
+      })
     }
   })
+
+  // 認証API
+  await app.register(authRouter, { prefix: '/api/auth' })
 
   return app
 }
