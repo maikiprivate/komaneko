@@ -1,25 +1,40 @@
 /**
  * 認証関連のバリデーション
+ *
+ * バリデーションルールは @komaneko/shared から参照し、
+ * フロントエンドとバックエンドで統一する。
  */
+
+import {
+  EMAIL_PATTERN,
+  PASSWORD_LOWERCASE_PATTERN,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_NUMBER_PATTERN,
+  PASSWORD_UPPERCASE_PATTERN,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
+  USERNAME_PATTERN,
+  USERNAME_PATTERN_ERROR,
+} from '@komaneko/shared'
 
 /** メールアドレスの形式をチェック（簡易的、RFC準拠ではない） */
 export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
+  return EMAIL_PATTERN.test(email)
 }
 
-/** ユーザー名の最小文字数 */
-export const MIN_USERNAME_LENGTH = 2
+/** ユーザー名の最小文字数（後方互換性のためエクスポート） */
+export const MIN_USERNAME_LENGTH = USERNAME_MIN_LENGTH
 
-/** ユーザー名の最大文字数 */
-export const MAX_USERNAME_LENGTH = 20
+/** ユーザー名の最大文字数（後方互換性のためエクスポート） */
+export const MAX_USERNAME_LENGTH = USERNAME_MAX_LENGTH
 
-/** パスワードの最小文字数 */
-export const MIN_PASSWORD_LENGTH = 8
+/** パスワードの最小文字数（後方互換性のためエクスポート） */
+export const MIN_PASSWORD_LENGTH = PASSWORD_MIN_LENGTH
 
 /**
  * ユーザー名のバリデーション
  * - 2文字以上20文字以下
+ * - 使用可能: 英数字、アンダースコア、ひらがな、カタカナ、漢字
  * @returns エラーメッセージ（問題なければnull）
  */
 export function validateUsername(username: string): string | null {
@@ -27,11 +42,14 @@ export function validateUsername(username: string): string | null {
   if (!trimmed) {
     return 'ユーザー名を入力してください'
   }
-  if (trimmed.length < MIN_USERNAME_LENGTH) {
-    return `ユーザー名は${MIN_USERNAME_LENGTH}文字以上で入力してください`
+  if (trimmed.length < USERNAME_MIN_LENGTH) {
+    return `ユーザー名は${USERNAME_MIN_LENGTH}文字以上で入力してください`
   }
-  if (trimmed.length > MAX_USERNAME_LENGTH) {
-    return `ユーザー名は${MAX_USERNAME_LENGTH}文字以下で入力してください`
+  if (trimmed.length > USERNAME_MAX_LENGTH) {
+    return `ユーザー名は${USERNAME_MAX_LENGTH}文字以下で入力してください`
+  }
+  if (!USERNAME_PATTERN.test(trimmed)) {
+    return USERNAME_PATTERN_ERROR
   }
   return null
 }
@@ -66,16 +84,16 @@ export function validatePassword(password: string): string | null {
   if (password.includes(' ')) {
     return 'パスワードにスペースは使用できません'
   }
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return `パスワードは${MIN_PASSWORD_LENGTH}文字以上で入力してください`
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return `パスワードは${PASSWORD_MIN_LENGTH}文字以上で入力してください`
   }
-  if (!/[A-Z]/.test(password)) {
+  if (!PASSWORD_UPPERCASE_PATTERN.test(password)) {
     return 'パスワードに英字大文字を含めてください'
   }
-  if (!/[a-z]/.test(password)) {
+  if (!PASSWORD_LOWERCASE_PATTERN.test(password)) {
     return 'パスワードに英字小文字を含めてください'
   }
-  if (!/[0-9]/.test(password)) {
+  if (!PASSWORD_NUMBER_PATTERN.test(password)) {
     return 'パスワードに数字を含めてください'
   }
   return null
