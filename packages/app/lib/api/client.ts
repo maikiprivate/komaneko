@@ -63,24 +63,19 @@ interface RequestOptions {
 }
 
 /**
- * APIリクエストを実行する
+ * リクエストヘッダーを構築する（内部用）
  */
-export async function apiRequest<T>(
-  endpoint: string,
-  options: RequestOptions = {}
-): Promise<T> {
-  const { method = 'GET', body, headers = {}, skipAuth = false } = options
+async function buildRequestHeaders(
+  body: unknown,
+  headers: Record<string, string>,
+  skipAuth: boolean
+): Promise<Record<string, string>> {
+  const requestHeaders: Record<string, string> = { ...headers }
 
-  const requestHeaders: Record<string, string> = {
-    ...headers,
-  }
-
-  // bodyがある場合のみContent-Typeを設定
   if (body) {
     requestHeaders['Content-Type'] = 'application/json'
   }
 
-  // 認証トークンを自動付与
   if (!skipAuth) {
     const token = await getToken()
     if (token) {
@@ -88,6 +83,40 @@ export async function apiRequest<T>(
     }
   }
 
+  return requestHeaders
+}
+
+/**
+ * fetchレスポンスのエラーをハンドリングする（内部用）
+ */
+function handleFetchError(error: unknown): never {
+  if (error instanceof ApiError) {
+    throw error
+  }
+
+  // ネットワークエラー（React Native環境対応）
+  if (
+    error instanceof TypeError &&
+    (error.message.includes('fetch') || error.message.includes('Network request failed'))
+  ) {
+    throw new ApiError('NETWORK_ERROR', 'ネットワークに接続できません')
+  }
+
+  throw new ApiError(
+    'UNKNOWN_ERROR',
+    error instanceof Error ? error.message : 'エラーが発生しました'
+  )
+}
+
+/**
+ * APIリクエストを実行する（データを返すエンドポイント用）
+ */
+export async function apiRequest<T>(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<T> {
+  const { method = 'GET', body, headers = {}, skipAuth = false } = options
+  const requestHeaders = await buildRequestHeaders(body, headers, skipAuth)
   const url = `${API_BASE_URL}${endpoint}`
 
   try {
@@ -96,11 +125,6 @@ export async function apiRequest<T>(
       headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
     })
-
-    // 204 No Content の場合は空オブジェクトを返す
-    if (response.status === 204) {
-      return {} as T
-    }
 
     const json = await response.json()
 
@@ -113,25 +137,59 @@ export async function apiRequest<T>(
       )
     }
 
-    // 成功レスポンスの data フィールドを返す
     const successResponse = json as ApiResponse<T>
     return successResponse.data
   } catch (error) {
-    // ApiErrorはそのまま再throw
-    if (error instanceof ApiError) {
-      throw error
+    handleFetchError(error)
+  }
+}
+
+/**
+ * APIリクエストを実行する（レスポンスボディを返さないエンドポイント用）
+ *
+ * logout, deleteAccountなど、成功時にデータを返さないAPIに使用。
+ * 204 No Contentや空のレスポンスボディを正しくハンドリングする。
+ */
+export async function apiRequestVoid(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<void> {
+  const { method = 'GET', body, headers = {}, skipAuth = false } = options
+  const requestHeaders = await buildRequestHeaders(body, headers, skipAuth)
+  const url = `${API_BASE_URL}${endpoint}`
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: requestHeaders,
+      body: body ? JSON.stringify(body) : undefined,
+    })
+
+    // 204 No Content または成功ステータスで空ボディの場合
+    if (response.status === 204 || response.ok) {
+      // レスポンスボディがあればエラーチェックのみ行う
+      const text = await response.text()
+      if (text && !response.ok) {
+        const json = JSON.parse(text) as ApiErrorResponse
+        throw new ApiError(
+          json.error?.code || 'UNKNOWN_ERROR',
+          json.error?.message || 'エラーが発生しました',
+          json.error?.details
+        )
+      }
+      return
     }
 
-    // ネットワークエラー
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new ApiError('NETWORK_ERROR', 'ネットワークに接続できません')
-    }
-
-    // その他の予期しないエラー
+    // エラーレスポンス
+    const json = await response.json()
+    const errorResponse = json as ApiErrorResponse
     throw new ApiError(
-      'UNKNOWN_ERROR',
-      error instanceof Error ? error.message : 'エラーが発生しました'
+      errorResponse.error?.code || 'UNKNOWN_ERROR',
+      errorResponse.error?.message || 'エラーが発生しました',
+      errorResponse.error?.details
     )
+  } catch (error) {
+    handleFetchError(error)
   }
 }
 

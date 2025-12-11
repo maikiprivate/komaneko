@@ -2,6 +2,16 @@
  * 認証API用Zodスキーマ
  */
 
+import {
+  PASSWORD_LOWERCASE_PATTERN,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_NUMBER_PATTERN,
+  PASSWORD_UPPERCASE_PATTERN,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
+  USERNAME_PATTERN,
+  USERNAME_PATTERN_ERROR,
+} from '@komaneko/shared'
 import { z } from 'zod'
 
 /**
@@ -11,18 +21,15 @@ export const registerSchema = z.object({
   email: z.string().email('有効なメールアドレスを入力してください'),
   password: z
     .string()
-    .min(8, 'パスワードは8文字以上で入力してください')
-    .regex(/[a-z]/, '小文字を含めてください')
-    .regex(/[A-Z]/, '大文字を含めてください')
-    .regex(/[0-9]/, '数字を含めてください'),
+    .min(PASSWORD_MIN_LENGTH, `パスワードは${PASSWORD_MIN_LENGTH}文字以上で入力してください`)
+    .regex(PASSWORD_LOWERCASE_PATTERN, '小文字を含めてください')
+    .regex(PASSWORD_UPPERCASE_PATTERN, '大文字を含めてください')
+    .regex(PASSWORD_NUMBER_PATTERN, '数字を含めてください'),
   username: z
     .string()
-    .min(2, 'ユーザー名は2文字以上で入力してください')
-    .max(20, 'ユーザー名は20文字以内で入力してください')
-    .regex(
-      /^[a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+$/,
-      '使用できない文字が含まれています'
-    ),
+    .min(USERNAME_MIN_LENGTH, `ユーザー名は${USERNAME_MIN_LENGTH}文字以上で入力してください`)
+    .max(USERNAME_MAX_LENGTH, `ユーザー名は${USERNAME_MAX_LENGTH}文字以内で入力してください`)
+    .regex(USERNAME_PATTERN, USERNAME_PATTERN_ERROR),
 })
 
 export type RegisterInput = z.infer<typeof registerSchema>

@@ -2,7 +2,7 @@
  * 認証API関数
  */
 
-import { apiRequest } from './client'
+import { apiRequest, apiRequestVoid } from './client'
 
 /** ユーザー情報 */
 export interface User {
@@ -55,7 +55,7 @@ export async function loginApi(
  * ログアウト
  */
 export async function logoutApi(): Promise<void> {
-  await apiRequest<{ message: string }>('/api/auth/logout', {
+  await apiRequestVoid('/api/auth/logout', {
     method: 'POST',
   })
 }
@@ -72,7 +72,7 @@ export async function getMeApi(): Promise<User> {
  * アカウント削除（退会）
  */
 export async function deleteAccountApi(): Promise<void> {
-  await apiRequest<{ message: string }>('/api/auth/me', {
+  await apiRequestVoid('/api/auth/me', {
     method: 'DELETE',
   })
 }
