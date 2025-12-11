@@ -207,11 +207,26 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 9（完了）、Phase 8へ |
+| フェーズ | Phase 9（作業中） |
 | 最終更新 | 2025-12-11 |
-| 開発方針 | **アプリ画面先行（モック先行）** |
+| 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 9（完了）- 認証API
+### Phase 9（作業中）- 認証機能 - アプリ-API連携
+
+**目標**: アプリのモック認証を実際のAPIに接続
+
+詳細設計: `docs/designs/auth.md`
+
+- [ ] APIクライアント設定（fetch / axios）
+- [ ] 新規登録のAPI連携
+- [ ] ログインのAPI連携
+- [ ] ログアウトのAPI連携
+- [ ] アカウント削除のAPI連携
+- [ ] トークン管理（SecureStore）
+- [ ] エラーハンドリングUI
+- [ ] ローディング状態UI
+
+### Phase 8（完了）- 認証機能 - API
 
 **目標**: バックエンドの認証APIを実装
 
@@ -225,7 +240,7 @@ users ─────┬──── sessions（匿名対応）
 - [x] preHandlerフックによるデフォルト認証（PUBLIC_ROUTES例外パターン）
 - [x] 保護エンドポイント（/logout, /me, DELETE /me）
 - [x] レースコンディション対策（Prisma P2002エラーハンドリング）
-- [x] ユニットテスト（36件）
+- [x] ユニットテスト（40件）
 
 **実装済みエンドポイント:**
 | メソッド | パス | 説明 | 認証 |
@@ -236,7 +251,7 @@ users ─────┬──── sessions（匿名対応）
 | GET | /api/auth/me | ユーザー情報取得 | 必須 |
 | DELETE | /api/auth/me | アカウント削除 | 必須 |
 
-### Phase 7（完了）- ウェルカム・認証画面
+### Phase 7（完了）- 認証機能 - アプリUI
 
 **目標**: アプリ起動時のウェルカム画面とログイン/新規登録のモック実装
 
@@ -251,51 +266,15 @@ users ─────┬──── sessions（匿名対応）
 
 ### Phase 6（完了）- ストリーク更新画面
 
-**目標**: 連続学習のゲーミフィケーション
-
 詳細設計: `docs/designs/streak.md`
-
-- [x] AsyncStorage + ストリーク保存
-- [x] recordLearningCompletion 共通関数
-- [x] ストリーク更新画面（`/streak-update`）
-- [x] レッスン結果画面への統合
-- [x] 詰将棋画面への統合
-- [x] ホーム画面のストリーク表示更新
-- [x] WeeklyStreakProgressコンポーネント（週間カレンダー）
-- [x] アニメーション演出（火のアイコン、チェックマーク）
 
 ### Phase 5（完了）- 駒塾画面
 
-**目標**: Duolingo風の将棋学習システムを実装
-
 詳細設計: `docs/designs/lesson.md`
-
-#### 画面構成
-- コース一覧（`/lesson` タブ）
-- セクション一覧（`/lesson/[courseId]`）- タイムライン風UI
-- レッスン画面（`/lesson/[courseId]/[lessonId]`）- 盤面操作
-- 結果画面（正答数、復習機能）
-
-#### 実装済み
-- [x] コース一覧・セクション一覧画面
-- [x] レッスン画面（問題進行、正解判定）
-- [x] 結果画面（正答率、完了時間）
-- [x] useLessonGameフック（ゲームロジック分離）
-- [x] モックデータ・型定義
 
 ### Phase 4（完了）- 詰将棋画面
 
 詳細設計: `docs/designs/tsumeshogi-logic.md`
-
-- [x] 詰将棋一覧画面（手数タブ、ステータスフィルタ）
-- [x] 詰将棋プレイ画面
-- [x] 駒の移動ロジック（moveGenerator.ts）
-- [x] 王手・詰み判定ロジック（rules.ts）
-- [x] ゲームフック（useTsumeshogiGame.ts）
-- [x] 成りダイアログ
-- [x] ヒント機能
-- [x] 解答再生機能
-- [x] AI応手ロジック（ai.ts）
 
 ### Phase 3（完了）- 将棋盤共通コンポーネント
 
@@ -309,30 +288,9 @@ packages/app/
 
 **重要**: `perspective.ts` で先手/後手視点の切り替えを集約（manabi-shogiの教訓）
 
-### Phase 2（完了）
-- [x] Expo プロジェクト初期化（Managed）
-- [x] Expo Router セットアップ
-- [x] テーマ・カラー定義
-- [x] 駒猫キャラクター表示
-- [x] ホーム画面（ハート、ストリーク、ヘッダーロゴ）
-
-### Phase 1（完了）
-- [x] モノレポ初期化（pnpm workspaces）
-- [x] 共通設定（biome.json, tsconfig）
-- [x] PostgreSQL（ローカル）
-- [x] Prismaセットアップ
-- [x] Fastifyアプリ基本構成
-- [x] エラーハンドリング基盤（AppError）
-- [x] 構造化ログ設定（Pino）
-- [x] ヘルスチェックエンドポイント
-- [x] レート制限・CORS設定
-
-### Phase 0（完了）
-- [x] .cursorrules 作成
-- [x] mise.toml 作成
-- [x] CLAUDE.md 作成
-- [x] docs/ROADMAP.md 作成
-- [x] README.md 作成
+### Phase 2（完了）- アプリ基盤 + ホーム画面
+### Phase 1（完了）- API基盤
+### Phase 0（完了）- ドキュメント
 
 ---
 
