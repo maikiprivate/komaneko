@@ -207,9 +207,34 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 7（完了） |
-| 最終更新 | 2025-12-10 |
+| フェーズ | Phase 9（完了）、Phase 8へ |
+| 最終更新 | 2025-12-11 |
 | 開発方針 | **アプリ画面先行（モック先行）** |
+
+### Phase 9（完了）- 認証API
+
+**目標**: バックエンドの認証APIを実装
+
+詳細設計: `docs/designs/auth.md`
+
+- [x] Userモデルに認証フィールド追加（email, username, passwordHash）
+- [x] 認証ユーティリティ（JWT, パスワードハッシュ）
+- [x] 認証サービス（register, login, logout, getCurrentUser, deleteAccount）
+- [x] 認証リポジトリ（Prismaによるデータアクセス）
+- [x] 認証ミドルウェア（JWT + DBセッション二重検証）
+- [x] preHandlerフックによるデフォルト認証（PUBLIC_ROUTES例外パターン）
+- [x] 保護エンドポイント（/logout, /me, DELETE /me）
+- [x] レースコンディション対策（Prisma P2002エラーハンドリング）
+- [x] ユニットテスト（36件）
+
+**実装済みエンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| POST | /api/auth/register | 新規登録 | 不要 |
+| POST | /api/auth/login | ログイン | 不要 |
+| POST | /api/auth/logout | ログアウト | 必須 |
+| GET | /api/auth/me | ユーザー情報取得 | 必須 |
+| DELETE | /api/auth/me | アカウント削除 | 必須 |
 
 ### Phase 7（完了）- ウェルカム・認証画面
 
@@ -222,6 +247,7 @@ users ─────┬──── sessions（匿名対応）
 - [x] ログイン画面（モック認証）
 - [x] 新規登録画面（モック登録）
 - [x] ルートレイアウト修正（Redirectパターンによる認証フロー）
+- [x] 入力バリデーション（validation.ts）
 
 ### Phase 6（完了）- ストリーク更新画面
 

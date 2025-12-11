@@ -1,9 +1,17 @@
-# 認証画面設計（Phase 7）
+# 認証設計（Phase 7 + Phase 9）
 
 ## 概要
 
-アプリ起動時のウェルカム画面と、ログイン/新規登録のモック画面を実装。
-現段階ではバックエンド連携なし、UI先行で実装。
+アプリ起動時のウェルカム画面と、ログイン/新規登録画面を実装。
+Phase 7でアプリUI（モック認証）、Phase 9でバックエンドAPIを実装済み。
+
+### 実装状況
+
+| Phase | 内容 | 状態 |
+|-------|------|------|
+| Phase 7 | アプリUI（モック認証） | 完了 |
+| Phase 9 | バックエンドAPI | 完了 |
+| Phase 12 | アプリ-API連携 | 未着手 |
 
 ## 画面フロー
 
@@ -22,19 +30,48 @@
 
 ## ファイル構成
 
+### アプリ側（packages/app/）
+
 ```
 packages/app/
 ├── app/
-│   ├── _layout.tsx              # 修正: 認証状態で初期ルート分岐
-│   ├── (auth)/                  # 新規: 認証グループ
+│   ├── _layout.tsx              # 認証状態でRedirect
+│   ├── (auth)/
 │   │   ├── _layout.tsx          # 認証画面用レイアウト（ヘッダーなし）
 │   │   ├── index.tsx            # ウェルカム画面
 │   │   ├── login.tsx            # ログイン画面
 │   │   └── signup.tsx           # 新規登録画面
-│   └── (tabs)/                  # 既存: 認証後のメイン画面
+│   └── (tabs)/                  # 認証後のメイン画面
 ├── lib/
 │   └── auth/
-│       └── authStorage.ts       # 新規: 認証状態の保存/読込
+│       ├── AuthContext.tsx      # 認証状態のContext
+│       ├── authStorage.ts       # AsyncStorage操作
+│       ├── authFormStyles.ts    # 共通スタイル
+│       └── validation.ts        # 入力バリデーション
+```
+
+### API側（packages/api/）
+
+```
+packages/api/src/
+├── modules/auth/
+│   ├── auth.router.ts           # エンドポイント + preHandlerフック
+│   ├── auth.router.test.ts      # ルーターテスト
+│   ├── auth.service.ts          # ビジネスロジック
+│   ├── auth.service.test.ts     # サービステスト
+│   ├── auth.repository.ts       # DBアクセス
+│   └── auth.schema.ts           # Zodスキーマ
+├── shared/
+│   ├── middleware/
+│   │   ├── auth.middleware.ts   # 認証ミドルウェア
+│   │   └── auth.middleware.test.ts
+│   └── utils/
+│       ├── jwt.ts               # JWT生成・検証
+│       ├── jwt.test.ts
+│       ├── password.ts          # bcryptハッシュ
+│       └── password.test.ts
+└── types/
+    └── fastify.d.ts             # FastifyRequest型拡張
 ```
 
 ## 画面設計
@@ -227,11 +264,60 @@ router.replace('/(auth)/welcome')
 - AsyncStorageにメールアドレスとフラグを保存
 - ホーム画面へ遷移
 
+---
+
+## バックエンドAPI設計（Phase 9）
+
+### エンドポイント
+
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| POST | /api/auth/register | 新規登録 | 不要 |
+| POST | /api/auth/login | ログイン | 不要 |
+| POST | /api/auth/logout | ログアウト | 必須 |
+| GET | /api/auth/me | ユーザー情報取得 | 必須 |
+| DELETE | /api/auth/me | アカウント削除 | 必須 |
+
+### 認証フロー
+
+```
+リクエスト → preHandler（認証チェック）→ ルートハンドラ
+
+/register → preHandler（PUBLIC_ROUTESなのでスキップ）→ 登録処理
+/login    → preHandler（PUBLIC_ROUTESなのでスキップ）→ ログイン処理
+/logout   → preHandler（認証実行）→ request.user設定 → ログアウト処理
+/me       → preHandler（認証実行）→ request.user設定 → ユーザー情報返却
+```
+
+### 認証ミドルウェアの動作
+
+1. Authorizationヘッダーから `Bearer <token>` を取得
+2. JWTを検証（署名、有効期限）
+3. DBセッションの存在確認（ログアウト後のJWT無効化用）
+4. `request.user = { userId }` を設定
+
+### セキュリティ対策
+
+| 対策 | 実装 |
+|------|------|
+| パスワード | bcryptでハッシュ化（コスト12） |
+| JWT | HS256署名、30日有効期限 |
+| レースコンディション | Prisma P2002エラーハンドリング |
+| デフォルト認証 | PUBLIC_ROUTES以外は自動認証 |
+
+---
+
 ## 将来の拡張
 
-- バックエンドAPI連携（実際の認証）
-- ソーシャルログイン（Google, Apple）
-- パスワードリセット機能
-- ログアウト機能（設定画面に追加）
-- 入力バリデーション
-- エラーメッセージ表示
+### 実装済み（Phase 9）
+- [x] バックエンドAPI連携（実際の認証）
+- [x] 入力バリデーション
+- [x] エラーメッセージ表示
+
+### 未実装
+- [ ] アプリ-API連携（Phase 12）
+- [ ] ソーシャルログイン（Google, Apple）
+- [ ] パスワードリセット機能
+- [ ] ログアウト機能（設定画面に追加）
+- [ ] 匿名ユーザー → 登録ユーザーへの移行
+- [ ] トークンリフレッシュ

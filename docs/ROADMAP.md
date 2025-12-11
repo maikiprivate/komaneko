@@ -806,17 +806,19 @@ manabi-shogiで問題になった先手/後手視点の切り替えを集約：
 - [x] WeeklyStreakProgressコンポーネント
 - [x] アニメーション演出
 
-### Phase 7: ウェルカム・認証画面（作業中）
+### Phase 7: ウェルカム・認証画面（完了）
 
 **目標**: アプリ起動時のウェルカム画面とログイン/新規登録のモック実装
 
 詳細設計: `docs/designs/auth.md`
 
-- [ ] 認証状態管理（AsyncStorage）
-- [ ] ウェルカム画面（splash.png背景 + ボタン）
-- [ ] ログイン画面（モック認証）
-- [ ] 新規登録画面（モック登録）
-- [ ] ルートレイアウト修正（認証フロー）
+- [x] 認証状態管理（AsyncStorage + AuthContext）
+- [x] ウェルカム画面（splash.png背景 + ボタン）
+- [x] ログイン画面（モック認証 + バリデーション）
+- [x] 新規登録画面（モック登録 + バリデーション）
+- [x] ルートレイアウト修正（Redirectパターンによる認証フロー）
+- [x] 入力バリデーション（validation.ts）
+- [x] 共通スタイル（authFormStyles.ts）
 
 ### Phase 8: アプリコア（残りのゲーミフィケーション）
 - [ ] **core/ 共通モジュール作成**
@@ -827,11 +829,57 @@ manabi-shogiで問題になった先手/後手視点の切り替えを集約：
 
 ## Part B: API開発
 
-### Phase 9: 認証API
-- [ ] 匿名ユーザー作成
-- [ ] セッション管理（Cookie-based）
-- [ ] 認証ミドルウェア
-- [ ] ユニットテスト
+### Phase 9: 認証API（完了）
+
+**目標**: バックエンドの認証APIを実装
+
+- [x] Userモデルに認証フィールド追加（email, username, passwordHash）
+- [x] 認証ユーティリティ（JWT生成・検証、パスワードハッシュ）
+- [x] 認証スキーマ（Zodバリデーション）
+- [x] 認証サービス（register, login, logout, getCurrentUser, deleteAccount）
+- [x] 認証リポジトリ（Prismaによるデータアクセス）
+- [x] 認証ミドルウェア（JWT + DBセッション二重検証）
+- [x] preHandlerフックによるデフォルト認証（PUBLIC_ROUTES例外パターン）
+- [x] 保護エンドポイント（/logout, /me, DELETE /me）
+- [x] レースコンディション対策（Prisma P2002エラーハンドリング）
+- [x] Fastify型拡張（fastify.d.ts）
+- [x] ユニットテスト（36件）
+
+**実装済みエンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| POST | /api/auth/register | 新規登録 | 不要 |
+| POST | /api/auth/login | ログイン | 不要 |
+| POST | /api/auth/logout | ログアウト | 必須 |
+| GET | /api/auth/me | ユーザー情報取得 | 必須 |
+| DELETE | /api/auth/me | アカウント削除 | 必須 |
+
+**ファイル構成:**
+```
+packages/api/src/
+├── modules/auth/
+│   ├── auth.router.ts        # エンドポイント + preHandlerフック
+│   ├── auth.router.test.ts   # ルーターテスト
+│   ├── auth.service.ts       # ビジネスロジック
+│   ├── auth.service.test.ts  # サービステスト
+│   ├── auth.repository.ts    # DBアクセス
+│   └── auth.schema.ts        # Zodスキーマ
+├── shared/
+│   ├── middleware/
+│   │   ├── auth.middleware.ts      # 認証ミドルウェア
+│   │   └── auth.middleware.test.ts
+│   └── utils/
+│       ├── jwt.ts            # JWT生成・検証
+│       ├── jwt.test.ts
+│       ├── password.ts       # bcrypt
+│       └── password.test.ts
+└── types/
+    └── fastify.d.ts          # FastifyRequest型拡張
+```
+
+**未実装（将来）:**
+- [ ] 匿名ユーザー作成（POST /api/auth/session/anonymous）
+- [ ] トークンリフレッシュ
 
 ### Phase 10: コンテンツAPI
 - [ ] 駒塾CRUD（Router → Service → Repository）
