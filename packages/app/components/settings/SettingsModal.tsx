@@ -10,6 +10,7 @@ import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import Colors from '@/constants/Colors'
+import { ApiError, getErrorMessage } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 import {
   clearDemoToday,
@@ -26,7 +27,7 @@ interface SettingsModalProps {
 
 export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const insets = useSafeAreaInsets()
-  const { user, logout } = useAuth()
+  const { user, logout, deleteAccount } = useAuth()
   // ログアウト/退会時はアニメーションを無効にして白い画面が見えるのを防ぐ
   const [disableAnimation, setDisableAnimation] = useState(false)
 
@@ -50,8 +51,31 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   }
 
   const handleDeleteAccount = () => {
-    // 退会機能は未実装のため準備中メッセージを表示
-    Alert.alert('準備中', '退会機能は現在準備中です。')
+    Alert.alert(
+      '退会の確認',
+      '本当に退会しますか？\n\nアカウントと全てのデータが削除され、復元できません。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '退会する',
+          style: 'destructive',
+          onPress: async () => {
+            setDisableAnimation(true)
+            try {
+              await deleteAccount()
+            } catch (error) {
+              console.error('[SettingsModal] Delete account failed:', error)
+              setDisableAnimation(false)
+              if (error instanceof ApiError) {
+                Alert.alert('エラー', getErrorMessage(error.code))
+              } else {
+                Alert.alert('エラー', '退会に失敗しました。もう一度お試しください。')
+              }
+            }
+          },
+        },
+      ]
+    )
   }
 
   // 開発用: ストリークリセット
