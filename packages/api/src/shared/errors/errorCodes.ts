@@ -6,6 +6,11 @@ export const ErrorCodes = {
   UNAUTHORIZED: { status: 401, message: '認証が必要です' },
   FORBIDDEN: { status: 403, message: 'アクセス権限がありません' },
   SESSION_EXPIRED: { status: 401, message: 'セッションが期限切れです' },
+  INVALID_TOKEN: { status: 401, message: 'トークンが無効です' },
+  TOKEN_EXPIRED: { status: 401, message: 'トークンが期限切れです' },
+
+  // ========== 設定 ==========
+  MISSING_JWT_SECRET: { status: 500, message: 'JWT_SECRETが設定されていません' },
 
   // ========== バリデーション ==========
   INVALID_INPUT: { status: 400, message: '入力が不正です' },
