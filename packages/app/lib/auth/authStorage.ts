@@ -1,6 +1,9 @@
 /**
  * 認証状態のAsyncStorageユーティリティ
- * モック認証用の実装（本番APIができるまでの暫定）
+ *
+ * ユーザー情報のローカルキャッシュとして使用。
+ * 認証の正当性はJWTトークン（tokenStorage.ts）で判定する。
+ * このストレージはアプリ再起動時のUI表示高速化が主目的。
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
