@@ -37,7 +37,7 @@ export async function buildApp() {
   })
 
   // ヘルスチェック
-  app.get('/api/health', async (request, reply) => {
+  app.get('/api/health', async (_request, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`
       return {

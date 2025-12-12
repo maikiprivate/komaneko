@@ -4,7 +4,6 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AppError } from '../errors/AppError.js'
 import { generateAccessToken } from '../utils/jwt.js'
 import {
   type AuthMiddlewareRepository,

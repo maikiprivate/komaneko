@@ -37,7 +37,7 @@ export async function authRouter(app: FastifyInstance) {
   app.addHook('preHandler', async (request) => {
     // request.urlから認証不要ルートをチェック
     // /api/auth/register -> /register にマッチさせるため、prefixを除去
-    const urlPath = request.url.split('?')[0] // クエリパラメータを除去
+    const urlPath = request.url.split('?')[0] ?? '' // クエリパラメータを除去
     const routePath = urlPath.replace(/^\/api\/auth/, '') // prefix除去
     if (PUBLIC_ROUTES.includes(routePath)) {
       return
