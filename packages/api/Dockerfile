@@ -24,7 +24,8 @@ RUN pnpm build
 
 # APIをビルド
 WORKDIR /app/packages/api
-RUN pnpm prisma generate
+# prisma generate はスキーマからクライアントを生成するだけでDB接続不要
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" pnpm prisma generate
 RUN pnpm build
 
 # 実行ステージ
