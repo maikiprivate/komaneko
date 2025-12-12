@@ -42,8 +42,11 @@ COPY --from=builder /app/packages ./packages
 
 WORKDIR /app/packages/api
 
+# 起動スクリプトに実行権限を付与
+RUN chmod +x scripts/start.sh
+
 # ポート公開
 EXPOSE 3000
 
-# 起動コマンド
-CMD ["pnpm", "start"]
+# 起動時にマイグレーションを実行してからサーバーを起動
+CMD ["./scripts/start.sh"]
