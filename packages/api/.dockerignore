@@ -1,0 +1,32 @@
+# 依存関係（ビルド時に再インストール）
+node_modules
+
+# 環境変数（本番は別管理）
+.env
+.env.*
+!.env.example
+
+# ビルド成果物（ビルド時に再生成）
+dist
+
+# テスト
+*.test.ts
+*.spec.ts
+__tests__
+coverage
+
+# 開発ツール
+.git
+.gitignore
+.vscode
+.idea
+*.md
+!README.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログ
+*.log
+logs
