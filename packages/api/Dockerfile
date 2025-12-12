@@ -8,6 +8,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # 依存関係のインストール（キャッシュ効率化のため先にコピー）
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY tsconfig.base.json ./
 COPY packages/api/package.json ./packages/api/
 COPY packages/shared/package.json ./packages/shared/
 
@@ -17,10 +18,14 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared ./packages/shared
 COPY packages/api ./packages/api
 
-# ビルド
-WORKDIR /app/packages/api
+# sharedパッケージをビルド
+WORKDIR /app/packages/shared
 RUN pnpm build
+
+# APIをビルド
+WORKDIR /app/packages/api
 RUN pnpm prisma generate
+RUN pnpm build
 
 # 実行ステージ
 FROM node:22-alpine
