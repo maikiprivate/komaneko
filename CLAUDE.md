@@ -207,24 +207,59 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 9（作業中） |
-| 最終更新 | 2025-12-11 |
+| フェーズ | Phase 10（作業中） |
+| 最終更新 | 2025-12-12 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 9（作業中）- 認証機能 - アプリ-API連携
+### Phase 10（作業中）- 本番デプロイ（Railway）
+
+**目標**: 本番環境をRailwayで構築し、アプリからAPIを利用可能にする
+
+詳細設計: `docs/designs/deployment.md`
+
+- [ ] Dockerfile作成（マルチステージビルド）
+- [ ] .dockerignore作成
+- [ ] Railway設定（GUI操作）
+  - アカウント作成
+  - プロジェクト作成（Asia-Southeast）
+  - PostgreSQL追加
+  - GitHub連携
+  - 環境変数設定
+- [ ] 初回デプロイ確認
+- [ ] アプリ側のAPI URL更新
+- [ ] 動作確認
+
+### Phase 9（完了）- 認証機能 - アプリ-API連携
 
 **目標**: アプリのモック認証を実際のAPIに接続
 
 詳細設計: `docs/designs/auth.md`
 
-- [ ] APIクライアント設定（fetch / axios）
-- [ ] 新規登録のAPI連携
-- [ ] ログインのAPI連携
-- [ ] ログアウトのAPI連携
-- [ ] アカウント削除のAPI連携
-- [ ] トークン管理（SecureStore）
-- [ ] エラーハンドリングUI
-- [ ] ローディング状態UI
+- [x] APIクライアント設定（fetch）
+- [x] 新規登録のAPI連携
+- [x] ログインのAPI連携
+- [x] ログアウトのAPI連携
+- [x] アカウント削除のAPI連携
+- [x] トークン管理（SecureStore / AsyncStorageフォールバック）
+- [x] エラーハンドリングUI
+- [x] ローディング状態UI
+- [x] バリデーション共通化（@komaneko/shared）
+
+**実装ファイル:**
+```
+packages/app/lib/
+├── api/
+│   ├── config.ts      # API設定（BASE_URL）
+│   ├── client.ts      # fetch wrapper、エラーハンドリング
+│   └── auth.ts        # 認証API関数
+└── auth/
+    ├── tokenStorage.ts   # JWT保存（SecureStore/AsyncStorage）
+    ├── authStorage.ts    # 認証状態保存
+    └── AuthContext.tsx   # 認証コンテキスト
+
+packages/shared/src/validation/
+└── auth.ts            # 共通バリデーションルール
+```
 
 ### Phase 8（完了）- 認証機能 - API
 

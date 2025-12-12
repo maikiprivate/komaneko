@@ -870,25 +870,66 @@ packages/api/src/
 - [ ] 匿名ユーザー作成（POST /api/auth/session/anonymous）
 - [ ] トークンリフレッシュ
 
-### Phase 9: 認証機能 - アプリ-API連携（作業中）
+### Phase 9: 認証機能 - アプリ-API連携（完了）
 
 **目標**: アプリのモック認証を実際のAPIに接続
 
-- [ ] APIクライアント設定（fetch / axios）
-- [ ] 新規登録のAPI連携
-- [ ] ログインのAPI連携
-- [ ] ログアウトのAPI連携
-- [ ] アカウント削除のAPI連携
-- [ ] トークン管理（SecureStore）
-- [ ] エラーハンドリングUI
-- [ ] ローディング状態UI
+- [x] APIクライアント設定（fetch）
+- [x] 新規登録のAPI連携
+- [x] ログインのAPI連携
+- [x] ログアウトのAPI連携
+- [x] アカウント削除のAPI連携
+- [x] トークン管理（SecureStore / AsyncStorageフォールバック）
+- [x] エラーハンドリングUI
+- [x] ローディング状態UI
+- [x] バリデーション共通化（@komaneko/shared）
 
-### Phase 10: アプリコア（ゲーミフィケーション）
+**実装ファイル:**
+```
+packages/app/lib/
+├── api/
+│   ├── config.ts      # API設定（BASE_URL）
+│   ├── client.ts      # fetch wrapper、エラーハンドリング
+│   └── auth.ts        # 認証API関数
+└── auth/
+    ├── tokenStorage.ts   # JWT保存（SecureStore/AsyncStorage）
+    ├── authStorage.ts    # 認証状態保存
+    └── AuthContext.tsx   # 認証コンテキスト
+
+packages/shared/src/validation/
+└── auth.ts            # 共通バリデーションルール
+```
+
+### Phase 10: 本番デプロイ（Railway）（作業中）
+
+**目標**: 本番環境をRailwayで構築し、アプリからAPIを利用可能にする
+
+詳細設計: `docs/designs/deployment.md`
+
+- [ ] Dockerfile作成（マルチステージビルド）
+- [ ] .dockerignore作成
+- [ ] Railway設定（GUI操作）
+  - アカウント作成
+  - プロジェクト作成（Asia-Southeast）
+  - PostgreSQL追加
+  - GitHub連携
+  - 環境変数設定
+- [ ] 初回デプロイ確認
+- [ ] アプリ側のAPI URL更新
+- [ ] 動作確認
+
+**選定理由（詳細: deployment.md）:**
+- APIとDBを同一リージョンに配置（レイテンシ改善）
+- 無料枠でスリープなし
+- シンプルな運用（1サービスで完結）
+- 将来の拡張性（Redis追加等可能）
+
+### Phase 11: アプリコア（ゲーミフィケーション）
 - [ ] **core/ 共通モジュール作成**
   - ハートロジック（消費・回復・制限）
   - 学習記録
 
-### Phase 11: コンテンツAPI
+### Phase 12: コンテンツAPI
 - [ ] 駒塾CRUD（Router → Service → Repository）
 - [ ] レッスンステップ管理
 - [ ] 詰将棋CRUD
@@ -896,7 +937,7 @@ packages/api/src/
 - [ ] 解答管理
 - [ ] ユニット・統合テスト（TDD）
 
-### Phase 12: ゲーミフィケーションAPI + BFF
+### Phase 13: ゲーミフィケーションAPI + BFF
 - [ ] ハートシステム（消費・回復）
 - [ ] 連続記録（日付計算）
 - [ ] 学習記録
@@ -906,7 +947,7 @@ packages/api/src/
   - GET /api/tsumeshogi/:id/play
 - [ ] テスト作成（TDD）
 
-### Phase 13: コンテンツAPI連携
+### Phase 14: コンテンツAPI連携
 - [ ] 駒塾のAPI連携
 - [ ] 詰将棋のAPI連携
 - [ ] ゲーミフィケーションのAPI連携
@@ -914,14 +955,13 @@ packages/api/src/
 - [ ] エラーハンドリングUI
 - [ ] オフライン対応（任意）
 
-### Phase 14: 管理画面
+### Phase 15: 管理画面
 - [ ] React + Vite設定
 - [ ] 駒塾・詰将棋管理画面
 - [ ] コンテンツ投入
 
-### Phase 15: デプロイ
+### Phase 16: 本番リリース準備
 - [ ] シードデータ作成
-- [ ] Railway設定
 - [ ] 本番環境テスト
 - [ ] App Store / Google Play 準備（任意）
 
