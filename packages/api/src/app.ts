@@ -4,6 +4,7 @@ import rateLimit from '@fastify/rate-limit'
 import Fastify from 'fastify'
 import { prisma } from './db/client.js'
 import { authRouter } from './modules/auth/auth.router.js'
+import { heartsRouter } from './modules/hearts/hearts.router.js'
 import { errorHandler } from './shared/errors/index.js'
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -56,6 +57,9 @@ export async function buildApp() {
 
   // 認証API
   await app.register(authRouter, { prefix: '/api/auth' })
+
+  // ハートAPI
+  await app.register(heartsRouter, { prefix: '/api/hearts' })
 
   return app
 }
