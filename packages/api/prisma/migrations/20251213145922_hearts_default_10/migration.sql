@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "hearts" ALTER COLUMN "count" SET DEFAULT 10,
+ALTER COLUMN "max_count" SET DEFAULT 10;
