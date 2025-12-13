@@ -207,27 +207,59 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 10（作業中） |
-| 最終更新 | 2025-12-12 |
+| フェーズ | Phase 11（作業中） |
+| 最終更新 | 2025-12-13 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 10（作業中）- 本番デプロイ（Railway）
+### Phase 11（作業中）- ハートAPI
+
+**目標**: ハートシステム（残機）のバックエンドAPIを実装
+
+詳細設計: `docs/designs/hearts.md`
+
+- [ ] Prismaスキーマのデフォルト値を10に変更
+- [ ] エラーコード追加（INSUFFICIENT_HEARTS）
+- [ ] Zodスキーマ作成
+- [ ] Heartsリポジトリ実装
+- [ ] Heartsサービス実装（TDD）
+- [ ] Heartsルーター実装
+- [ ] テスト実行・動作確認
+
+**実装予定エンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/hearts | ハート状態取得 | 必須 |
+| POST | /api/hearts/consume | ハート消費 | 必須 |
+
+**設計ポイント:**
+- 取得時はDB更新なし（パフォーマンス最適化）
+- 回復計算はクライアント側で実行
+- 消費時のみDB更新
+
+### Phase 10（完了）- 本番デプロイ（Railway）
 
 **目標**: 本番環境をRailwayで構築し、アプリからAPIを利用可能にする
 
 詳細設計: `docs/designs/deployment.md`
 
-- [ ] Dockerfile作成（マルチステージビルド）
-- [ ] .dockerignore作成
-- [ ] Railway設定（GUI操作）
+- [x] Dockerfile作成（マルチステージビルド）
+- [x] .dockerignore作成
+- [x] Railway設定（GUI操作）
   - アカウント作成
-  - プロジェクト作成（Asia-Southeast）
-  - PostgreSQL追加
+  - プロジェクト作成（Asia-Southeast: Singapore）
+  - PostgreSQL追加（Singapore）
   - GitHub連携
   - 環境変数設定
-- [ ] 初回デプロイ確認
-- [ ] アプリ側のAPI URL更新
-- [ ] 動作確認
+- [x] 初回デプロイ確認
+- [x] アプリ側のAPI URL更新
+- [x] 動作確認
+
+**本番環境:**
+| 項目 | 値 |
+|------|-----|
+| API URL | `https://komaneko-production.up.railway.app` |
+| リージョン | シンガポール（API・DB共に） |
+| レスポンス時間 | 280-450ms |
 
 ### Phase 9（完了）- 認証機能 - アプリ-API連携
 

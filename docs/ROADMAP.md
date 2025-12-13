@@ -900,34 +900,56 @@ packages/shared/src/validation/
 └── auth.ts            # 共通バリデーションルール
 ```
 
-### Phase 10: 本番デプロイ（Railway）（作業中）
+### Phase 10: 本番デプロイ（Railway）（完了）
 
 **目標**: 本番環境をRailwayで構築し、アプリからAPIを利用可能にする
 
 詳細設計: `docs/designs/deployment.md`
 
-- [ ] Dockerfile作成（マルチステージビルド）
-- [ ] .dockerignore作成
-- [ ] Railway設定（GUI操作）
+- [x] Dockerfile作成（マルチステージビルド）
+- [x] .dockerignore作成
+- [x] Railway設定（GUI操作）
   - アカウント作成
-  - プロジェクト作成（Asia-Southeast）
-  - PostgreSQL追加
+  - プロジェクト作成（Asia-Southeast: Singapore）
+  - PostgreSQL追加（Singapore）
   - GitHub連携
   - 環境変数設定
-- [ ] 初回デプロイ確認
-- [ ] アプリ側のAPI URL更新
-- [ ] 動作確認
+- [x] 初回デプロイ確認
+- [x] アプリ側のAPI URL更新
+- [x] 動作確認
 
-**選定理由（詳細: deployment.md）:**
-- APIとDBを同一リージョンに配置（レイテンシ改善）
-- 無料枠でスリープなし
-- シンプルな運用（1サービスで完結）
-- 将来の拡張性（Redis追加等可能）
+**本番環境:**
+| 項目 | 値 |
+|------|-----|
+| API URL | `https://komaneko-production.up.railway.app` |
+| リージョン | シンガポール（API・DB共に） |
+| レスポンス時間 | 280-450ms |
 
-### Phase 11: アプリコア（ゲーミフィケーション）
-- [ ] **core/ 共通モジュール作成**
-  - ハートロジック（消費・回復・制限）
-  - 学習記録
+### Phase 11: ハートAPI（作業中）
+
+**目標**: ハートシステム（残機）のバックエンドAPIを実装
+
+詳細設計: `docs/designs/hearts.md`
+
+- [ ] Prismaスキーマのデフォルト値を10に変更
+- [ ] エラーコード追加（INSUFFICIENT_HEARTS）
+- [ ] Zodスキーマ作成
+- [ ] Heartsリポジトリ実装
+- [ ] Heartsサービス実装（TDD）
+- [ ] Heartsルーター実装
+- [ ] テスト実行・動作確認
+
+**実装予定エンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/hearts | ハート状態取得 | 必須 |
+| POST | /api/hearts/consume | ハート消費 | 必須 |
+
+**設計ポイント（manabi-shogiの教訓）:**
+- 取得時はDB更新なし（パフォーマンス最適化）
+- 回復計算はクライアント側で実行（APIコール削減）
+- 消費時のみDB更新
+- 1時間で1ハート回復、最大10ハート
 
 ### Phase 12: コンテンツAPI
 - [ ] 駒塾CRUD（Router → Service → Repository）
@@ -937,9 +959,8 @@ packages/shared/src/validation/
 - [ ] 解答管理
 - [ ] ユニット・統合テスト（TDD）
 
-### Phase 13: ゲーミフィケーションAPI + BFF
-- [ ] ハートシステム（消費・回復）
-- [ ] 連続記録（日付計算）
+### Phase 13: ストリークAPI + BFF
+- [ ] ストリークシステム（連続記録・日付計算）
 - [ ] 学習記録
 - [ ] BFF統合エンドポイント
   - GET /api/home/status
@@ -947,7 +968,7 @@ packages/shared/src/validation/
   - GET /api/tsumeshogi/:id/play
 - [ ] テスト作成（TDD）
 
-### Phase 14: コンテンツAPI連携
+### Phase 14: API連携（アプリ）
 - [ ] 駒塾のAPI連携
 - [ ] 詰将棋のAPI連携
 - [ ] ゲーミフィケーションのAPI連携
