@@ -8,7 +8,11 @@ import { z } from 'zod'
  * ハート消費リクエスト
  */
 export const consumeHeartsSchema = z.object({
-  amount: z.number().int().min(1, '1以上の整数を指定してください'),
+  amount: z
+    .number()
+    .int()
+    .min(1, '1以上の整数を指定してください')
+    .max(10, '10以下の整数を指定してください'),
 })
 
 export type ConsumeHeartsInput = z.infer<typeof consumeHeartsSchema>
