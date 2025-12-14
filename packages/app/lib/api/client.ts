@@ -21,6 +21,7 @@ export type ApiErrorCode =
   | 'INVALID_INPUT'
   | 'MISSING_REQUIRED_FIELD'
   | 'USER_NOT_FOUND'
+  | 'NO_HEARTS_LEFT'
   | 'INTERNAL_ERROR'
   | 'DATABASE_ERROR'
   | 'NETWORK_ERROR'
@@ -207,6 +208,7 @@ export function getErrorMessage(code: ApiErrorCode): string {
     INVALID_INPUT: '入力内容を確認してください',
     MISSING_REQUIRED_FIELD: '必須項目が入力されていません',
     USER_NOT_FOUND: 'ユーザーが見つかりません',
+    NO_HEARTS_LEFT: 'ハートが足りません',
     INTERNAL_ERROR: 'サーバーエラーが発生しました',
     DATABASE_ERROR: 'サーバーエラーが発生しました',
     NETWORK_ERROR: 'ネットワークに接続できません',

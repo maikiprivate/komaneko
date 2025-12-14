@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
 import Colors from '@/constants/Colors'
+import { getHearts } from '@/lib/api/hearts'
 import {
   calculateWeeklyProgress,
   getDemoToday,
@@ -50,6 +51,17 @@ export default function HomeScreen() {
         setStreakInfo(info)
       }
       loadStreak()
+
+      // Step 1: ハートAPIの接続確認（動作確認用）
+      const loadHearts = async () => {
+        try {
+          const heartsData = await getHearts()
+          console.log('[Hearts API] レスポンス:', heartsData)
+        } catch (error) {
+          console.log('[Hearts API] エラー:', error)
+        }
+      }
+      loadHearts()
     }, [])
   )
 
