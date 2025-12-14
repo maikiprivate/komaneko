@@ -1,20 +1,19 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
-import { Image, ImageBackground, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Image, ImageBackground, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
 import Colors from '@/constants/Colors'
-import { getHearts } from '@/lib/api/hearts'
+import { getHearts, type HeartsResponse } from '@/lib/api/hearts'
 import {
   calculateWeeklyProgress,
   getDemoToday,
   getStreakData,
   type WeeklyStreakInfo,
 } from '@/lib/streak/streakStorage'
-import { mockHomeData } from '@/mocks/homeData'
 
 const characterSitting = require('@/assets/images/character/sitting.png')
 const homeBackground = require('@/assets/images/background/home.jpg')
@@ -29,10 +28,24 @@ function formatRecoveryTime(minutes: number): string {
   return mins > 0 ? `${hours}時間${mins}分` : `${hours}時間`
 }
 
+/** ハート状態の型 */
+interface HeartsState {
+  current: number
+  max: number
+  isLoading: boolean
+  error: string | null
+}
+
 export default function HomeScreen() {
   const { colors } = useTheme()
-  const { hearts } = mockHomeData
-  const heartsPercent = (hearts.current / hearts.max) * 100
+
+  // ハートデータ（APIから取得）
+  const [hearts, setHearts] = useState<HeartsState>({
+    current: 0,
+    max: 10,
+    isLoading: true,
+    error: null,
+  })
 
   // ストリークデータ（AsyncStorageから読み込み）
   const [streakInfo, setStreakInfo] = useState<WeeklyStreakInfo>({
@@ -41,9 +54,10 @@ export default function HomeScreen() {
     currentStreak: 0,
   })
 
-  // 画面フォーカス時にストリークデータを再読み込み
+  // 画面フォーカス時にデータを再読み込み
   useFocusEffect(
     useCallback(() => {
+      // ストリークデータ読み込み
       const loadStreak = async () => {
         const data = await getStreakData()
         const demoToday = await getDemoToday()
@@ -52,13 +66,23 @@ export default function HomeScreen() {
       }
       loadStreak()
 
-      // Step 1: ハートAPIの接続確認（動作確認用）
+      // ハートデータ読み込み
       const loadHearts = async () => {
         try {
           const heartsData = await getHearts()
-          console.log('[Hearts API] レスポンス:', heartsData)
+          setHearts({
+            current: heartsData.count,
+            max: heartsData.maxCount,
+            isLoading: false,
+            error: null,
+          })
         } catch (error) {
           console.log('[Hearts API] エラー:', error)
+          setHearts((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: 'ハート情報を取得できませんでした',
+          }))
         }
       }
       loadHearts()
@@ -90,32 +114,44 @@ export default function HomeScreen() {
         <View style={[styles.heartsCard, { backgroundColor: colors.card.background }]}>
           <View style={styles.heartsLabelRow}>
             <FontAwesome name="heart" size={14} color={colors.gamification.heart} />
-            {hearts.current < hearts.max && (
-              <Text style={[styles.recoveryText, { color: colors.text.secondary }]}>
-                回復まであと {formatRecoveryTime(hearts.recovery.nextRecoveryMinutes)}
+            {!hearts.isLoading && !hearts.error && hearts.current >= hearts.max && (
+              <Text style={[styles.recoveryText, { color: colors.gamification.heart }]}>
+                体力MAX
               </Text>
             )}
+            {/* 回復時間表示は Step 3 で実装 */}
           </View>
-          <View style={[styles.gaugeBackground, { backgroundColor: colors.border }]}>
-            <View
-              style={[
-                styles.gaugeFill,
-                { backgroundColor: colors.gamification.heart, width: `${heartsPercent}%` },
-              ]}
-            />
-            {Array.from({ length: hearts.max - 1 }).map((_, i) => (
+          {hearts.isLoading ? (
+            <ActivityIndicator size="small" color={colors.gamification.heart} />
+          ) : hearts.error ? (
+            <Text style={[styles.recoveryText, { color: colors.text.secondary }]}>
+              {hearts.error}
+            </Text>
+          ) : (
+            <View style={[styles.gaugeBackground, { backgroundColor: colors.border }]}>
               <View
-                key={i}
                 style={[
-                  styles.gaugeTick,
+                  styles.gaugeFill,
                   {
-                    left: `${((i + 1) / hearts.max) * 100}%`,
-                    backgroundColor: colors.card.background,
+                    backgroundColor: colors.gamification.heart,
+                    width: `${(hearts.current / hearts.max) * 100}%`,
                   },
                 ]}
               />
-            ))}
-          </View>
+              {Array.from({ length: hearts.max - 1 }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.gaugeTick,
+                    {
+                      left: `${((i + 1) / hearts.max) * 100}%`,
+                      backgroundColor: colors.card.background,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
         {/* キャラクター表示 */}
