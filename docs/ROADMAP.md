@@ -961,6 +961,52 @@ packages/api/src/modules/hearts/
 └── hearts.schema.ts        # Zodスキーマ
 ```
 
+### Phase 11.5: ハート機能 - アプリ-API連携（作業中）
+
+**目標**: ホーム画面のハート表示をAPIに接続し、クライアント側で回復計算を行う
+
+詳細設計: `docs/designs/hearts.md`（クライアント側セクション）
+
+**Step 1: API関数作成 + 最小限の接続確認**
+- [ ] lib/api/hearts.ts 作成（getHearts, consumeHearts）
+- [ ] client.ts にNO_HEARTS_LEFTエラーコード追加
+- [ ] ホーム画面でconsole.logで確認
+- [ ] 動作確認: APIレスポンスが取得できるか
+
+**Step 2: ホーム画面にAPIデータを表示**
+- [ ] useState + useEffectでAPI取得
+- [ ] ローディング状態の表示
+- [ ] エラー時の表示
+- [ ] 動作確認: ハート数が正しく表示されるか
+
+**Step 3: 回復計算をクライアント側で実行**
+- [ ] lib/hearts/heartsUtils.ts 作成
+- [ ] calculateCurrentHearts(): 回復後のハート数
+- [ ] calculateNextRecoveryMinutes(): 次回復までの分数
+- [ ] 動作確認: 回復後のハート数が正しいか
+
+**Step 4: useHeartsフック + 1分ごとの表示更新**
+- [ ] lib/hearts/useHearts.ts 作成
+- [ ] 1分ごとに回復計算を再実行
+- [ ] ホーム画面をuseHeartsに置き換え
+- [ ] 動作確認: 時間経過でハートが増えるか
+
+**実装ファイル（予定）:**
+```
+packages/app/lib/
+├── api/
+│   └── hearts.ts         # getHearts(), consumeHearts()
+└── hearts/
+    ├── heartsUtils.ts    # 回復計算（サーバーと同じロジック）
+    └── useHearts.ts      # 状態管理フック
+```
+
+**設計ポイント:**
+- APIコールはアプリ起動時のみ（ホーム画面表示時は叩かない）
+- 回復計算はクライアント側で実行（1分ごとに表示更新）
+- 消費APIのレスポンスで状態更新
+- consumeHearts連携は別フェーズで実装（詰将棋・駒塾完了時）
+
 ### Phase 12: コンテンツAPI
 - [ ] 駒塾CRUD（Router → Service → Repository）
 - [ ] レッスンステップ管理
