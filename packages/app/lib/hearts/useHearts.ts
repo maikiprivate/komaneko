@@ -1,8 +1,8 @@
 /**
  * ハート状態管理フック
  *
- * - 画面フォーカス時にAPIからデータ取得
- * - クライアント側で回復計算
+ * - 初回のみAPIからデータ取得、以降はキャッシュから再計算
+ * - クライアント側で回復計算（APIコール削減）
  * - 1分ごとに残り時間をカウントダウン
  * - 回復タイミングでハート数を更新（満タン時は停止）
  * - アプリがバックグラウンドから復帰時に即座に再計算
@@ -128,17 +128,38 @@ export function useHearts(): UseHeartsResult {
     [startMinuteTimer, clearMinuteTimer],
   )
 
+  /** キャッシュから再計算（APIコールなし） */
+  const recalculateFromCache = useCallback(() => {
+    if (!cachedDataRef.current) return
+
+    const newCalculated = calculateHearts(cachedDataRef.current)
+    setHearts(newCalculated)
+
+    // 満タンでなければタイマー開始、満タンなら停止
+    if (!newCalculated.isFull) {
+      startMinuteTimer()
+    } else {
+      clearMinuteTimer()
+    }
+  }, [startMinuteTimer, clearMinuteTimer])
+
   // 画面フォーカス時の処理
   useFocusEffect(
     useCallback(() => {
       isFocusedRef.current = true
-      fetchHearts()
+
+      // キャッシュがあれば再計算のみ、なければAPIから取得
+      if (cachedDataRef.current) {
+        recalculateFromCache()
+      } else {
+        fetchHearts()
+      }
 
       return () => {
         isFocusedRef.current = false
         clearMinuteTimer()
       }
-    }, [fetchHearts, clearMinuteTimer]),
+    }, [fetchHearts, recalculateFromCache, clearMinuteTimer]),
   )
 
   // アプリがバックグラウンドから復帰した時に即座に再計算
