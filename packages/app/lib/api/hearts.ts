@@ -8,14 +8,14 @@ import { apiRequest } from './client'
 export interface HeartsResponse {
   count: number
   maxCount: number
-  lastRefill: string // ISO8601
+  recoveryStartedAt: string // ISO8601
 }
 
 /** ハート消費レスポンス */
 export interface ConsumeHeartsResponse {
   consumed: number
   remaining: number
-  lastRefill: string // ISO8601
+  recoveryStartedAt: string // ISO8601
 }
 
 /**

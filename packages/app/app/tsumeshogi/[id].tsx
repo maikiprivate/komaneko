@@ -5,6 +5,9 @@ import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDim
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
+import { checkHeartsAvailable } from '@/lib/hearts/checkHeartsAvailable'
+import { useHearts } from '@/lib/hearts/useHearts'
+import { useHeartsConsume } from '@/lib/hearts/useHeartsConsume'
 import { recordLearningCompletion } from '@/lib/streak/recordLearningCompletion'
 import { FeedbackOverlay } from '@/components/shogi/FeedbackOverlay'
 import { GameFooter } from '@/components/shogi/GameFooter'
@@ -39,11 +42,21 @@ function getAdjacentProblemIds(
   return { prevId, nextId }
 }
 
+// 消費ハート数（将来的にはproblem.heartCostから取得）
+const HEART_COST = 1
+
 export default function TsumeshogiPlayScreen() {
   const { colors, palette } = useTheme()
   const { width } = useWindowDimensions()
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
+
+  // ハート状態
+  const { hearts, isLoading: heartsLoading, updateFromConsumeResponse } = useHearts()
+  const { consume } = useHeartsConsume(updateFromConsumeResponse)
+
+  // 開始時ハートチェック済みフラグ
+  const hasCheckedHearts = useRef(false)
 
   // IDから問題を取得
   const problem = MOCK_TSUMESHOGI_PROBLEMS.find((p) => p.id === id)
@@ -70,13 +83,28 @@ export default function TsumeshogiPlayScreen() {
   // アニメーション用
   const scaleAnim = useRef(new Animated.Value(1)).current
 
-  // フィードバック完了時の処理
-  const handleFeedbackComplete = useCallback(() => {
+  // 開始時ハートチェック
+  useEffect(() => {
+    if (!heartsLoading && !hasCheckedHearts.current) {
+      hasCheckedHearts.current = true
+      if (!checkHeartsAvailable(hearts, HEART_COST)) {
+        router.back()
+      }
+    }
+  }, [heartsLoading, hearts])
+
+  // フィードバック完了時の処理（正解時はハート消費）
+  const handleFeedbackComplete = useCallback(async () => {
     if (feedback === 'correct') {
-      setIsSolved(true)
+      // ハート消費（成功時のみ完了扱い）
+      const success = await consume(HEART_COST)
+      if (success) {
+        setIsSolved(true)
+      }
+      // 失敗時はisSolvedがfalseのままなので、再挑戦可能
     }
     setFeedback('none')
-  }, [feedback])
+  }, [feedback, consume])
 
   // 正解時の「次の問題へ」ボタンアニメーション
   useEffect(() => {
@@ -194,7 +222,12 @@ export default function TsumeshogiPlayScreen() {
         </View>
         <View style={styles.navigationArea}>
           <TouchableOpacity
-            onPress={() => isSolved && nextId && router.replace(`/tsumeshogi/${nextId}`)}
+            onPress={() => {
+              if (!isSolved || !nextId) return
+              // 次の問題に遷移する前にハートをチェック
+              if (!checkHeartsAvailable(hearts, HEART_COST)) return
+              router.replace(`/tsumeshogi/${nextId}`)
+            }}
             disabled={!isSolved || !nextId}
             activeOpacity={0.8}
           >

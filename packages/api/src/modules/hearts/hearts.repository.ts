@@ -8,7 +8,7 @@ export interface HeartsRepository {
   findByUserId(userId: string): Promise<Hearts | null>
   upsert(
     userId: string,
-    data: { count: number; maxCount: number; lastRefill: Date }
+    data: { count: number; maxCount: number; recoveryStartedAt: Date }
   ): Promise<Hearts>
 }
 
@@ -20,7 +20,7 @@ export function createHeartsRepository(prisma: PrismaClient): HeartsRepository {
 
     async upsert(
       userId: string,
-      data: { count: number; maxCount: number; lastRefill: Date }
+      data: { count: number; maxCount: number; recoveryStartedAt: Date }
     ): Promise<Hearts> {
       return prisma.hearts.upsert({
         where: { userId },
@@ -28,12 +28,12 @@ export function createHeartsRepository(prisma: PrismaClient): HeartsRepository {
           userId,
           count: data.count,
           maxCount: data.maxCount,
-          lastRefill: data.lastRefill,
+          recoveryStartedAt: data.recoveryStartedAt,
         },
         update: {
           count: data.count,
           maxCount: data.maxCount,
-          lastRefill: data.lastRefill,
+          recoveryStartedAt: data.recoveryStartedAt,
         },
       })
     },

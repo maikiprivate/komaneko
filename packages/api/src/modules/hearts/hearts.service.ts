@@ -17,13 +17,13 @@ const DEFAULT_MAX_HEARTS = 10
 interface HeartsData {
   count: number
   maxCount: number
-  lastRefill: Date
+  recoveryStartedAt: Date
 }
 
 interface ConsumeResult {
   consumed: number
   remaining: number
-  lastRefill: Date
+  recoveryStartedAt: Date
 }
 
 export class HeartsService {
@@ -35,10 +35,10 @@ export class HeartsService {
   static calculateCurrentHearts(hearts: {
     count: number
     maxCount: number
-    lastRefill: Date
+    recoveryStartedAt: Date
   }): number {
-    const msSinceRefill = Date.now() - hearts.lastRefill.getTime()
-    const recovered = Math.floor(msSinceRefill / RECOVERY_INTERVAL_MS)
+    const msSinceStart = Date.now() - hearts.recoveryStartedAt.getTime()
+    const recovered = Math.floor(msSinceStart / RECOVERY_INTERVAL_MS)
     return Math.min(hearts.count + recovered, hearts.maxCount)
   }
 
@@ -54,33 +54,37 @@ export class HeartsService {
       const created = await this.repository.upsert(userId, {
         count: DEFAULT_HEARTS,
         maxCount: DEFAULT_MAX_HEARTS,
-        lastRefill: now,
+        recoveryStartedAt: now,
       })
       return {
         count: created.count,
         maxCount: created.maxCount,
-        lastRefill: created.lastRefill,
+        recoveryStartedAt: created.recoveryStartedAt,
       }
     }
 
     return {
       count: hearts.count,
       maxCount: hearts.maxCount,
-      lastRefill: hearts.lastRefill,
+      recoveryStartedAt: hearts.recoveryStartedAt,
     }
   }
 
   /**
    * ハートを消費（回復計算 → 消費 → DB更新）
+   *
+   * recoveryStartedAtの更新ロジック:
+   * - 満タンから消費: 消費時刻を新しいrecoveryStartedAtに（回復タイマー開始）
+   * - 回復中に消費: recoveryStartedAtは変更なし（残り時間を保持）
    */
   async consumeHearts(userId: string, amount: number): Promise<ConsumeResult> {
     const hearts = await this.repository.findByUserId(userId)
 
-    // 新規ユーザーの場合はデフォルト値を使用
+    // 新規ユーザーの場合はデフォルト値を使用（満タン状態）
     const currentData = hearts ?? {
       count: DEFAULT_HEARTS,
       maxCount: DEFAULT_MAX_HEARTS,
-      lastRefill: new Date(),
+      recoveryStartedAt: new Date(),
     }
 
     // 回復計算
@@ -94,23 +98,23 @@ export class HeartsService {
     // 消費後のハート数
     const remaining = currentCount - amount
 
-    // lastRefillの更新: 回復があった場合は現在時刻に更新
-    const recovered =
-      currentCount - (hearts?.count ?? DEFAULT_HEARTS)
-    const newLastRefill =
-      recovered > 0 ? new Date() : currentData.lastRefill
+    // recoveryStartedAtの更新
+    const wasFull = currentCount >= currentData.maxCount
+    const newRecoveryStartedAt = wasFull
+      ? new Date() // 満タンから消費: 今から回復タイマー開始
+      : currentData.recoveryStartedAt // 回復中: 変更なし
 
     // DB更新
     await this.repository.upsert(userId, {
       count: remaining,
       maxCount: currentData.maxCount,
-      lastRefill: newLastRefill,
+      recoveryStartedAt: newRecoveryStartedAt,
     })
 
     return {
       consumed: amount,
       remaining,
-      lastRefill: newLastRefill,
+      recoveryStartedAt: newRecoveryStartedAt,
     }
   }
 }

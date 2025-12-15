@@ -23,7 +23,7 @@ export type ConsumeHeartsInput = z.infer<typeof consumeHeartsSchema>
 export interface HeartsResponse {
   count: number
   maxCount: number
-  lastRefill: string
+  recoveryStartedAt: string
 }
 
 /**
@@ -32,5 +32,5 @@ export interface HeartsResponse {
 export interface ConsumeHeartsResponse {
   consumed: number
   remaining: number
-  lastRefill: string
+  recoveryStartedAt: string
 }

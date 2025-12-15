@@ -28,7 +28,7 @@ describe('HeartsService', () => {
         userId: 'user-123',
         count: 5,
         maxCount: 10,
-        lastRefill: new Date('2025-01-01T00:00:00Z'),
+        recoveryStartedAt: new Date('2025-01-01T00:00:00Z'),
         updatedAt: new Date(),
       }
       vi.mocked(mockRepository.findByUserId).mockResolvedValue(mockHearts)
@@ -39,7 +39,7 @@ describe('HeartsService', () => {
       // Assert
       expect(result.count).toBe(5)
       expect(result.maxCount).toBe(10)
-      expect(result.lastRefill).toEqual(new Date('2025-01-01T00:00:00Z'))
+      expect(result.recoveryStartedAt).toEqual(new Date('2025-01-01T00:00:00Z'))
       expect(mockRepository.findByUserId).toHaveBeenCalledWith('user-123')
       // DB更新が呼ばれていないことを確認
       expect(mockRepository.upsert).not.toHaveBeenCalled()
@@ -53,7 +53,7 @@ describe('HeartsService', () => {
         userId: 'user-123',
         count: 10,
         maxCount: 10,
-        lastRefill: new Date(),
+        recoveryStartedAt: new Date(),
         updatedAt: new Date(),
       }
       vi.mocked(mockRepository.upsert).mockResolvedValue(mockCreatedHearts)
@@ -67,21 +67,21 @@ describe('HeartsService', () => {
       expect(mockRepository.upsert).toHaveBeenCalledWith('user-123', {
         count: 10,
         maxCount: 10,
-        lastRefill: expect.any(Date),
+        recoveryStartedAt: expect.any(Date),
       })
     })
   })
 
   describe('consumeHearts', () => {
     it('ハートを消費できる（回復計算なし）', async () => {
-      // Arrange: 5ハート、回復なし（lastRefillは現在時刻）
+      // Arrange: 5ハート、回復なし（recoveryStartedAtは現在時刻）
       const now = new Date()
       const mockHearts = {
         id: 'hearts-123',
         userId: 'user-123',
         count: 5,
         maxCount: 10,
-        lastRefill: now,
+        recoveryStartedAt: now,
         updatedAt: now,
       }
       vi.mocked(mockRepository.findByUserId).mockResolvedValue(mockHearts)
@@ -99,7 +99,7 @@ describe('HeartsService', () => {
       expect(mockRepository.upsert).toHaveBeenCalledWith('user-123', {
         count: 4,
         maxCount: 10,
-        lastRefill: now,
+        recoveryStartedAt: now,
       })
     })
 
@@ -111,7 +111,7 @@ describe('HeartsService', () => {
         userId: 'user-123',
         count: 5,
         maxCount: 10,
-        lastRefill: now,
+        recoveryStartedAt: now,
         updatedAt: now,
       }
       vi.mocked(mockRepository.findByUserId).mockResolvedValue(mockHearts)
@@ -129,14 +129,14 @@ describe('HeartsService', () => {
     })
 
     it('回復後のハートから消費できる', async () => {
-      // Arrange: 3時間前にlastRefill → 3ハート回復
+      // Arrange: 3時間前にrecoveryStartedAt → 3ハート回復
       const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000)
       const mockHearts = {
         id: 'hearts-123',
         userId: 'user-123',
         count: 5,
         maxCount: 10,
-        lastRefill: threeHoursAgo,
+        recoveryStartedAt: threeHoursAgo,
         updatedAt: new Date(),
       }
       vi.mocked(mockRepository.findByUserId).mockResolvedValue(mockHearts)
@@ -154,14 +154,14 @@ describe('HeartsService', () => {
     })
 
     it('回復でmaxCountを超えない', async () => {
-      // Arrange: 10時間前にlastRefill、count=8 → 回復上限10
+      // Arrange: 10時間前にrecoveryStartedAt、count=8 → 回復上限10
       const tenHoursAgo = new Date(Date.now() - 10 * 60 * 60 * 1000)
       const mockHearts = {
         id: 'hearts-123',
         userId: 'user-123',
         count: 8,
         maxCount: 10,
-        lastRefill: tenHoursAgo,
+        recoveryStartedAt: tenHoursAgo,
         updatedAt: new Date(),
       }
       vi.mocked(mockRepository.findByUserId).mockResolvedValue(mockHearts)
@@ -186,7 +186,7 @@ describe('HeartsService', () => {
         userId: 'user-123',
         count: 0,
         maxCount: 10,
-        lastRefill: now,
+        recoveryStartedAt: now,
         updatedAt: now,
       }
       vi.mocked(mockRepository.findByUserId).mockResolvedValue(mockHearts)
@@ -207,7 +207,7 @@ describe('HeartsService', () => {
         userId: 'user-123',
         count: 2,
         maxCount: 10,
-        lastRefill: now,
+        recoveryStartedAt: now,
         updatedAt: now,
       }
       vi.mocked(mockRepository.findByUserId).mockResolvedValue(mockHearts)
@@ -226,7 +226,7 @@ describe('HeartsService', () => {
         userId: 'user-123',
         count: 9, // 10 - 1
         maxCount: 10,
-        lastRefill: new Date(),
+        recoveryStartedAt: new Date(),
         updatedAt: new Date(),
       }
       vi.mocked(mockRepository.upsert).mockResolvedValue(mockCreatedHearts)
@@ -249,7 +249,7 @@ describe('HeartsService', () => {
       const result = HeartsService.calculateCurrentHearts({
         count: 5,
         maxCount: 10,
-        lastRefill: twoAndHalfHoursAgo,
+        recoveryStartedAt: twoAndHalfHoursAgo,
       })
 
       // Assert
@@ -264,7 +264,7 @@ describe('HeartsService', () => {
       const result = HeartsService.calculateCurrentHearts({
         count: 5,
         maxCount: 10,
-        lastRefill: oneDayAgo,
+        recoveryStartedAt: oneDayAgo,
       })
 
       // Assert
@@ -279,7 +279,7 @@ describe('HeartsService', () => {
       const result = HeartsService.calculateCurrentHearts({
         count: 5,
         maxCount: 10,
-        lastRefill: thirtyMinutesAgo,
+        recoveryStartedAt: thirtyMinutesAgo,
       })
 
       // Assert

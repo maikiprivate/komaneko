@@ -10,6 +10,9 @@ import type { HeartsResponse } from '../api/hearts'
 /** 1ハート回復に必要な時間（ミリ秒）- サーバー側と同じ値を維持すること */
 const RECOVERY_INTERVAL_MS = 60 * 60 * 1000 // 1時間
 
+/** デフォルトの最大ハート数 - サーバー側と同じ値を維持すること */
+export const DEFAULT_MAX_HEARTS = 10
+
 /** 計算結果の型 */
 export interface HeartsCalculation {
   /** 現在のハート数（回復計算後） */
@@ -30,10 +33,10 @@ export interface HeartsCalculation {
  * @returns 計算結果
  */
 export function calculateHearts(data: HeartsResponse, now: Date = new Date()): HeartsCalculation {
-  const lastRefillTime = new Date(data.lastRefill).getTime()
+  const recoveryStartTime = new Date(data.recoveryStartedAt).getTime()
 
   // 無効な日付の場合は回復なしとして扱う
-  if (Number.isNaN(lastRefillTime)) {
+  if (Number.isNaN(recoveryStartTime)) {
     return {
       current: Math.min(data.count, data.maxCount),
       max: data.maxCount,
@@ -43,17 +46,17 @@ export function calculateHearts(data: HeartsResponse, now: Date = new Date()): H
   }
 
   const currentTime = now.getTime()
-  const msSinceRefill = currentTime - lastRefillTime
+  const msSinceStart = currentTime - recoveryStartTime
 
   // 回復したハート数を計算
-  const recovered = Math.floor(msSinceRefill / RECOVERY_INTERVAL_MS)
+  const recovered = Math.floor(msSinceStart / RECOVERY_INTERVAL_MS)
   const current = Math.min(data.count + recovered, data.maxCount)
   const isFull = current >= data.maxCount
 
   // 次の回復までの時間を計算
   let nextRecoveryMinutes = 0
   if (!isFull) {
-    const msUntilNextRecovery = RECOVERY_INTERVAL_MS - (msSinceRefill % RECOVERY_INTERVAL_MS)
+    const msUntilNextRecovery = RECOVERY_INTERVAL_MS - (msSinceStart % RECOVERY_INTERVAL_MS)
     nextRecoveryMinutes = Math.ceil(msUntilNextRecovery / (60 * 1000))
   }
 

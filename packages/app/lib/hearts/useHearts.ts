@@ -10,16 +10,18 @@
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { getHearts, type HeartsResponse } from '../api/hearts'
-import { calculateHearts, type HeartsCalculation } from './heartsUtils'
+import { getHearts, type HeartsResponse, type ConsumeHeartsResponse } from '../api/hearts'
+import { calculateHearts, DEFAULT_MAX_HEARTS, type HeartsCalculation } from './heartsUtils'
 
 /** フックの戻り値 */
 export interface UseHeartsResult {
   hearts: HeartsCalculation | null
   isLoading: boolean
   error: string | null
-  /** 手動でデータを再取得する（ハート消費後に呼ぶ） */
+  /** 手動でデータを再取得する */
   refetch: () => Promise<void>
+  /** 消費APIレスポンスからキャッシュを更新する（refetchより効率的） */
+  updateFromConsumeResponse: (response: ConsumeHeartsResponse) => void
 }
 
 /**
@@ -77,7 +79,10 @@ export function useHearts(): UseHeartsResult {
   /** APIからデータを取得し、回復計算を行う */
   const fetchHearts = useCallback(async () => {
     try {
-      setIsLoading(true)
+      // 初回のみローディング表示（キャッシュがある場合は表示しない）
+      if (!cachedDataRef.current) {
+        setIsLoading(true)
+      }
       const data = await getHearts()
       cachedDataRef.current = data
       const calculated = calculateHearts(data)
@@ -98,6 +103,29 @@ export function useHearts(): UseHeartsResult {
       setIsLoading(false)
     }
   }, [startMinuteTimer, clearMinuteTimer])
+
+  /** 消費APIレスポンスからキャッシュを更新（APIコールなし） */
+  const updateFromConsumeResponse = useCallback(
+    (response: ConsumeHeartsResponse) => {
+      const maxCount = cachedDataRef.current?.maxCount ?? DEFAULT_MAX_HEARTS
+      const newData: HeartsResponse = {
+        count: response.remaining,
+        maxCount,
+        recoveryStartedAt: response.recoveryStartedAt,
+      }
+      cachedDataRef.current = newData
+      const calculated = calculateHearts(newData)
+      setHearts(calculated)
+
+      // 満タンでなければ1分タイマー開始
+      if (!calculated.isFull && isFocusedRef.current) {
+        startMinuteTimer()
+      } else if (calculated.isFull) {
+        clearMinuteTimer()
+      }
+    },
+    [startMinuteTimer, clearMinuteTimer]
+  )
 
   // 画面フォーカス時の処理
   useFocusEffect(
@@ -124,5 +152,6 @@ export function useHearts(): UseHeartsResult {
     isLoading,
     error,
     refetch: fetchHearts,
+    updateFromConsumeResponse,
   }
 }

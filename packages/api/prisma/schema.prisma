@@ -43,12 +43,12 @@ model Session {
 // ========== ゲーミフィケーション ==========
 
 model Hearts {
-  id         String   @id @default(uuid())
-  userId     String   @unique @map("user_id")
-  count      Int      @default(10)
-  maxCount   Int      @default(10) @map("max_count")
-  lastRefill DateTime @default(now()) @map("last_refill")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  userId            String   @unique @map("user_id")
+  count             Int      @default(10)
+  maxCount          Int      @default(10) @map("max_count")
+  recoveryStartedAt DateTime @default(now()) @map("recovery_started_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

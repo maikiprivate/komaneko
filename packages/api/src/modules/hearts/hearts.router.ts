@@ -45,7 +45,7 @@ export async function heartsRouter(app: FastifyInstance) {
       data: {
         count: hearts.count,
         maxCount: hearts.maxCount,
-        lastRefill: hearts.lastRefill.toISOString(),
+        recoveryStartedAt: hearts.recoveryStartedAt.toISOString(),
       },
       meta: { timestamp: new Date().toISOString() },
     })
@@ -71,7 +71,7 @@ export async function heartsRouter(app: FastifyInstance) {
       data: {
         consumed: result.consumed,
         remaining: result.remaining,
-        lastRefill: result.lastRefill.toISOString(),
+        recoveryStartedAt: result.recoveryStartedAt.toISOString(),
       },
       meta: { timestamp: new Date().toISOString() },
     })
