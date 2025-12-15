@@ -7,12 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
 import Colors from '@/constants/Colors'
-import { getHearts } from '@/lib/api/hearts'
-import {
-  calculateHearts,
-  formatRecoveryTime,
-  type HeartsCalculation,
-} from '@/lib/hearts/heartsUtils'
+import { formatRecoveryTime } from '@/lib/hearts/heartsUtils'
+import { useHearts } from '@/lib/hearts/useHearts'
 import {
   calculateWeeklyProgress,
   getDemoToday,
@@ -23,23 +19,11 @@ import {
 const characterSitting = require('@/assets/images/character/sitting.png')
 const homeBackground = require('@/assets/images/background/home.jpg')
 
-
-/** ハート状態の型 */
-interface HeartsState {
-  hearts: HeartsCalculation | null
-  isLoading: boolean
-  error: string | null
-}
-
 export default function HomeScreen() {
   const { colors } = useTheme()
 
-  // ハートデータ（APIから取得 + クライアント計算）
-  const [heartsState, setHeartsState] = useState<HeartsState>({
-    hearts: null,
-    isLoading: true,
-    error: null,
-  })
+  // ハートデータ（useHeartsフックで管理）
+  const { hearts, isLoading: heartsLoading, error: heartsError } = useHearts()
 
   // ストリークデータ（AsyncStorageから読み込み）
   const [streakInfo, setStreakInfo] = useState<WeeklyStreakInfo>({
@@ -48,10 +32,9 @@ export default function HomeScreen() {
     currentStreak: 0,
   })
 
-  // 画面フォーカス時にデータを再読み込み
+  // 画面フォーカス時にストリークデータを再読み込み
   useFocusEffect(
     useCallback(() => {
-      // ストリークデータ読み込み
       const loadStreak = async () => {
         const data = await getStreakData()
         const demoToday = await getDemoToday()
@@ -59,27 +42,6 @@ export default function HomeScreen() {
         setStreakInfo(info)
       }
       loadStreak()
-
-      // ハートデータ読み込み + 回復計算
-      const loadHearts = async () => {
-        try {
-          const heartsData = await getHearts()
-          const calculated = calculateHearts(heartsData)
-          setHeartsState({
-            hearts: calculated,
-            isLoading: false,
-            error: null,
-          })
-        } catch (error) {
-          console.log('[Hearts API] エラー:', error)
-          setHeartsState({
-            hearts: null,
-            isLoading: false,
-            error: 'ハート情報を取得できませんでした',
-          })
-        }
-      }
-      loadHearts()
     }, [])
   )
 
@@ -108,42 +70,42 @@ export default function HomeScreen() {
         <View style={[styles.heartsCard, { backgroundColor: colors.card.background }]}>
           <View style={styles.heartsLabelRow}>
             <FontAwesome name="heart" size={14} color={colors.gamification.heart} />
-            {!heartsState.isLoading && !heartsState.error && heartsState.hearts && (
-              heartsState.hearts.isFull ? (
+            {!heartsLoading && !heartsError && hearts && (
+              hearts.isFull ? (
                 <Text style={[styles.recoveryText, { color: colors.gamification.heart }]}>
                   体力MAX
                 </Text>
               ) : (
                 <Text style={[styles.recoveryText, { color: colors.text.secondary }]}>
-                  次の回復まで {formatRecoveryTime(heartsState.hearts.nextRecoveryMinutes)}
+                  次の回復まで {formatRecoveryTime(hearts.nextRecoveryMinutes)}
                 </Text>
               )
             )}
           </View>
-          {heartsState.isLoading ? (
+          {heartsLoading ? (
             <ActivityIndicator size="small" color={colors.gamification.heart} />
-          ) : heartsState.error ? (
+          ) : heartsError ? (
             <Text style={[styles.recoveryText, { color: colors.text.secondary }]}>
-              {heartsState.error}
+              {heartsError}
             </Text>
-          ) : heartsState.hearts && (
+          ) : hearts && (
             <View style={[styles.gaugeBackground, { backgroundColor: colors.border }]}>
               <View
                 style={[
                   styles.gaugeFill,
                   {
                     backgroundColor: colors.gamification.heart,
-                    width: `${(heartsState.hearts.current / heartsState.hearts.max) * 100}%`,
+                    width: `${(hearts.current / hearts.max) * 100}%`,
                   },
                 ]}
               />
-              {Array.from({ length: heartsState.hearts.max - 1 }).map((_, i) => (
+              {Array.from({ length: hearts.max - 1 }).map((_, i) => (
                 <View
                   key={i}
                   style={[
                     styles.gaugeTick,
                     {
-                      left: `${((i + 1) / heartsState.hearts!.max) * 100}%`,
+                      left: `${((i + 1) / hearts.max) * 100}%`,
                       backgroundColor: colors.card.background,
                     },
                   ]}
