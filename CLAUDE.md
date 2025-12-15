@@ -207,46 +207,60 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 11.5（作業中） |
-| 最終更新 | 2025-12-14 |
+| フェーズ | Phase 12（次） |
+| 最終更新 | 2025-12-16 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 11.5（作業中）- ハート機能 - アプリ-API連携
+### Phase 12（次）- コンテンツAPI
 
-**目標**: ホーム画面のハート表示をAPIに接続し、クライアント側で回復計算を行う
+**目標**: 駒塾・詰将棋のCRUD APIを実装
 
-詳細設計: `docs/designs/hearts.md`（クライアント側セクション）
+- [ ] 駒塾CRUD（Router → Service → Repository）
+- [ ] レッスンステップ管理
+- [ ] 詰将棋CRUD
+- [ ] 難易度・手数フィルタ
+- [ ] 解答管理
+- [ ] ユニット・統合テスト（TDD）
 
-**実装ステップ（動作確認を挟みながら）:**
+### Phase 11.5（完了）- ハート機能 - アプリ-API連携
 
-| Step | 内容 | 動作確認 |
-|------|------|----------|
-| 1 | API関数作成 + 接続確認 | APIレスポンス取得 |
-| 2 | ホーム画面にAPIデータ表示 | ハート数表示 |
-| 3 | 回復計算をクライアント側で実行 | 回復後のハート数 |
-| 4 | useHeartsフック + 1分更新 | 時間経過で更新 |
+**目標**: ホーム画面のハート表示をAPIに接続し、詰将棋・レッスン完了時にハート消費
 
-- [ ] lib/api/hearts.ts 作成（getHearts, consumeHearts）
-- [ ] client.ts にNO_HEARTS_LEFTエラーコード追加
-- [ ] lib/hearts/heartsUtils.ts 作成（回復計算）
-- [ ] lib/hearts/useHearts.ts 作成（状態管理フック）
-- [ ] ホーム画面のハート表示をAPI連携
-- [ ] 動作確認（Expo Go）
+詳細設計: `docs/designs/hearts.md`
 
-**実装ファイル（予定）:**
+- [x] lib/api/hearts.ts 作成（getHearts, consumeHearts）
+- [x] lib/hearts/heartsUtils.ts 作成（回復計算）
+- [x] lib/hearts/useHearts.ts 作成（状態管理フック + 1分カウントダウン）
+- [x] lib/hearts/useHeartsGate.ts 作成（開始時チェック + 完了時消費）
+- [x] lib/hearts/useHeartsConsume.ts 作成（消費ロジック共通化）
+- [x] lib/hearts/checkHeartsAvailable.ts 作成（残量チェック）
+- [x] ホーム画面のハート表示をAPI連携
+- [x] 詰将棋にハート消費機能を統合
+- [x] レッスンにハート消費機能を統合
+- [x] バックグラウンド復帰時の即座再計算（AppState監視）
+- [x] 画面フォーカス時のAPIコール最適化（キャッシュ再計算）
+- [x] コードレビュー指摘対応（MUST/SHOULD項目）
+
+**実装ファイル:**
 ```
 packages/app/lib/
 ├── api/
-│   └── hearts.ts         # getHearts(), consumeHearts()
+│   └── hearts.ts              # getHearts(), consumeHearts()
 └── hearts/
-    ├── heartsUtils.ts    # 回復計算（サーバーと同じロジック）
-    └── useHearts.ts      # 状態管理フック
+    ├── heartsUtils.ts         # 回復計算（サーバーと同じロジック）
+    ├── useHearts.ts           # 状態管理フック（1分更新、AppState監視）
+    ├── useHeartsGate.ts       # 開始時チェック + 完了時消費の一括管理
+    ├── useHeartsConsume.ts    # 消費ロジック共通化
+    └── checkHeartsAvailable.ts # 残量チェック（アラート表示）
 ```
 
 **設計ポイント:**
-- APIコールはアプリ起動時のみ（ホーム画面表示時は叩かない）
+- 初回のみAPI取得、以降はキャッシュから再計算（APIコール削減）
 - 回復計算はクライアント側で実行（1分ごとに表示更新）
-- consumeHearts連携は別フェーズで実装（詰将棋・駒塾完了時）
+- バックグラウンド復帰時にAppStateで即座再計算
+- ハート消費失敗時は完了扱いにしない（不正防止）
+- 詰将棋: 正解時に消費 + 次問題遷移前にcheckAvailable()
+- レッスン: 最終問題完了時にonComplete()で消費
 
 ### Phase 11（完了）- ハートAPI
 
