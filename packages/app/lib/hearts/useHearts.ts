@@ -43,7 +43,7 @@ export function useHearts(): UseHeartsResult {
   // 1分更新タイマーID
   const minuteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  /** 1分タイマーをクリア */
+  /** 1分タイマーをクリア（依存なしで安定） */
   const clearMinuteTimer = useCallback(() => {
     if (minuteTimerRef.current) {
       clearInterval(minuteTimerRef.current)
@@ -51,30 +51,29 @@ export function useHearts(): UseHeartsResult {
     }
   }, [])
 
-  /** キャッシュから再計算（満タンならタイマー停止） */
-  const recalculateAndUpdate = useCallback(() => {
-    if (!cachedDataRef.current || !isFocusedRef.current) {
-      return
-    }
-
-    const newCalculated = calculateHearts(cachedDataRef.current)
-    setHearts(newCalculated)
-
-    // 満タンになったらタイマー停止
-    if (newCalculated.isFull) {
-      clearMinuteTimer()
-    }
-  }, [clearMinuteTimer])
-
   /** 1分ごとの更新タイマーを開始 */
   const startMinuteTimer = useCallback(() => {
-    clearMinuteTimer()
+    // 既存タイマーをクリア
+    if (minuteTimerRef.current) {
+      clearInterval(minuteTimerRef.current)
+    }
 
-    // 1分ごとに再計算
+    // 1分ごとに再計算（満タンになったら自動停止）
     minuteTimerRef.current = setInterval(() => {
-      recalculateAndUpdate()
+      if (!cachedDataRef.current || !isFocusedRef.current) {
+        return
+      }
+
+      const newCalculated = calculateHearts(cachedDataRef.current)
+      setHearts(newCalculated)
+
+      // 満タンになったらタイマー停止
+      if (newCalculated.isFull && minuteTimerRef.current) {
+        clearInterval(minuteTimerRef.current)
+        minuteTimerRef.current = null
+      }
     }, 60 * 1000)
-  }, [clearMinuteTimer, recalculateAndUpdate])
+  }, [])
 
   /** APIからデータを取得し、回復計算を行う */
   const fetchHearts = useCallback(async () => {
@@ -94,7 +93,7 @@ export function useHearts(): UseHeartsResult {
         startMinuteTimer()
       }
     } catch (err) {
-      console.log('[useHearts] エラー:', err)
+      console.error('[useHearts] エラー:', err)
       cachedDataRef.current = null
       setHearts(null)
       setError('ハート情報を取得できませんでした')
@@ -124,7 +123,7 @@ export function useHearts(): UseHeartsResult {
         clearMinuteTimer()
       }
     },
-    [startMinuteTimer, clearMinuteTimer]
+    [startMinuteTimer, clearMinuteTimer],
   )
 
   // 画面フォーカス時の処理
@@ -137,14 +136,12 @@ export function useHearts(): UseHeartsResult {
         isFocusedRef.current = false
         clearMinuteTimer()
       }
-    }, [fetchHearts, clearMinuteTimer])
+    }, [fetchHearts, clearMinuteTimer]),
   )
 
   // コンポーネントアンマウント時のクリーンアップ
   useEffect(() => {
-    return () => {
-      clearMinuteTimer()
-    }
+    return () => clearMinuteTimer()
   }, [clearMinuteTimer])
 
   return {

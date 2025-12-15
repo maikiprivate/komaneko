@@ -290,8 +290,12 @@ export function useTsumeshogiGame(
           const success = await callbacks?.onCorrect?.() ?? true
           if (success) {
             setIsFinished(true)
+          } else {
+            // ハート消費失敗時は盤面をリセットして再挑戦可能にする
+            setBoardState(initialState)
+            setCurrentMoveCount(1)
+            setLastMove(null)
           }
-          // 失敗時はisFinishedがfalseのままなので、再挑戦可能
         }
         handleCorrect()
         return
