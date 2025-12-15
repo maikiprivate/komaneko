@@ -5,10 +5,12 @@
  * - クライアント側で回復計算
  * - 1分ごとに残り時間をカウントダウン
  * - 回復タイミングでハート数を更新（満タン時は停止）
+ * - アプリがバックグラウンドから復帰時に即座に再計算
  */
 
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AppState, type AppStateStatus } from 'react-native'
 
 import { getHearts, type HeartsResponse, type ConsumeHeartsResponse } from '../api/hearts'
 import { calculateHearts, DEFAULT_MAX_HEARTS, type HeartsCalculation } from './heartsUtils'
@@ -138,6 +140,27 @@ export function useHearts(): UseHeartsResult {
       }
     }, [fetchHearts, clearMinuteTimer]),
   )
+
+  // アプリがバックグラウンドから復帰した時に即座に再計算
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      // バックグラウンドからアクティブに復帰した時
+      if (nextState === 'active' && isFocusedRef.current && cachedDataRef.current) {
+        const newCalculated = calculateHearts(cachedDataRef.current)
+        setHearts(newCalculated)
+
+        // 満タンでなければタイマー再開、満タンなら停止
+        if (!newCalculated.isFull) {
+          startMinuteTimer()
+        } else {
+          clearMinuteTimer()
+        }
+      }
+    }
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange)
+    return () => subscription.remove()
+  }, [startMinuteTimer, clearMinuteTimer])
 
   // コンポーネントアンマウント時のクリーンアップ
   useEffect(() => {
