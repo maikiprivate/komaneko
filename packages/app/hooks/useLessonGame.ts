@@ -170,56 +170,73 @@ export function useLessonGame({
     setPossibleMoves([])
   }, [])
 
+  // 次の問題へ進む
+  const advanceToNextProblem = useCallback(() => {
+    const nextIndex = currentProblemIndex + 1
+    const nextProblem = problems[nextIndex]
+    setCurrentProblemIndex(nextIndex)
+    setBoardState(parseSfen(nextProblem.sfen))
+    clearSelection()
+    setHasAttemptedWrong(false)
+  }, [currentProblemIndex, problems, clearSelection])
+
+  // レッスン完了処理
+  const handleLessonComplete = useCallback(
+    async (finalCorrectCount: number): Promise<boolean> => {
+      // onCompleteコールバック（ハート消費など）を呼び出し
+      if (onComplete) {
+        const success = await onComplete()
+        if (!success) {
+          return false
+        }
+      }
+
+      // 完了時間を計算
+      const elapsedMs = Date.now() - startTimeRef.current
+      const totalSeconds = Math.floor(elapsedMs / 1000)
+      const minutes = Math.floor(totalSeconds / 60)
+      const seconds = totalSeconds % 60
+      const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`
+
+      router.replace({
+        pathname: '/lesson/result',
+        params: {
+          correct: String(finalCorrectCount),
+          total: String(totalProblems),
+          courseId,
+          lessonId,
+          time: timeString,
+        },
+      })
+      return true
+    },
+    [onComplete, totalProblems, courseId, lessonId],
+  )
+
   // フィードバック完了時の処理
   const handleFeedbackComplete = useCallback(async () => {
     if (pendingAction === 'advance') {
-      // 次の問題へ進む（常に最新の状態を使用）
+      // 正解カウントを更新
       const isFirstTryCorrect = !hasAttemptedWrong
       const newCorrectCount = isFirstTryCorrect ? correctCount + 1 : correctCount
       if (isFirstTryCorrect) {
         setCorrectCount(newCorrectCount)
       }
 
+      // 次の問題へ or レッスン完了
       if (currentProblemIndex < totalProblems - 1) {
-        const nextIndex = currentProblemIndex + 1
-        const nextProblem = problems[nextIndex]
-        setCurrentProblemIndex(nextIndex)
-        setBoardState(parseSfen(nextProblem.sfen))
-        clearSelection()
-        setHasAttemptedWrong(false)
+        advanceToNextProblem()
       } else {
-        // レッスン完了時: onCompleteコールバックを呼び出し
-        if (onComplete) {
-          const success = await onComplete()
-          if (!success) {
-            // ハート消費失敗時は遷移しない（再挑戦可能な状態を維持）
-            setPendingAction(null)
-            setFeedback('none')
-            return
-          }
+        const success = await handleLessonComplete(newCorrectCount)
+        if (!success) {
+          // ハート消費失敗時は遷移しない
+          setPendingAction(null)
+          setFeedback('none')
+          return
         }
-
-        // 完了時間を計算
-        const elapsedMs = Date.now() - startTimeRef.current
-        const totalSeconds = Math.floor(elapsedMs / 1000)
-        const minutes = Math.floor(totalSeconds / 60)
-        const seconds = totalSeconds % 60
-        const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`
-
-        // 画面遷移前にフィードバックをクリア（遷移後に再表示されるのを防ぐ）
+        // 画面遷移前にフィードバックをクリア
         setPendingAction(null)
         setFeedback('none')
-
-        router.replace({
-          pathname: '/lesson/result',
-          params: {
-            correct: String(newCorrectCount),
-            total: String(totalProblems),
-            courseId,
-            lessonId,
-            time: timeString,
-          },
-        })
         return
       }
     } else if (pendingAction === 'reset' && currentProblem) {
@@ -235,12 +252,9 @@ export function useLessonGame({
     correctCount,
     currentProblemIndex,
     totalProblems,
-    problems,
-    clearSelection,
-    courseId,
-    lessonId,
     currentProblem,
-    onComplete,
+    advanceToNextProblem,
+    handleLessonComplete,
   ])
 
   // 正解判定

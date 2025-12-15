@@ -38,7 +38,13 @@ export default function LessonPlayScreen() {
   // レッスンデータを取得
   const lesson = getLessonById(courseId ?? '', lessonId ?? '')
 
-  // ゲームロジックフック（条件分岐の前に呼び出す - Rules of Hooks）
+  /**
+   * ゲームロジックフック（条件分岐の前に呼び出す - Rules of Hooks）
+   *
+   * ハート消費パターン:
+   * - レッスン: 最終問題完了時にonComplete()で消費（自動進行のため事前チェック不要）
+   * - 詰将棋: 正解時に消費 + 次の問題へ遷移前にcheckAvailable()
+   */
   const game = useLessonGame({
     courseId: courseId ?? '',
     lessonId: lessonId ?? '',

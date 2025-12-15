@@ -73,10 +73,15 @@ export default function TsumeshogiPlayScreen() {
     setFeedback('none')
   }, [feedback])
 
-  // 正解時のハート消費（useTsumeshogiGameに渡す）
+  /**
+   * 正解時のハート消費（useTsumeshogiGameに渡す）
+   *
+   * ハート消費パターン:
+   * - 詰将棋: 正解時に消費 + 次の問題へ遷移前にcheckAvailable()
+   * - レッスン: 最終問題完了時にonComplete()で消費（自動進行のため事前チェック不要）
+   */
   const handleCorrect = useCallback(async (): Promise<boolean> => {
     setFeedback('correct')
-    // ハート消費（成功時のみ完了扱い）
     return heartsGate.consumeOnComplete()
   }, [heartsGate])
 
@@ -239,7 +244,7 @@ export default function TsumeshogiPlayScreen() {
           <TouchableOpacity
             onPress={() => {
               if (!isSolved || !nextId) return
-              // 次の問題に遷移する前にハートをチェック
+              // 次の問題に遷移する前にハートをチェック（手動遷移のため事前確認が必要）
               if (!heartsGate.checkAvailable()) return
               router.replace(`/tsumeshogi/${nextId}`)
             }}

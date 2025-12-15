@@ -17,10 +17,10 @@
  * ```
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { router } from 'expo-router'
 
-import { checkHeartsAvailable } from './checkHeartsAvailable'
+import { checkHeartsAvailable, hasEnoughHearts } from './checkHeartsAvailable'
 import { useHearts } from './useHearts'
 import { useHeartsConsume } from './useHeartsConsume'
 
@@ -61,25 +61,27 @@ export function useHeartsGate(options: UseHeartsGateOptions = {}): UseHeartsGate
   const { hearts, isLoading, error, updateFromConsumeResponse } = useHearts()
   const { consume, isConsuming } = useHeartsConsume(updateFromConsumeResponse)
 
-  // 開始時チェック済みフラグ（重複実行防止）
-  const hasCheckedRef = useRef(false)
-  // isReadyをuseStateで管理（再レンダリングをトリガー）
-  const [isReady, setIsReady] = useState(false)
+  // 初回チェック済みフラグ（アラート表示・自動戻りは一度だけ）
+  const hasShownAlertRef = useRef(false)
 
-  // 開始時ハートチェック
+  // isReadyはheartsから動的に計算（画面フォーカス時も最新状態を反映）
+  const isReady = useMemo(() => {
+    if (isLoading || error) return false
+    return hasEnoughHearts(hearts, heartCost)
+  }, [isLoading, error, hearts, heartCost])
+
+  // 初回ロード完了時のみアラート表示・自動戻り
   useEffect(() => {
-    if (!isLoading && !hasCheckedRef.current) {
-      hasCheckedRef.current = true
+    if (isLoading || hasShownAlertRef.current) return
+    hasShownAlertRef.current = true
 
-      // エラー時はチェックしない（エラー画面を表示するため）
-      if (error) {
-        return
-      }
+    // エラー時はチェックしない（エラー画面を表示するため）
+    if (error) return
 
-      const available = checkHeartsAvailable(hearts, heartCost)
-      setIsReady(available)
-
-      if (!available && autoGoBack) {
+    // ハートが足りない場合はアラート表示
+    if (!hasEnoughHearts(hearts, heartCost)) {
+      checkHeartsAvailable(hearts, heartCost) // アラート表示
+      if (autoGoBack) {
         router.back()
       }
     }
