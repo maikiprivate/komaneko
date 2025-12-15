@@ -4,7 +4,7 @@
  * ○×を画面中央に表示し、アニメーション後に自動で非表示
  */
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { Animated, StyleSheet } from 'react-native'
 
 import { useTheme } from '@/components/useTheme'
@@ -24,8 +24,16 @@ export function FeedbackOverlay({ type, onComplete }: FeedbackOverlayProps) {
 
   const opacity = useRef(new Animated.Value(0)).current
   const scale = useRef(new Animated.Value(0.5)).current
+  // onCompleteをrefで保持（依存配列に含めないため）
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
 
-  const animate = useCallback(() => {
+  useEffect(() => {
+    if (type === 'none') {
+      return
+    }
+
+    // アニメーション値をリセット
     opacity.setValue(0)
     scale.setValue(0.5)
 
@@ -50,19 +58,12 @@ export function FeedbackOverlay({ type, onComplete }: FeedbackOverlayProps) {
         duration: 200,
         useNativeDriver: true,
       }).start(() => {
-        onComplete?.()
+        onCompleteRef.current?.()
       })
     }, 1000)
 
     return () => clearTimeout(timer)
-  }, [opacity, scale, onComplete])
-
-  useEffect(() => {
-    if (type !== 'none') {
-      const cleanup = animate()
-      return cleanup
-    }
-  }, [type, animate])
+  }, [type, opacity, scale])
 
   if (type === 'none') {
     return null

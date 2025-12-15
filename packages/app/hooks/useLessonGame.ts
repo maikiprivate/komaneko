@@ -30,6 +30,8 @@ interface UseLessonGameOptions {
   courseId: string
   lessonId: string
   lesson: Lesson | undefined
+  /** レッスン完了時のコールバック（ハート消費など）。falseを返すと遷移しない */
+  onComplete?: () => Promise<boolean>
 }
 
 /** フックの戻り値 */
@@ -107,6 +109,7 @@ export function useLessonGame({
   courseId,
   lessonId,
   lesson,
+  onComplete,
 }: UseLessonGameOptions): UseLessonGameReturn {
   const problems = lesson?.problems ?? []
   const isReady = lesson !== undefined && problems.length > 0
@@ -168,7 +171,7 @@ export function useLessonGame({
   }, [])
 
   // フィードバック完了時の処理
-  const handleFeedbackComplete = useCallback(() => {
+  const handleFeedbackComplete = useCallback(async () => {
     if (pendingAction === 'advance') {
       // 次の問題へ進む（常に最新の状態を使用）
       const isFirstTryCorrect = !hasAttemptedWrong
@@ -185,12 +188,27 @@ export function useLessonGame({
         clearSelection()
         setHasAttemptedWrong(false)
       } else {
+        // レッスン完了時: onCompleteコールバックを呼び出し
+        if (onComplete) {
+          const success = await onComplete()
+          if (!success) {
+            // ハート消費失敗時は遷移しない（再挑戦可能な状態を維持）
+            setPendingAction(null)
+            setFeedback('none')
+            return
+          }
+        }
+
         // 完了時間を計算
         const elapsedMs = Date.now() - startTimeRef.current
         const totalSeconds = Math.floor(elapsedMs / 1000)
         const minutes = Math.floor(totalSeconds / 60)
         const seconds = totalSeconds % 60
         const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`
+
+        // 画面遷移前にフィードバックをクリア（遷移後に再表示されるのを防ぐ）
+        setPendingAction(null)
+        setFeedback('none')
 
         router.replace({
           pathname: '/lesson/result',
@@ -202,6 +220,7 @@ export function useLessonGame({
             time: timeString,
           },
         })
+        return
       }
     } else if (pendingAction === 'reset' && currentProblem) {
       // 盤面をリセット
@@ -221,6 +240,7 @@ export function useLessonGame({
     courseId,
     lessonId,
     currentProblem,
+    onComplete,
   ])
 
   // 正解判定

@@ -18,15 +18,22 @@ import { PromotionDialog } from '@/components/shogi/PromotionDialog'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { useTheme } from '@/components/useTheme'
 import { useLessonGame } from '@/hooks/useLessonGame'
+import { useHeartsGate } from '@/lib/hearts/useHeartsGate'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
 import type { Perspective } from '@/lib/shogi/types'
 import { getLessonById } from '@/mocks/lessonData'
+
+// 消費ハート数（将来的にはlesson.heartCostから取得）
+const HEART_COST = 1
 
 export default function LessonPlayScreen() {
   const { colors, palette } = useTheme()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const { courseId, lessonId } = useLocalSearchParams<{ courseId: string; lessonId: string }>()
+
+  // ハート管理（開始時チェック + 完了時消費）
+  const heartsGate = useHeartsGate({ heartCost: HEART_COST })
 
   // レッスンデータを取得
   const lesson = getLessonById(courseId ?? '', lessonId ?? '')
@@ -36,7 +43,35 @@ export default function LessonPlayScreen() {
     courseId: courseId ?? '',
     lessonId: lessonId ?? '',
     lesson,
+    onComplete: heartsGate.consumeOnComplete,
   })
+
+  // ローディング中
+  if (heartsGate.isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
+        <Text style={[styles.loadingText, { color: colors.text.secondary }]}>読み込み中...</Text>
+      </View>
+    )
+  }
+
+  // エラー発生時
+  if (heartsGate.error) {
+    return (
+      <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+            <FontAwesome name="times" size={24} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: colors.text.primary }]}>
+            データの取得に失敗しました
+          </Text>
+        </View>
+      </View>
+    )
+  }
 
   // レッスンが見つからない場合
   if (!game.isReady) {
@@ -223,6 +258,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
+    fontSize: 16,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
     fontSize: 16,
   },
 })

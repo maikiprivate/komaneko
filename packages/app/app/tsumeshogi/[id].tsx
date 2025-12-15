@@ -5,9 +5,7 @@ import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDim
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
-import { checkHeartsAvailable } from '@/lib/hearts/checkHeartsAvailable'
-import { useHearts } from '@/lib/hearts/useHearts'
-import { useHeartsConsume } from '@/lib/hearts/useHeartsConsume'
+import { useHeartsGate } from '@/lib/hearts/useHeartsGate'
 import { recordLearningCompletion } from '@/lib/streak/recordLearningCompletion'
 import { FeedbackOverlay } from '@/components/shogi/FeedbackOverlay'
 import { GameFooter } from '@/components/shogi/GameFooter'
@@ -51,27 +49,11 @@ export default function TsumeshogiPlayScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
 
-  // ハート状態
-  const { hearts, isLoading: heartsLoading, updateFromConsumeResponse } = useHearts()
-  const { consume } = useHeartsConsume(updateFromConsumeResponse)
-
-  // 開始時ハートチェック済みフラグ
-  const hasCheckedHearts = useRef(false)
-
   // IDから問題を取得
   const problem = MOCK_TSUMESHOGI_PROBLEMS.find((p) => p.id === id)
 
-  if (!problem) {
-    return null
-  }
-
-  // ヘッダータイトル用の情報
-  const movesLabel = MOVES_LABELS[problem.moves as MovesOption]
-  const problemNumber = getProblemNumber(problem.id, problem.moves)
-  const headerTitle = `${movesLabel} 問題${problemNumber}`
-
-  // 次の問題
-  const { nextId } = getAdjacentProblemIds(problem.id, problem.moves)
+  // ハート管理（開始時チェック + 完了時消費）
+  const heartsGate = useHeartsGate({ heartCost: HEART_COST })
 
   // 正解状態
   const [isSolved, setIsSolved] = useState(false)
@@ -83,28 +65,27 @@ export default function TsumeshogiPlayScreen() {
   // アニメーション用
   const scaleAnim = useRef(new Animated.Value(1)).current
 
-  // 開始時ハートチェック
-  useEffect(() => {
-    if (!heartsLoading && !hasCheckedHearts.current) {
-      hasCheckedHearts.current = true
-      if (!checkHeartsAvailable(hearts, HEART_COST)) {
-        router.back()
-      }
-    }
-  }, [heartsLoading, hearts])
-
-  // フィードバック完了時の処理（正解時はハート消費）
-  const handleFeedbackComplete = useCallback(async () => {
+  // フィードバック完了時の処理
+  const handleFeedbackComplete = useCallback(() => {
     if (feedback === 'correct') {
-      // ハート消費（成功時のみ完了扱い）
-      const success = await consume(HEART_COST)
-      if (success) {
-        setIsSolved(true)
-      }
-      // 失敗時はisSolvedがfalseのままなので、再挑戦可能
+      setIsSolved(true)
     }
     setFeedback('none')
-  }, [feedback, consume])
+  }, [feedback])
+
+  // 正解時のハート消費（useTsumeshogiGameに渡す）
+  const handleCorrect = useCallback(async (): Promise<boolean> => {
+    setFeedback('correct')
+    // ハート消費（成功時のみ完了扱い）
+    return heartsGate.consumeOnComplete()
+  }, [heartsGate])
+
+  // ゲームフックを使用（Hooks呼び出しは条件分岐の前に行う）
+  const game = useTsumeshogiGame(problem, {
+    onCorrect: handleCorrect,
+    onIncorrect: () => setFeedback('incorrect'),
+    onNotCheck: () => Alert.alert('王手ではありません', '詰将棋では王手の連続で詰ませる必要があります'),
+  })
 
   // 正解時の「次の問題へ」ボタンアニメーション
   useEffect(() => {
@@ -142,12 +123,46 @@ export default function TsumeshogiPlayScreen() {
     }
   }, [isSolved])
 
-  // ゲームフックを使用
-  const game = useTsumeshogiGame(problem, {
-    onCorrect: () => setFeedback('correct'),
-    onIncorrect: () => setFeedback('incorrect'),
-    onNotCheck: () => Alert.alert('王手ではありません', '詰将棋では王手の連続で詰ませる必要があります'),
-  })
+  // ローディング中
+  if (heartsGate.isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
+        <Text style={[styles.loadingText, { color: colors.text.secondary }]}>読み込み中...</Text>
+      </View>
+    )
+  }
+
+  // エラー発生時
+  if (heartsGate.error) {
+    return (
+      <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
+        <Text style={[styles.errorText, { color: colors.text.primary }]}>
+          データの取得に失敗しました
+        </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: palette.orange }]}
+          onPress={() => router.back()}
+        >
+          <Text style={[styles.retryButtonText, { color: palette.white }]}>戻る</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
+  // 問題が見つからない場合
+  if (!game.isReady || !problem) {
+    return null
+  }
+
+  // ここ以降、problemは必ず存在する
+
+  // ヘッダータイトル用の情報
+  const movesLabel = MOVES_LABELS[problem.moves as MovesOption]
+  const problemNumber = getProblemNumber(problem.id, problem.moves)
+  const headerTitle = `${movesLabel} 問題${problemNumber}`
+
+  // 次の問題
+  const { nextId } = getAdjacentProblemIds(problem.id, problem.moves)
 
   // 視点（詰将棋は常に先手視点）
   const perspective: Perspective = 'sente'
@@ -225,7 +240,7 @@ export default function TsumeshogiPlayScreen() {
             onPress={() => {
               if (!isSolved || !nextId) return
               // 次の問題に遷移する前にハートをチェック
-              if (!checkHeartsAvailable(hearts, HEART_COST)) return
+              if (!heartsGate.checkAvailable()) return
               router.replace(`/tsumeshogi/${nextId}`)
             }}
             disabled={!isSolved || !nextId}
@@ -314,6 +329,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   navButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

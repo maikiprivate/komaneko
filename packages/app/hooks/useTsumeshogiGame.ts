@@ -22,8 +22,8 @@ import type { TsumeshogiProblem } from '@/mocks/tsumeshogiData'
 
 /** コールバック */
 interface TsumeshogiCallbacks {
-  /** 正解時 */
-  onCorrect?: () => void
+  /** 正解時（ハート消費など）。falseを返すと完了にならない */
+  onCorrect?: () => Promise<boolean>
   /** 不正解時 */
   onIncorrect?: () => void
   /** 王手でない手を指した時 */
@@ -40,7 +40,7 @@ interface LastMoveHighlight {
 interface HintHighlight {
   from?: Position // 移動元（打ち駒の場合はなし）
   to: Position // 移動先
-  piece?: string // 打ち駒の場合の駒種
+  piece?: PieceType // 打ち駒の場合の駒種
 }
 
 /** タイミング定数 */
@@ -86,15 +86,31 @@ interface UseTsumeshogiGameReturn {
   playSolution: () => void
 }
 
+/** 空の盤面状態（problem未定義時のフォールバック） */
+const EMPTY_BOARD_STATE: BoardState = {
+  board: Array(9)
+    .fill(null)
+    .map(() => Array(9).fill(null)),
+  capturedPieces: { sente: {}, gote: {} },
+  turn: 'sente',
+  moveCount: 1,
+}
+
 /**
  * 詰将棋ゲームフック
+ *
+ * @param problem 詰将棋問題（undefinedの場合は無効状態）
+ * @param callbacks コールバック
  */
 export function useTsumeshogiGame(
-  problem: TsumeshogiProblem,
+  problem: TsumeshogiProblem | undefined,
   callbacks?: TsumeshogiCallbacks,
-): UseTsumeshogiGameReturn {
+): UseTsumeshogiGameReturn & { isReady: boolean } {
   // 初期盤面をパース（メモ化）
-  const initialState = useMemo(() => parseSfen(problem.sfen), [problem.sfen])
+  const initialState = useMemo(
+    () => (problem ? parseSfen(problem.sfen) : EMPTY_BOARD_STATE),
+    [problem?.sfen],
+  )
 
   // タイマーIDの参照（クリーンアップ用）
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -161,7 +177,7 @@ export function useTsumeshogiGame(
   // ヒント表示
   const showHint = useCallback(() => {
     if (isFinished || isThinking || isSolutionMode) return
-    if (!problem.hint) return
+    if (!problem?.hint) return
 
     // 初手のみヒントを表示（2手目以降はヒントなし）
     if (currentMoveCount !== 1) return
@@ -171,11 +187,11 @@ export function useTsumeshogiGame(
       to: problem.hint.to,
       piece: problem.hint.piece,
     })
-  }, [isFinished, isThinking, isSolutionMode, problem.hint, currentMoveCount])
+  }, [isFinished, isThinking, isSolutionMode, problem?.hint, currentMoveCount])
 
   // 解答再生
   const playSolution = useCallback(() => {
-    if (!problem.solutionMoves || problem.solutionMoves.length === 0) return
+    if (!problem?.solutionMoves || problem.solutionMoves.length === 0) return
     if (isSolutionMode) return
 
     // 盤面を初期状態にリセット
@@ -227,7 +243,7 @@ export function useTsumeshogiGame(
 
     // 最初の手を少し遅延して開始
     timerRef.current = setTimeout(playNextMove, 500)
-  }, [problem.solutionMoves, isSolutionMode, initialState, clearTimer, clearSelection])
+  }, [problem?.solutionMoves, isSolutionMode, initialState, clearTimer, clearSelection])
 
   // AI応手を実行する共通処理
   const executeAIResponse = useCallback((state: BoardState, onComplete?: () => void) => {
@@ -268,13 +284,21 @@ export function useTsumeshogiGame(
         setBoardState(newState)
         setCurrentMoveCount((prev) => prev + 1)
         clearSelection()
-        setIsFinished(true)
-        callbacks?.onCorrect?.()
+
+        // onCorrectコールバック（ハート消費など）を呼び出し、成功時のみ完了扱い
+        const handleCorrect = async () => {
+          const success = await callbacks?.onCorrect?.() ?? true
+          if (success) {
+            setIsFinished(true)
+          }
+          // 失敗時はisFinishedがfalseのままなので、再挑戦可能
+        }
+        handleCorrect()
         return
       }
 
       // 3. 最終手で詰まなかった場合
-      if (currentMoveCount >= problem.moves) {
+      if (problem && currentMoveCount >= problem.moves) {
         // 規定手数の最終手だが詰みではない
         // 盤面を更新して相手の手を見せてから不正解にする
         setBoardState(newState)
@@ -307,7 +331,7 @@ export function useTsumeshogiGame(
         })
       }, AI_RESPONSE_DELAY_MS)
     },
-    [callbacks, clearSelection, currentMoveCount, problem.moves, executeAIResponse],
+    [callbacks, clearSelection, currentMoveCount, problem?.moves, executeAIResponse],
   )
 
   // 成り選択完了
@@ -451,6 +475,7 @@ export function useTsumeshogiGame(
   )
 
   return {
+    isReady: problem !== undefined,
     boardState,
     selectedPosition,
     selectedCaptured,

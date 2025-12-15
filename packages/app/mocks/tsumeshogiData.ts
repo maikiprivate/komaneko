@@ -2,6 +2,8 @@
  * 詰将棋モックデータ
  */
 
+import type { PieceType } from '@/lib/shogi/types'
+
 /** 問題のステータス */
 export type ProblemStatus = 'unsolved' | 'in_progress' | 'solved'
 
@@ -12,7 +14,7 @@ export interface HintMove {
   /** 移動先 */
   to: { row: number; col: number }
   /** 打ち駒の場合: 駒種 */
-  piece?: string
+  piece?: PieceType
 }
 
 /** 解答再生用の手情報 */
