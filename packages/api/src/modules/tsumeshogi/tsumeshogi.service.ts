@@ -17,7 +17,8 @@ export class TsumeshogiService {
   async getById(id: string): Promise<Tsumeshogi> {
     const tsumeshogi = await this.repository.findById(id)
 
-    if (!tsumeshogi) {
+    // 存在しない or 公開されていない場合は404
+    if (!tsumeshogi || tsumeshogi.status !== 'published') {
       throw new AppError('TSUMESHOGI_NOT_FOUND')
     }
 

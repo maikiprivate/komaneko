@@ -104,5 +104,21 @@ describe('TsumeshogiService', () => {
         code: 'TSUMESHOGI_NOT_FOUND',
       })
     })
+
+    it('公開されていない場合はTSUMESHOGI_NOT_FOUNDエラーをスローする', async () => {
+      const draftProblem = {
+        id: 'tsume-draft',
+        sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
+        moveCount: 3,
+        status: 'draft',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      vi.mocked(mockRepository.findById).mockResolvedValue(draftProblem)
+
+      await expect(service.getById('tsume-draft')).rejects.toMatchObject({
+        code: 'TSUMESHOGI_NOT_FOUND',
+      })
+    })
   })
 })
