@@ -5,6 +5,7 @@ import Fastify from 'fastify'
 import { prisma } from './db/client.js'
 import { authRouter } from './modules/auth/auth.router.js'
 import { heartsRouter } from './modules/hearts/hearts.router.js'
+import { tsumeshogiRouter } from './modules/tsumeshogi/tsumeshogi.router.js'
 import { errorHandler } from './shared/errors/index.js'
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -60,6 +61,9 @@ export async function buildApp() {
 
   // ハートAPI
   await app.register(heartsRouter, { prefix: '/api/hearts' })
+
+  // 詰将棋API
+  await app.register(tsumeshogiRouter, { prefix: '/api/tsumeshogi' })
 
   return app
 }
