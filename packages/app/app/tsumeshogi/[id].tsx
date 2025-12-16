@@ -8,7 +8,6 @@ import { KomanekoComment } from '@/components/KomanekoComment'
 import { useHeartsGate } from '@/lib/hearts/useHeartsGate'
 import { recordLearningCompletion } from '@/lib/streak/recordLearningCompletion'
 import { FeedbackOverlay } from '@/components/shogi/FeedbackOverlay'
-import { GameFooter } from '@/components/shogi/GameFooter'
 import { PieceStand } from '@/components/shogi/PieceStand'
 import { PromotionDialog } from '@/components/shogi/PromotionDialog'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
@@ -229,62 +228,61 @@ export default function TsumeshogiPlayScreen() {
           />
         </View>
         <View style={styles.progressArea}>
-          <Text
-            style={[
-              styles.progressText,
-              { color: game.isSolutionMode ? palette.orange : colors.text.secondary },
-            ]}
-          >
-            {game.isSolutionMode
-              ? '解答再生中...'
-              : `${game.currentMoveCount}手目 / ${problem.moves}手詰め`}
+          <Text style={[styles.progressText, { color: colors.text.secondary }]}>
+            {`${game.currentMoveCount}手目 / ${problem.moves}手詰め`}
           </Text>
         </View>
-        <View style={styles.navigationArea}>
-          <TouchableOpacity
-            onPress={() => {
-              if (!isSolved || !nextId) return
-              // 次の問題に遷移する前にハートをチェック（手動遷移のため事前確認が必要）
-              if (!heartsGate.checkAvailable()) return
-              router.replace(`/tsumeshogi/${nextId}`)
-            }}
-            disabled={!isSolved || !nextId}
-            activeOpacity={0.8}
-          >
-            <Animated.View
-              style={[
-                styles.navButton,
-                {
-                  transform: [{ scale: scaleAnim }],
-                  backgroundColor: isSolved ? colors.gamification.success : colors.background.secondary,
-                  borderColor: isSolved ? colors.gamification.success : colors.border,
-                  opacity: isSolved ? 1 : 0.6,
-                },
-              ]}
+        <View style={styles.spacer} />
+        <View style={styles.footerArea}>
+          {isSolved ? (
+            // 正解後: 次の問題へボタン
+            <TouchableOpacity
+              onPress={() => {
+                if (!nextId) return
+                // 次の問題に遷移する前にハートをチェック（手動遷移のため事前確認が必要）
+                if (!heartsGate.checkAvailable()) return
+                router.replace(`/tsumeshogi/${nextId}`)
+              }}
+              disabled={!nextId}
+              activeOpacity={0.8}
             >
-              <Text
+              <Animated.View
                 style={[
-                  styles.navButtonText,
-                  { color: isSolved ? palette.white : colors.text.secondary },
+                  styles.footerButton,
+                  {
+                    transform: [{ scale: scaleAnim }],
+                    backgroundColor: colors.gamification.success,
+                  },
                 ]}
               >
-                次の問題へ
-              </Text>
-              <FontAwesome
-                name="chevron-right"
-                size={14}
-                color={isSolved ? palette.white : colors.text.secondary}
-              />
-            </Animated.View>
-          </TouchableOpacity>
+                <Text style={[styles.footerButtonText, { color: palette.white }]}>
+                  次の問題へ
+                </Text>
+                <FontAwesome name="chevron-right" size={14} color={palette.white} />
+              </Animated.View>
+            </TouchableOpacity>
+          ) : (
+            // 解答前: やり直しボタン
+            <TouchableOpacity onPress={game.reset} activeOpacity={0.8}>
+              <View
+                style={[
+                  styles.footerButton,
+                  {
+                    backgroundColor: colors.background.primary,
+                    borderWidth: 1,
+                    borderColor: palette.orange,
+                  },
+                ]}
+              >
+                <FontAwesome name="refresh" size={14} color={palette.orange} />
+                <Text style={[styles.footerButtonText, { color: palette.orange }]}>
+                  やり直し
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
-        <View style={styles.spacer} />
-        <GameFooter
-          onReset={game.reset}
-          onHint={game.showHint}
-          onSolution={game.playSolution}
-        />
-        <View style={[styles.homeIndicatorArea, { backgroundColor: colors.background.primary, height: insets.bottom }]} />
+        <View style={[styles.homeIndicatorArea, { backgroundColor: palette.gameBackground, height: insets.bottom }]} />
       </View>
     </>
   )
@@ -318,22 +316,19 @@ const styles = StyleSheet.create({
   homeIndicatorArea: {
     // height is set dynamically using insets.bottom
   },
-  navigationArea: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    paddingHorizontal: 16,
+  footerArea: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
   },
-  navButton: {
+  footerButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
   },
-  navButtonText: {
+  footerButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

@@ -67,3 +67,17 @@ model Streak {
 
   @@map("streaks")
 }
+
+// ========== コンテンツ ==========
+
+model Tsumeshogi {
+  id        String   @id @default(uuid())
+  sfen      String   // 局面（SFEN形式）
+  moveCount Int      @map("move_count") // 手数（3, 5, 7 など）
+  status    String   @default("draft") // draft, published, archived
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([moveCount, status])
+  @@map("tsumeshogis")
+}

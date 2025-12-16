@@ -207,20 +207,45 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 12（次） |
+| フェーズ | Phase 12（作業中） |
 | 最終更新 | 2025-12-16 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 12（次）- コンテンツAPI
+### Phase 12（作業中）- 詰将棋API
 
-**目標**: 駒塾・詰将棋のCRUD APIを実装
+**目標**: 詰将棋問題データのAPI（GET）を実装し、アプリのUI変更を行う
 
-- [ ] 駒塾CRUD（Router → Service → Repository）
-- [ ] レッスンステップ管理
-- [ ] 詰将棋CRUD
-- [ ] 難易度・手数フィルタ
-- [ ] 解答管理
-- [ ] ユニット・統合テスト（TDD）
+詳細設計: `docs/designs/tsumeshogi-api.md`
+
+**API側:**
+- [ ] Prismaスキーマにtsumeshogisテーブル追加
+- [ ] マイグレーション実行
+- [ ] シードデータ作成・投入（既存モック13問）
+- [ ] tsumeshogi.repository.ts
+- [ ] tsumeshogi.service.ts（TDD）
+- [ ] tsumeshogi.router.ts
+- [ ] app.tsにルーター登録
+
+**アプリ側:**
+- [ ] GameFooter削除（詰将棋画面のみ）
+- [ ] フッター固定ボタン追加（やり直し↔次の問題へ切り替え）
+
+**データ構造（最小限）:**
+```prisma
+model Tsumeshogi {
+  id          String   @id @default(uuid())
+  sfen        String
+  moveCount   Int      @map("move_count")
+  status      String   @default("draft")  // draft, published, archived
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+```
+
+**設計ポイント:**
+- 正解判定は`isCheckmate()`で動的に行う（解答データ不要）
+- hint/solutionは今回なし（将来必要になったら追加）
+- シードデータは全て`status: 'published'`で投入
 
 ### Phase 11.5（完了）- ハート機能 - アプリ-API連携
 

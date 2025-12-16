@@ -1007,12 +1007,45 @@ packages/app/lib/
 - 消費APIのレスポンスで状態更新
 - consumeHearts連携は別フェーズで実装（詰将棋・駒塾完了時）
 
-### Phase 12: コンテンツAPI
+### Phase 12: 詰将棋API（作業中）
+
+**目標**: 詰将棋問題データのAPI（GET）を実装し、アプリのUI変更を行う
+
+詳細設計: `docs/designs/tsumeshogi-api.md`
+
+**API側:**
+- [ ] Prismaスキーマにtsumeshogisテーブル追加
+- [ ] マイグレーション実行
+- [ ] シードデータ作成・投入（既存モック13問、全てpublished）
+- [ ] tsumeshogi.repository.ts
+- [ ] tsumeshogi.service.ts（TDD）
+- [ ] tsumeshogi.router.ts
+- [ ] app.tsにルーター登録
+
+**アプリ側:**
+- [ ] GameFooter削除（詰将棋画面のみ）
+- [ ] フッター固定ボタン追加（やり直し↔次の問題へ切り替え）
+
+**データ構造（最小限）:**
+```prisma
+model Tsumeshogi {
+  id          String   @id @default(uuid())
+  sfen        String
+  moveCount   Int      @map("move_count")
+  status      String   @default("draft")  // draft, published, archived
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+```
+
+**設計ポイント:**
+- 正解判定は`isCheckmate()`で動的に行う（解答データ不要）
+- hint/solutionは今回なし（将来必要になったら追加）
+- 管理者API（POST/PATCH/DELETE）はPhase 15で実装
+
+### Phase 12.5: 駒塾API（予定）
 - [ ] 駒塾CRUD（Router → Service → Repository）
 - [ ] レッスンステップ管理
-- [ ] 詰将棋CRUD
-- [ ] 難易度・手数フィルタ
-- [ ] 解答管理
 - [ ] ユニット・統合テスト（TDD）
 
 ### Phase 13: ストリークAPI + BFF
