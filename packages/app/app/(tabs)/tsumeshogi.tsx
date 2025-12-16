@@ -101,7 +101,8 @@ export default function TsumeshogiScreen() {
     return () => {
       cancelled = true
     }
-  }, [selectedMoves, cache])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheはuseEffect内で更新するため依存配列から除外
+  }, [selectedMoves])
 
   // TODO: 将来のページネーション用
   // const loadMore = useCallback(() => {
