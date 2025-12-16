@@ -12,31 +12,16 @@ import { PieceStand } from '@/components/shogi/PieceStand'
 import { PromotionDialog } from '@/components/shogi/PromotionDialog'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { useTheme } from '@/components/useTheme'
-import { useTsumeshogiGame } from '@/hooks/useTsumeshogiGame'
+import { useTsumeshogiGame, type TsumeshogiProblemForGame } from '@/hooks/useTsumeshogiGame'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
 import type { Perspective } from '@/lib/shogi/types'
-import { MOCK_TSUMESHOGI_PROBLEMS, MOVES_LABELS, type MovesOption } from '@/mocks/tsumeshogiData'
+import { getTsumeshogi, getTsumeshogiList, type TsumeshogiProblem } from '@/lib/api/tsumeshogi'
 
-/** 同じ手数の問題内での番号を取得 */
-function getProblemNumber(problemId: string, moves: number): number {
-  const sameMovesProblems = MOCK_TSUMESHOGI_PROBLEMS.filter((p) => p.moves === moves)
-  const index = sameMovesProblems.findIndex((p) => p.id === problemId)
-  return index + 1
-}
-
-/** 同じ手数の問題リスト内での前後の問題IDを取得 */
-function getAdjacentProblemIds(
-  problemId: string,
-  moves: number,
-): { prevId: string | null; nextId: string | null } {
-  const sameMovesProblems = MOCK_TSUMESHOGI_PROBLEMS.filter((p) => p.moves === moves)
-  const currentIndex = sameMovesProblems.findIndex((p) => p.id === problemId)
-
-  const prevId = currentIndex > 0 ? sameMovesProblems[currentIndex - 1].id : null
-  const nextId =
-    currentIndex < sameMovesProblems.length - 1 ? sameMovesProblems[currentIndex + 1].id : null
-
-  return { prevId, nextId }
+/** 手数の表示名 */
+const MOVES_LABELS: Record<number, string> = {
+  3: '3手詰め',
+  5: '5手詰め',
+  7: '7手詰め',
 }
 
 // 消費ハート数（将来的にはproblem.heartCostから取得）
@@ -48,8 +33,48 @@ export default function TsumeshogiPlayScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
 
-  // IDから問題を取得
-  const problem = MOCK_TSUMESHOGI_PROBLEMS.find((p) => p.id === id)
+  // API からデータを取得
+  const [problem, setProblem] = useState<TsumeshogiProblem | null>(null)
+  const [problemsInSameMoves, setProblemsInSameMoves] = useState<TsumeshogiProblem[]>([])
+  const [isLoadingProblem, setIsLoadingProblem] = useState(true)
+  const [problemError, setProblemError] = useState<string | null>(null)
+
+  // 問題を取得
+  useEffect(() => {
+    if (!id) return
+
+    let cancelled = false
+    setIsLoadingProblem(true)
+    setProblemError(null)
+
+    getTsumeshogi(id)
+      .then((data) => {
+        if (cancelled) return
+        setProblem(data)
+        // 同じ手数の問題一覧も取得（次の問題への遷移用）
+        return getTsumeshogiList(data.moveCount)
+      })
+      .then((list) => {
+        if (cancelled || !list) return
+        setProblemsInSameMoves(list)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setProblemError(err.message || 'データの取得に失敗しました')
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingProblem(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  // ゲーム用の問題データに変換
+  const problemForGame: TsumeshogiProblemForGame | undefined = problem
+    ? { sfen: problem.sfen, moves: problem.moveCount }
+    : undefined
 
   // ハート管理（開始時チェック + 完了時消費）
   const heartsGate = useHeartsGate({ heartCost: HEART_COST })
@@ -85,7 +110,7 @@ export default function TsumeshogiPlayScreen() {
   }, [heartsGate])
 
   // ゲームフックを使用（Hooks呼び出しは条件分岐の前に行う）
-  const game = useTsumeshogiGame(problem, {
+  const game = useTsumeshogiGame(problemForGame, {
     onCorrect: handleCorrect,
     onIncorrect: () => setFeedback('incorrect'),
     onNotCheck: () => Alert.alert('王手ではありません', '詰将棋では王手の連続で詰ませる必要があります'),
@@ -128,7 +153,7 @@ export default function TsumeshogiPlayScreen() {
   }, [isSolved])
 
   // ローディング中
-  if (heartsGate.isLoading) {
+  if (heartsGate.isLoading || isLoadingProblem) {
     return (
       <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
         <Text style={[styles.loadingText, { color: colors.text.secondary }]}>読み込み中...</Text>
@@ -137,11 +162,11 @@ export default function TsumeshogiPlayScreen() {
   }
 
   // エラー発生時
-  if (heartsGate.error) {
+  if (heartsGate.error || problemError) {
     return (
       <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
         <Text style={[styles.errorText, { color: colors.text.primary }]}>
-          データの取得に失敗しました
+          {problemError || 'データの取得に失敗しました'}
         </Text>
         <TouchableOpacity
           style={[styles.retryButton, { backgroundColor: palette.orange }]}
@@ -161,12 +186,13 @@ export default function TsumeshogiPlayScreen() {
   // ここ以降、problemは必ず存在する
 
   // ヘッダータイトル用の情報
-  const movesLabel = MOVES_LABELS[problem.moves as MovesOption]
-  const problemNumber = getProblemNumber(problem.id, problem.moves)
+  const movesLabel = MOVES_LABELS[problem.moveCount] || `${problem.moveCount}手詰め`
+  const currentIndex = problemsInSameMoves.findIndex((p) => p.id === problem.id)
+  const problemNumber = currentIndex + 1
   const headerTitle = `${movesLabel} 問題${problemNumber}`
 
   // 次の問題
-  const { nextId } = getAdjacentProblemIds(problem.id, problem.moves)
+  const nextId = problemsInSameMoves[currentIndex + 1]?.id ?? null
 
   // 視点（詰将棋は常に先手視点）
   const perspective: Perspective = 'sente'
@@ -229,7 +255,7 @@ export default function TsumeshogiPlayScreen() {
         </View>
         <View style={styles.progressArea}>
           <Text style={[styles.progressText, { color: colors.text.secondary }]}>
-            {`${game.currentMoveCount}手目 / ${problem.moves}手詰め`}
+            {`${game.currentMoveCount}手目 / ${problem.moveCount}手詰め`}
           </Text>
         </View>
         <View style={styles.spacer} />
