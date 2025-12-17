@@ -30,12 +30,38 @@ const HEART_COST = 1
 export default function TsumeshogiPlayScreen() {
   const { colors, palette } = useTheme()
   const { width } = useWindowDimensions()
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const params = useLocalSearchParams<{
+    id: string
+    sfen?: string
+    moveCount?: string
+    problemIds?: string
+    problemSfens?: string
+  }>()
+  const { id } = params
   const insets = useSafeAreaInsets()
 
-  // API からデータを取得
+  // 一覧画面から渡されたキャッシュデータをパース
+  const cachedData = useMemo(() => {
+    if (!params.sfen || !params.moveCount) return null
+    try {
+      const moveCount = parseInt(params.moveCount, 10)
+      if (Number.isNaN(moveCount)) return null
+      return {
+        sfen: params.sfen,
+        moveCount,
+        problemIds: params.problemIds ? JSON.parse(params.problemIds) as string[] : null,
+        problemSfens: params.problemSfens ? JSON.parse(params.problemSfens) as string[] : null,
+      }
+    } catch {
+      // パース失敗時はAPIから取得
+      return null
+    }
+  }, [params.sfen, params.moveCount, params.problemIds, params.problemSfens])
+
+  // 問題データの状態
   const [problem, setProblem] = useState<TsumeshogiProblem | null>(null)
-  const [problemsInSameMoves, setProblemsInSameMoves] = useState<TsumeshogiProblem[]>([])
+  const [problemIds, setProblemIds] = useState<string[] | null>(null)
+  const [problemSfens, setProblemSfens] = useState<string[] | null>(null)
   const [isLoadingProblem, setIsLoadingProblem] = useState(true)
   const [problemError, setProblemError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -46,10 +72,24 @@ export default function TsumeshogiPlayScreen() {
     setRetryCount((prev) => prev + 1)
   }, [])
 
-  // 問題を取得
+  // 問題を取得（キャッシュがあればスキップ）
   useEffect(() => {
     if (!id) return
 
+    // キャッシュデータがあればAPI呼び出しをスキップ
+    if (cachedData) {
+      setProblem({
+        id,
+        sfen: cachedData.sfen,
+        moveCount: cachedData.moveCount,
+      })
+      setProblemIds(cachedData.problemIds)
+      setProblemSfens(cachedData.problemSfens)
+      setIsLoadingProblem(false)
+      return
+    }
+
+    // キャッシュがなければAPIから取得（直接アクセス時）
     let cancelled = false
     setIsLoadingProblem(true)
     setProblemError(null)
@@ -63,7 +103,8 @@ export default function TsumeshogiPlayScreen() {
       })
       .then((list) => {
         if (cancelled || !list) return
-        setProblemsInSameMoves(list)
+        setProblemIds(list.map((p) => p.id))
+        setProblemSfens(list.map((p) => p.sfen))
       })
       .catch((err) => {
         if (cancelled) return
@@ -76,7 +117,7 @@ export default function TsumeshogiPlayScreen() {
     return () => {
       cancelled = true
     }
-  }, [id, retryCount])
+  }, [id, cachedData, retryCount])
 
   // ゲーム用の問題データに変換
   const problemForGame: TsumeshogiProblemForGame | undefined = problem
@@ -160,18 +201,44 @@ export default function TsumeshogiPlayScreen() {
   }, [isSolved])
 
   // ヘッダータイトル用の情報（メモ化）※フックは早期リターンの前に呼ぶ
-  const { headerTitle, nextId } = useMemo(() => {
-    if (!problem) {
-      return { headerTitle: '', nextId: null }
+  const { headerTitle, nextId, nextSfen } = useMemo(() => {
+    if (!problem || !problemIds) {
+      return { headerTitle: '', nextId: null, nextSfen: null }
     }
     const movesLabel = MOVES_LABELS[problem.moveCount] || `${problem.moveCount}手詰め`
-    const currentIndex = problemsInSameMoves.findIndex((p) => p.id === problem.id)
+    const currentIndex = problemIds.indexOf(problem.id)
     const problemNumber = currentIndex + 1
+    const nextIndex = currentIndex + 1
     return {
       headerTitle: `${movesLabel} 問題${problemNumber}`,
-      nextId: problemsInSameMoves[currentIndex + 1]?.id ?? null,
+      nextId: problemIds[nextIndex] ?? null,
+      nextSfen: problemSfens?.[nextIndex] ?? null,
     }
-  }, [problem, problemsInSameMoves])
+  }, [problem, problemIds, problemSfens])
+
+  // 次の問題へ遷移
+  const handleNextProblem = useCallback(() => {
+    if (!nextId) return
+    // 次の問題に遷移する前にハートをチェック（手動遷移のため事前確認が必要）
+    if (!heartsGate.checkAvailable()) return
+
+    // キャッシュデータがあればparamsで渡す（API呼び出し削減）
+    if (nextSfen && problem && problemIds && problemSfens) {
+      router.replace({
+        pathname: `/tsumeshogi/[id]`,
+        params: {
+          id: nextId,
+          sfen: nextSfen,
+          moveCount: String(problem.moveCount),
+          problemIds: JSON.stringify(problemIds),
+          problemSfens: JSON.stringify(problemSfens),
+        },
+      })
+    } else {
+      // キャッシュがなければIDのみで遷移（API取得になる）
+      router.replace({ pathname: `/tsumeshogi/[id]`, params: { id: nextId } })
+    }
+  }, [nextId, nextSfen, problem, problemIds, problemSfens, heartsGate])
 
   // ローディング中
   if (heartsGate.isLoading || isLoadingProblem) {
@@ -285,12 +352,7 @@ export default function TsumeshogiPlayScreen() {
           {isSolved ? (
             // 正解後: 次の問題へボタン
             <TouchableOpacity
-              onPress={() => {
-                if (!nextId) return
-                // 次の問題に遷移する前にハートをチェック（手動遷移のため事前確認が必要）
-                if (!heartsGate.checkAvailable()) return
-                router.replace(`/tsumeshogi/${nextId}`)
-              }}
+              onPress={handleNextProblem}
               disabled={!nextId}
               activeOpacity={0.8}
             >

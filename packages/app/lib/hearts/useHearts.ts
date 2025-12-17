@@ -176,12 +176,11 @@ export function useHearts(): UseHeartsResult {
     useCallback(() => {
       isFocusedRef.current = true
 
-      // グローバルキャッシュまたはローカルキャッシュがあれば再計算のみ、なければAPIから取得
-      if (globalCachedData || cachedDataRef.current) {
-        // グローバルキャッシュがあればローカルにも反映
-        if (globalCachedData && !cachedDataRef.current) {
-          cachedDataRef.current = globalCachedData
-        }
+      // グローバルキャッシュがあれば常に最新データで再計算（他画面での消費を反映）
+      if (globalCachedData) {
+        cachedDataRef.current = globalCachedData
+        recalculateFromCache()
+      } else if (cachedDataRef.current) {
         recalculateFromCache()
       } else {
         fetchHearts()

@@ -126,7 +126,18 @@ export default function TsumeshogiScreen() {
   const filteredProblems = problems
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {
-    router.push(`/tsumeshogi/${problem.id}`)
+    // 同手数の問題データを取得（次の問題遷移用）
+    const problemsData = currentCache?.problems ?? []
+    router.push({
+      pathname: `/tsumeshogi/${problem.id}`,
+      params: {
+        sfen: problem.sfen,
+        moveCount: String(problem.moveCount),
+        // ID配列とSFEN配列を渡す（次の問題遷移で再利用）
+        problemIds: JSON.stringify(problemsData.map((p) => p.id)),
+        problemSfens: JSON.stringify(problemsData.map((p) => p.sfen)),
+      },
+    })
   }
 
   return (
