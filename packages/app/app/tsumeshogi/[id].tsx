@@ -187,7 +187,7 @@ export default function TsumeshogiPlayScreen() {
     return (
       <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
         <Text style={[styles.errorText, { color: colors.text.primary }]}>
-          {problemError || 'データの取得に失敗しました'}
+          {problemError || heartsGate.error || 'データの取得に失敗しました'}
         </Text>
         <View style={styles.errorButtons}>
           {problemError && (
