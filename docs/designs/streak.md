@@ -121,6 +121,127 @@ packages/app/
 │       └── recordLearningCompletion.ts  # 学習完了記録関数
 ```
 
+---
+
+## サーバーサイドAPI（Phase 13）
+
+### 概要
+
+ストリークデータをサーバー側で管理し、複数デバイス間での同期を可能にする。
+
+### エンドポイント
+
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/streak | ストリーク状態取得 | 必須 |
+| POST | /api/streak/record | 学習完了記録 | 必須 |
+
+### データモデル（Prismaスキーマ既存）
+
+```prisma
+model Streak {
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  currentCount   Int       @default(0) @map("current_count")
+  longestCount   Int       @default(0) @map("longest_count")
+  lastActiveDate DateTime? @map("last_active_date")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+}
+```
+
+### APIレスポンス
+
+**GET /api/streak**
+```json
+{
+  "data": {
+    "currentCount": 5,
+    "longestCount": 14,
+    "lastActiveDate": "2025-12-17",
+    "updatedToday": true
+  }
+}
+```
+
+**POST /api/streak/record**
+```json
+{
+  "data": {
+    "updated": true,
+    "currentCount": 6,
+    "longestCount": 14
+  }
+}
+```
+
+### ストリーク判定ロジック（サーバー側）
+
+```typescript
+// 現在時刻をJSTで取得（日本ユーザー向け）
+const today = getJSTDateString()
+const yesterday = getYesterdayJST()
+
+// 今日すでに記録済み → 更新なし
+if (lastActiveDate === today) {
+  return { updated: false, currentCount }
+}
+
+// 昨日も学習 → ストリーク継続
+if (lastActiveDate === yesterday) {
+  newCount = currentCount + 1
+}
+// それ以外 → リセット
+else {
+  newCount = 1
+}
+
+// DB更新
+await updateStreak(userId, {
+  currentCount: newCount,
+  longestCount: Math.max(longestCount, newCount),
+  lastActiveDate: today
+})
+```
+
+### 設計ポイント
+
+1. **Hearts APIと同パターン**
+   - 取得時: DBから読み込み、更新なし
+   - 記録時: ストリーク判定→DB更新
+
+2. **タイムゾーン処理**
+   - JST（日本標準時）基準で日付判定
+   - サーバー側で統一的に処理
+
+3. **週間カレンダー用データ**
+   - Phase 13ではサーバーは `currentCount`, `longestCount`, `lastActiveDate` のみ管理
+   - `completedDates`（週間表示用）はクライアント側AsyncStorageで継続管理
+   - 将来的に複数デバイス対応が必要になったら拡張
+
+### ファイル構成（API側）
+
+```
+packages/api/src/modules/streak/
+├── streak.router.ts        # エンドポイント
+├── streak.service.ts       # ビジネスロジック
+├── streak.service.test.ts  # サービステスト（TDD）
+├── streak.repository.ts    # DBアクセス
+└── streak.schema.ts        # Zodスキーマ
+```
+
+### アプリ側の変更
+
+```
+packages/app/lib/
+├── api/
+│   └── streak.ts           # getStreak(), recordStreak()
+└── streak/
+    ├── useStreak.ts        # 状態管理フック（新規）
+    └── recordLearningCompletion.ts  # API呼び出しに変更
+```
+
+---
+
 ## 将来拡張
 
 ### マイルストーン対応
@@ -133,3 +254,9 @@ const isMilestone = MILESTONES.includes(streakCount)
 ```
 
 7日、30日等の節目で特別な演出を追加予定。
+
+### 複数デバイス対応（将来）
+
+`completedDates`をサーバー管理に移行:
+- オプション1: Streakテーブルに`completedDates`（JSON型）を追加
+- オプション2: 別テーブル`streak_activities`を作成

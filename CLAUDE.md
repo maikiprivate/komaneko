@@ -207,19 +207,35 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 13（次） |
+| フェーズ | Phase 13（作業中） |
 | 最終更新 | 2025-12-17 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 13（次）- 駒塾API
+### Phase 13（作業中）- ストリークAPI
 
-**目標**: 駒塾（レッスン）のCRUD APIを実装
+**目標**: ストリーク（連続学習記録）をサーバー管理
 
-- [ ] Prismaスキーマにlessonsテーブル追加
-- [ ] lesson.repository.ts
-- [ ] lesson.service.ts（TDD）
-- [ ] lesson.router.ts
-- [ ] シードデータ作成
+詳細設計: `docs/designs/streak.md`
+
+**API側:**
+- [ ] streak.schema.ts（Zodスキーマ）
+- [ ] streak.repository.ts（DBアクセス）
+- [ ] streak.service.ts（ビジネスロジック、TDD）
+- [ ] streak.service.test.ts（サービステスト）
+- [ ] streak.router.ts（エンドポイント）
+- [ ] app.tsにルーター登録
+
+**アプリ側:**
+- [ ] lib/api/streak.ts（getStreak, recordStreak）
+- [ ] lib/streak/useStreak.ts（状態管理フック）
+- [ ] recordLearningCompletion.ts をAPI呼び出しに変更
+- [ ] ホーム画面をAPI連携に変更
+
+**エンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/streak | ストリーク状態取得 | 必須 |
+| POST | /api/streak/record | 学習完了記録 | 必須 |
 
 ### Phase 12.5（完了）- 詰将棋アプリ-API連携
 
@@ -229,7 +245,7 @@ users ─────┬──── sessions（匿名対応）
 - [x] 一覧画面をAPI連携に変更（キャッシュ、リトライ機能付き）
 - [x] プレイ画面をAPI連携に変更
 - [x] モックデータ削除
-- [x] コードレビュー指摘対応
+- [x] API呼び出し最適化（paramsでキャッシュデータ渡し）
 
 **実装ファイル:**
 ```
