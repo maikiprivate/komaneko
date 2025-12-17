@@ -1,18 +1,25 @@
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useCallback, useEffect, useState } from 'react'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
-import {
-  MOCK_TSUMESHOGI_PROBLEMS,
-  MOVES_LABELS,
-  MOVES_OPTIONS,
-  type MovesOption,
-  type ProblemStatus,
-  type TsumeshogiProblem,
-  filterByMoves,
-} from '@/mocks/tsumeshogiData'
+import { getTsumeshogiList, type TsumeshogiProblem } from '@/lib/api/tsumeshogi'
+
+/** 手数のオプション */
+const MOVES_OPTIONS = [3, 5, 7] as const
+type MovesOption = (typeof MOVES_OPTIONS)[number]
+
+/** 手数の表示名 */
+const MOVES_LABELS: Record<MovesOption, string> = {
+  3: '3手詰め',
+  5: '5手詰め',
+  7: '7手詰め',
+}
+
+/** ステータスの型（将来API対応時に使用） */
+type ProblemStatus = 'unsolved' | 'in_progress' | 'solved'
+type StatusFilter = ProblemStatus | 'all'
 
 /** ステータスの表示名 */
 const STATUS_LABELS: Record<ProblemStatus, string> = {
@@ -21,12 +28,10 @@ const STATUS_LABELS: Record<ProblemStatus, string> = {
   solved: '解答済み',
 }
 
-type StatusFilter = ProblemStatus | 'all'
-
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'unsolved', label: '未解答' },
-  { value: 'in_progress', label: '挑戦中' },
-  { value: 'solved', label: '解答済み' },
+  { value: 'unsolved', label: STATUS_LABELS.unsolved },
+  { value: 'in_progress', label: STATUS_LABELS.in_progress },
+  { value: 'solved', label: STATUS_LABELS.solved },
   { value: 'all', label: 'すべて' },
 ]
 
@@ -45,18 +50,80 @@ function getStatusBackgroundColor(
   }
 }
 
+/** 手数ごとのキャッシュ構造（将来のページネーション対応） */
+interface ProblemsCache {
+  problems: TsumeshogiProblem[]
+  hasMore: boolean // まだ読み込めるデータがあるか
+  // 将来追加: nextCursor?: string
+}
+
 export default function TsumeshogiScreen() {
   const { colors } = useTheme()
   const router = useRouter()
   const [selectedMoves, setSelectedMoves] = useState<MovesOption>(3)
-  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('unsolved')
+  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('all')
 
-  // フィルタ
-  const filteredByMoves = filterByMoves(MOCK_TSUMESHOGI_PROBLEMS, selectedMoves)
-  const filteredProblems =
-    selectedStatus === 'all'
-      ? filteredByMoves
-      : filteredByMoves.filter((p) => p.status === selectedStatus)
+  // 手数ごとのキャッシュ
+  const [cache, setCache] = useState<Partial<Record<MovesOption, ProblemsCache>>>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // 選択中の手数のデータ
+  const currentCache = cache[selectedMoves]
+  const problems = currentCache?.problems ?? []
+
+  useEffect(() => {
+    // キャッシュがあれば再取得しない
+    if (cache[selectedMoves]) return
+
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+
+    getTsumeshogiList(selectedMoves)
+      .then((data) => {
+        if (cancelled) return
+        setCache((prev) => ({
+          ...prev,
+          [selectedMoves]: {
+            problems: data,
+            hasMore: false, // TODO: APIがページネーション対応したらtrue
+          },
+        }))
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'データの取得に失敗しました')
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheはuseEffect内で更新するため依存配列から除外
+  }, [selectedMoves])
+
+  // TODO: 将来のページネーション用
+  // const loadMore = useCallback(() => {
+  //   if (!currentCache?.hasMore || isLoading) return
+  //   // 追加読み込み処理
+  // }, [currentCache, isLoading])
+
+  // エラー時のリトライ
+  const handleRetry = useCallback(() => {
+    setError(null)
+    // キャッシュをクリアして再取得
+    setCache((prev) => {
+      const newCache = { ...prev }
+      delete newCache[selectedMoves]
+      return newCache
+    })
+  }, [selectedMoves])
+
+  // TODO: ステータスフィルタはAPI対応後に実装
+  // 現在は全件表示
+  const filteredProblems = problems
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {
     router.push(`/tsumeshogi/${problem.id}`)
@@ -120,32 +187,48 @@ export default function TsumeshogiScreen() {
 
       {/* 問題リスト */}
       <ScrollView style={styles.listContainer} contentContainerStyle={styles.listContent}>
-        {filteredProblems.length === 0 ? (
+        {isLoading && !currentCache ? (
+          <ActivityIndicator style={styles.loader} color={colors.button.primary} />
+        ) : error && !currentCache ? (
+          <View style={styles.errorContainer}>
+            <Text style={[styles.errorText, { color: colors.text.secondary }]}>{error}</Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: colors.button.primary }]}
+              onPress={handleRetry}
+            >
+              <Text style={[styles.retryButtonText, { color: '#FFFFFF' }]}>再試行</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredProblems.length === 0 ? (
           <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
             該当する問題がありません
           </Text>
         ) : (
-          filteredProblems.map((problem, index) => (
-            <TouchableOpacity
-              key={problem.id}
-              style={[styles.card, { backgroundColor: colors.card.background }]}
-              onPress={() => handleProblemPress(problem)}
-            >
-              <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
-                問題 {index + 1}
-              </Text>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusBackgroundColor(problem.status, colors) },
-                ]}
+          filteredProblems.map((problem, index) => {
+            // TODO: ステータスはAPI対応後に取得。現在は全て「未解答」
+            const status: ProblemStatus = 'unsolved'
+            return (
+              <TouchableOpacity
+                key={problem.id}
+                style={[styles.card, { backgroundColor: colors.card.background }]}
+                onPress={() => handleProblemPress(problem)}
               >
-                <Text style={[styles.statusBadgeText, { color: colors.text.inverse }]}>
-                  {STATUS_LABELS[problem.status]}
+                <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
+                  問題 {index + 1}
                 </Text>
-              </View>
-            </TouchableOpacity>
-          ))
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusBackgroundColor(status, colors) },
+                  ]}
+                >
+                  <Text style={[styles.statusBadgeText, { color: colors.text.inverse }]}>
+                    {STATUS_LABELS[status]}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )
+          })
         )}
       </ScrollView>
     </SafeAreaView>
@@ -196,6 +279,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 12,
+  },
+  loader: {
+    marginTop: 24,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    marginTop: 24,
+    gap: 16,
+  },
+  errorText: {
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyText: {
     textAlign: 'center',

@@ -18,7 +18,22 @@ import {
 import { isCheck, isCheckmate } from '@/lib/shogi/rules'
 import { parseSfen } from '@/lib/shogi/sfen'
 import type { BoardState, PieceType, Position } from '@/lib/shogi/types'
-import type { TsumeshogiProblem } from '@/mocks/tsumeshogiData'
+/** 詰将棋問題型（フック用） */
+export interface TsumeshogiProblemForGame {
+  sfen: string
+  moves: number
+  hint?: {
+    from?: { row: number; col: number }
+    to: { row: number; col: number }
+    piece?: PieceType
+  }
+  solutionMoves?: Array<{
+    from?: { row: number; col: number }
+    to: { row: number; col: number }
+    piece?: string
+    promote?: boolean
+  }>
+}
 
 /** コールバック */
 interface TsumeshogiCallbacks {
@@ -93,7 +108,6 @@ const EMPTY_BOARD_STATE: BoardState = {
     .map(() => Array(9).fill(null)),
   capturedPieces: { sente: {}, gote: {} },
   turn: 'sente',
-  moveCount: 1,
 }
 
 /**
@@ -103,7 +117,7 @@ const EMPTY_BOARD_STATE: BoardState = {
  * @param callbacks コールバック
  */
 export function useTsumeshogiGame(
-  problem: TsumeshogiProblem | undefined,
+  problem: TsumeshogiProblemForGame | undefined,
   callbacks?: TsumeshogiCallbacks,
 ): UseTsumeshogiGameReturn & { isReady: boolean } {
   // 初期盤面をパース（メモ化）
@@ -117,6 +131,12 @@ export function useTsumeshogiGame(
 
   // 盤面状態
   const [boardState, setBoardState] = useState<BoardState>(initialState)
+
+  // problem が変わったら盤面をリセット（API非同期取得対応）
+  useEffect(() => {
+    setBoardState(initialState)
+  }, [initialState])
+
   // 選択中の盤上位置
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   // 選択中の持ち駒

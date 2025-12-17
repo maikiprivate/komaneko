@@ -99,7 +99,6 @@ const EMPTY_BOARD_STATE: BoardState = {
     gote: {},
   },
   turn: 'sente',
-  moveCount: 1,
 }
 
 /**
