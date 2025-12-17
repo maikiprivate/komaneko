@@ -6,6 +6,7 @@
  * - 1分ごとに残り時間をカウントダウン
  * - 回復タイミングでハート数を更新（満タン時は停止）
  * - アプリがバックグラウンドから復帰時に即座に再計算
+ * - グローバルキャッシュにより画面間でデータを共有（API呼び出し削減）
  */
 
 import { useFocusEffect } from 'expo-router'
@@ -14,6 +15,12 @@ import { AppState, type AppStateStatus } from 'react-native'
 
 import { getHearts, type HeartsResponse, type ConsumeHeartsResponse } from '../api/hearts'
 import { calculateHearts, DEFAULT_MAX_HEARTS, type HeartsCalculation } from './heartsUtils'
+
+/**
+ * グローバルキャッシュ（モジュールレベル）
+ * 全てのuseHeartsインスタンスで共有され、画面遷移時のAPI再取得を防ぐ
+ */
+let globalCachedData: HeartsResponse | null = null
 
 /** フックの戻り値 */
 export interface UseHeartsResult {
@@ -80,11 +87,27 @@ export function useHearts(): UseHeartsResult {
   /** APIからデータを取得し、回復計算を行う */
   const fetchHearts = useCallback(async () => {
     try {
+      // グローバルキャッシュがあればAPI呼び出しをスキップ
+      if (globalCachedData) {
+        cachedDataRef.current = globalCachedData
+        const calculated = calculateHearts(globalCachedData)
+        setHearts(calculated)
+        setError(null)
+        setIsLoading(false)
+
+        if (!calculated.isFull && isFocusedRef.current) {
+          startMinuteTimer()
+        }
+        return
+      }
+
       // 初回のみローディング表示（キャッシュがある場合は表示しない）
       if (!cachedDataRef.current) {
         setIsLoading(true)
       }
       const data = await getHearts()
+      // グローバルキャッシュとローカルキャッシュ両方に保存
+      globalCachedData = data
       cachedDataRef.current = data
       const calculated = calculateHearts(data)
       setHearts(calculated)
@@ -96,6 +119,7 @@ export function useHearts(): UseHeartsResult {
       }
     } catch (err) {
       console.error('[useHearts] エラー:', err)
+      globalCachedData = null
       cachedDataRef.current = null
       setHearts(null)
       setError('ハート情報を取得できませんでした')
@@ -108,12 +132,14 @@ export function useHearts(): UseHeartsResult {
   /** 消費APIレスポンスからキャッシュを更新（APIコールなし） */
   const updateFromConsumeResponse = useCallback(
     (response: ConsumeHeartsResponse) => {
-      const maxCount = cachedDataRef.current?.maxCount ?? DEFAULT_MAX_HEARTS
+      const maxCount = globalCachedData?.maxCount ?? cachedDataRef.current?.maxCount ?? DEFAULT_MAX_HEARTS
       const newData: HeartsResponse = {
         count: response.remaining,
         maxCount,
         recoveryStartedAt: response.recoveryStartedAt,
       }
+      // グローバルキャッシュとローカルキャッシュ両方を更新
+      globalCachedData = newData
       cachedDataRef.current = newData
       const calculated = calculateHearts(newData)
       setHearts(calculated)
@@ -134,6 +160,8 @@ export function useHearts(): UseHeartsResult {
 
     const newCalculated = calculateHearts(cachedDataRef.current)
     setHearts(newCalculated)
+    setIsLoading(false)
+    setError(null)
 
     // 満タンでなければタイマー開始、満タンなら停止
     if (!newCalculated.isFull) {
@@ -148,8 +176,12 @@ export function useHearts(): UseHeartsResult {
     useCallback(() => {
       isFocusedRef.current = true
 
-      // キャッシュがあれば再計算のみ、なければAPIから取得
-      if (cachedDataRef.current) {
+      // グローバルキャッシュまたはローカルキャッシュがあれば再計算のみ、なければAPIから取得
+      if (globalCachedData || cachedDataRef.current) {
+        // グローバルキャッシュがあればローカルにも反映
+        if (globalCachedData && !cachedDataRef.current) {
+          cachedDataRef.current = globalCachedData
+        }
         recalculateFromCache()
       } else {
         fetchHearts()
