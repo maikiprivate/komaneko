@@ -207,45 +207,56 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 12（作業中） |
-| 最終更新 | 2025-12-16 |
+| フェーズ | Phase 13（次） |
+| 最終更新 | 2025-12-17 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 12（作業中）- 詰将棋API
+### Phase 13（次）- 駒塾API
 
-**目標**: 詰将棋問題データのAPI（GET）を実装し、アプリのUI変更を行う
+**目標**: 駒塾（レッスン）のCRUD APIを実装
+
+- [ ] Prismaスキーマにlessonsテーブル追加
+- [ ] lesson.repository.ts
+- [ ] lesson.service.ts（TDD）
+- [ ] lesson.router.ts
+- [ ] シードデータ作成
+
+### Phase 12.5（完了）- 詰将棋アプリ-API連携
+
+**目標**: 詰将棋画面をモックデータからAPIに切り替え
+
+- [x] lib/api/tsumeshogi.ts 作成（getTsumeshogiList, getTsumeshogi）
+- [x] 一覧画面をAPI連携に変更（キャッシュ、リトライ機能付き）
+- [x] プレイ画面をAPI連携に変更
+- [x] モックデータ削除
+- [x] コードレビュー指摘対応
+
+**実装ファイル:**
+```
+packages/app/lib/api/
+└── tsumeshogi.ts          # getTsumeshogiList(), getTsumeshogi()
+```
+
+### Phase 12（完了）- 詰将棋API
+
+**目標**: 詰将棋問題データのAPI（GET）を実装
 
 詳細設計: `docs/designs/tsumeshogi-api.md`
 
-**API側:**
-- [ ] Prismaスキーマにtsumeshogisテーブル追加
-- [ ] マイグレーション実行
-- [ ] シードデータ作成・投入（既存モック13問）
-- [ ] tsumeshogi.repository.ts
-- [ ] tsumeshogi.service.ts（TDD）
-- [ ] tsumeshogi.router.ts
-- [ ] app.tsにルーター登録
+- [x] Prismaスキーマにtsumeshogisテーブル追加
+- [x] マイグレーション実行
+- [x] シードデータ作成・投入（既存モック13問）
+- [x] tsumeshogi.repository.ts
+- [x] tsumeshogi.service.ts（TDD）
+- [x] tsumeshogi.router.ts
+- [x] app.tsにルーター登録
+- [x] フッター固定ボタン追加（やり直し↔次の問題へ切り替え）
 
-**アプリ側:**
-- [ ] GameFooter削除（詰将棋画面のみ）
-- [ ] フッター固定ボタン追加（やり直し↔次の問題へ切り替え）
-
-**データ構造（最小限）:**
-```prisma
-model Tsumeshogi {
-  id          String   @id @default(uuid())
-  sfen        String
-  moveCount   Int      @map("move_count")
-  status      String   @default("draft")  // draft, published, archived
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-}
-```
-
-**設計ポイント:**
-- 正解判定は`isCheckmate()`で動的に行う（解答データ不要）
-- hint/solutionは今回なし（将来必要になったら追加）
-- シードデータは全て`status: 'published'`で投入
+**実装済みエンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/tsumeshogi | 一覧取得（moveCountフィルタ対応） | 不要 |
+| GET | /api/tsumeshogi/:id | 詳細取得 | 不要 |
 
 ### Phase 11.5（完了）- ハート機能 - アプリ-API連携
 
