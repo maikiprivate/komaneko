@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -29,9 +29,9 @@ const STATUS_LABELS: Record<ProblemStatus, string> = {
 }
 
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'unsolved', label: '未解答' },
-  { value: 'in_progress', label: '挑戦中' },
-  { value: 'solved', label: '解答済み' },
+  { value: 'unsolved', label: STATUS_LABELS.unsolved },
+  { value: 'in_progress', label: STATUS_LABELS.in_progress },
+  { value: 'solved', label: STATUS_LABELS.solved },
   { value: 'all', label: 'すべて' },
 ]
 
@@ -110,6 +110,17 @@ export default function TsumeshogiScreen() {
   //   // 追加読み込み処理
   // }, [currentCache, isLoading])
 
+  // エラー時のリトライ
+  const handleRetry = useCallback(() => {
+    setError(null)
+    // キャッシュをクリアして再取得
+    setCache((prev) => {
+      const newCache = { ...prev }
+      delete newCache[selectedMoves]
+      return newCache
+    })
+  }, [selectedMoves])
+
   // TODO: ステータスフィルタはAPI対応後に実装
   // 現在は全件表示
   const filteredProblems = problems
@@ -179,7 +190,15 @@ export default function TsumeshogiScreen() {
         {isLoading && !currentCache ? (
           <ActivityIndicator style={styles.loader} color={colors.button.primary} />
         ) : error && !currentCache ? (
-          <Text style={[styles.errorText, { color: colors.text.secondary }]}>{error}</Text>
+          <View style={styles.errorContainer}>
+            <Text style={[styles.errorText, { color: colors.text.secondary }]}>{error}</Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: colors.button.primary }]}
+              onPress={handleRetry}
+            >
+              <Text style={[styles.retryButtonText, { color: '#FFFFFF' }]}>再試行</Text>
+            </TouchableOpacity>
+          </View>
         ) : filteredProblems.length === 0 ? (
           <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
             該当する問題がありません
@@ -264,9 +283,22 @@ const styles = StyleSheet.create({
   loader: {
     marginTop: 24,
   },
+  errorContainer: {
+    alignItems: 'center',
+    marginTop: 24,
+    gap: 16,
+  },
   errorText: {
     textAlign: 'center',
-    marginTop: 24,
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyText: {
     textAlign: 'center',

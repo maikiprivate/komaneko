@@ -1,6 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -38,6 +38,13 @@ export default function TsumeshogiPlayScreen() {
   const [problemsInSameMoves, setProblemsInSameMoves] = useState<TsumeshogiProblem[]>([])
   const [isLoadingProblem, setIsLoadingProblem] = useState(true)
   const [problemError, setProblemError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+
+  // エラー時のリトライ
+  const handleRetry = useCallback(() => {
+    setProblemError(null)
+    setRetryCount((prev) => prev + 1)
+  }, [])
 
   // 問題を取得
   useEffect(() => {
@@ -69,7 +76,7 @@ export default function TsumeshogiPlayScreen() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, retryCount])
 
   // ゲーム用の問題データに変換
   const problemForGame: TsumeshogiProblemForGame | undefined = problem
@@ -152,6 +159,20 @@ export default function TsumeshogiPlayScreen() {
     }
   }, [isSolved])
 
+  // ヘッダータイトル用の情報（メモ化）※フックは早期リターンの前に呼ぶ
+  const { headerTitle, nextId } = useMemo(() => {
+    if (!problem) {
+      return { headerTitle: '', nextId: null }
+    }
+    const movesLabel = MOVES_LABELS[problem.moveCount] || `${problem.moveCount}手詰め`
+    const currentIndex = problemsInSameMoves.findIndex((p) => p.id === problem.id)
+    const problemNumber = currentIndex + 1
+    return {
+      headerTitle: `${movesLabel} 問題${problemNumber}`,
+      nextId: problemsInSameMoves[currentIndex + 1]?.id ?? null,
+    }
+  }, [problem, problemsInSameMoves])
+
   // ローディング中
   if (heartsGate.isLoading || isLoadingProblem) {
     return (
@@ -168,12 +189,22 @@ export default function TsumeshogiPlayScreen() {
         <Text style={[styles.errorText, { color: colors.text.primary }]}>
           {problemError || 'データの取得に失敗しました'}
         </Text>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: palette.orange }]}
-          onPress={() => router.back()}
-        >
-          <Text style={[styles.retryButtonText, { color: palette.white }]}>戻る</Text>
-        </TouchableOpacity>
+        <View style={styles.errorButtons}>
+          {problemError && (
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: palette.orange }]}
+              onPress={handleRetry}
+            >
+              <Text style={[styles.retryButtonText, { color: palette.white }]}>再試行</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.backButton, { borderColor: palette.orange }]}
+            onPress={() => router.back()}
+          >
+            <Text style={[styles.backButtonText, { color: palette.orange }]}>戻る</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     )
   }
@@ -184,15 +215,6 @@ export default function TsumeshogiPlayScreen() {
   }
 
   // ここ以降、problemは必ず存在する
-
-  // ヘッダータイトル用の情報
-  const movesLabel = MOVES_LABELS[problem.moveCount] || `${problem.moveCount}手詰め`
-  const currentIndex = problemsInSameMoves.findIndex((p) => p.id === problem.id)
-  const problemNumber = currentIndex + 1
-  const headerTitle = `${movesLabel} 問題${problemNumber}`
-
-  // 次の問題
-  const nextId = problemsInSameMoves[currentIndex + 1]?.id ?? null
 
   // 視点（詰将棋は常に先手視点）
   const perspective: Perspective = 'sente'
@@ -369,12 +391,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
   },
+  errorButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   retryButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
   },
   retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  backButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
