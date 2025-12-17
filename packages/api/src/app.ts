@@ -5,6 +5,7 @@ import Fastify from 'fastify'
 import { prisma } from './db/client.js'
 import { authRouter } from './modules/auth/auth.router.js'
 import { heartsRouter } from './modules/hearts/hearts.router.js'
+import { streakRouter } from './modules/streak/streak.router.js'
 import { tsumeshogiRouter } from './modules/tsumeshogi/tsumeshogi.router.js'
 import { errorHandler } from './shared/errors/index.js'
 
@@ -61,6 +62,9 @@ export async function buildApp() {
 
   // ハートAPI
   await app.register(heartsRouter, { prefix: '/api/hearts' })
+
+  // ストリークAPI
+  await app.register(streakRouter, { prefix: '/api/streak' })
 
   // 詰将棋API
   await app.register(tsumeshogiRouter, { prefix: '/api/tsumeshogi' })
