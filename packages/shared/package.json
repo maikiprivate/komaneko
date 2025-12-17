@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./utils/date": {
+      "types": "./dist/utils/date.d.ts",
+      "import": "./dist/utils/date.js"
     }
   },
   "scripts": {
