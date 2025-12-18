@@ -29,3 +29,41 @@ export async function getTsumeshogiList(moveCount?: number): Promise<TsumeshogiP
 export async function getTsumeshogi(id: string): Promise<TsumeshogiProblem> {
   return apiRequest<TsumeshogiProblem>(`/api/tsumeshogi/${id}`)
 }
+
+/** 学習記録リクエスト */
+export interface RecordTsumeshogiRequest {
+  tsumeshogiId: string
+  isCorrect: boolean
+}
+
+/** 学習記録レスポンス */
+export interface RecordTsumeshogiResponse {
+  hearts: {
+    consumed: number
+    remaining: number
+    recoveryStartedAt: string
+  }
+  streak: {
+    currentCount: number
+    longestCount: number
+    updated: boolean
+    isNewRecord: boolean
+  }
+  completedDates: string[]
+}
+
+/**
+ * 詰将棋の学習記録を送信
+ *
+ * ハート消費・ストリーク更新はサーバー側で処理される。
+ *
+ * @param request 問題IDと正解/不正解
+ */
+export async function recordTsumeshogi(
+  request: RecordTsumeshogiRequest,
+): Promise<RecordTsumeshogiResponse> {
+  return apiRequest<RecordTsumeshogiResponse>('/api/tsumeshogi/record', {
+    method: 'POST',
+    body: request,
+  })
+}
