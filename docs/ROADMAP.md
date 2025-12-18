@@ -961,105 +961,75 @@ packages/api/src/modules/hearts/
 └── hearts.schema.ts        # Zodスキーマ
 ```
 
-### Phase 11.5: ハート機能 - アプリ-API連携（作業中）
+### Phase 11.5: ハート機能 - アプリ-API連携（完了）
 
 **目標**: ホーム画面のハート表示をAPIに接続し、クライアント側で回復計算を行う
 
-詳細設計: `docs/designs/hearts.md`（クライアント側セクション）
+詳細設計: `docs/designs/hearts.md`
 
-**Step 1: API関数作成 + 最小限の接続確認**
-- [ ] lib/api/hearts.ts 作成（getHearts, consumeHearts）
-- [ ] client.ts にNO_HEARTS_LEFTエラーコード追加
-- [ ] ホーム画面でconsole.logで確認
-- [ ] 動作確認: APIレスポンスが取得できるか
+- [x] lib/api/hearts.ts 作成（getHearts, consumeHearts）
+- [x] lib/hearts/heartsUtils.ts 作成（回復計算）
+- [x] lib/hearts/useHearts.ts 作成（状態管理フック + 1分カウントダウン）
+- [x] lib/hearts/useHeartsGate.ts 作成（開始時チェック + 完了時消費）
+- [x] ホーム画面のハート表示をAPI連携
+- [x] 詰将棋にハート消費機能を統合
+- [x] レッスンにハート消費機能を統合
+- [x] バックグラウンド復帰時の即座再計算（AppState監視）
+- [x] 画面フォーカス時のAPIコール最適化（グローバルキャッシュ）
 
-**Step 2: ホーム画面にAPIデータを表示**
-- [ ] useState + useEffectでAPI取得
-- [ ] ローディング状態の表示
-- [ ] エラー時の表示
-- [ ] 動作確認: ハート数が正しく表示されるか
+### Phase 12: 詰将棋API（完了）
 
-**Step 3: 回復計算をクライアント側で実行**
-- [ ] lib/hearts/heartsUtils.ts 作成
-- [ ] calculateCurrentHearts(): 回復後のハート数
-- [ ] calculateNextRecoveryMinutes(): 次回復までの分数
-- [ ] 動作確認: 回復後のハート数が正しいか
-
-**Step 4: useHeartsフック + 1分ごとの表示更新**
-- [ ] lib/hearts/useHearts.ts 作成
-- [ ] 1分ごとに回復計算を再実行
-- [ ] ホーム画面をuseHeartsに置き換え
-- [ ] 動作確認: 時間経過でハートが増えるか
-
-**実装ファイル（予定）:**
-```
-packages/app/lib/
-├── api/
-│   └── hearts.ts         # getHearts(), consumeHearts()
-└── hearts/
-    ├── heartsUtils.ts    # 回復計算（サーバーと同じロジック）
-    └── useHearts.ts      # 状態管理フック
-```
-
-**設計ポイント:**
-- APIコールはアプリ起動時のみ（ホーム画面表示時は叩かない）
-- 回復計算はクライアント側で実行（1分ごとに表示更新）
-- 消費APIのレスポンスで状態更新
-- consumeHearts連携は別フェーズで実装（詰将棋・駒塾完了時）
-
-### Phase 12: 詰将棋API（作業中）
-
-**目標**: 詰将棋問題データのAPI（GET）を実装し、アプリのUI変更を行う
+**目標**: 詰将棋問題データのAPI（GET）を実装し、アプリと連携
 
 詳細設計: `docs/designs/tsumeshogi-api.md`
 
-**API側:**
-- [ ] Prismaスキーマにtsumeshogisテーブル追加
-- [ ] マイグレーション実行
-- [ ] シードデータ作成・投入（既存モック13問、全てpublished）
-- [ ] tsumeshogi.repository.ts
-- [ ] tsumeshogi.service.ts（TDD）
-- [ ] tsumeshogi.router.ts
-- [ ] app.tsにルーター登録
-
-**アプリ側:**
-- [ ] GameFooter削除（詰将棋画面のみ）
-- [ ] フッター固定ボタン追加（やり直し↔次の問題へ切り替え）
-
-**データ構造（最小限）:**
-```prisma
-model Tsumeshogi {
-  id          String   @id @default(uuid())
-  sfen        String
-  moveCount   Int      @map("move_count")
-  status      String   @default("draft")  // draft, published, archived
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-}
-```
-
-**設計ポイント:**
-- 正解判定は`isCheckmate()`で動的に行う（解答データ不要）
-- hint/solutionは今回なし（将来必要になったら追加）
-- 管理者API（POST/PATCH/DELETE）はPhase 15で実装
+- [x] Prismaスキーマにtsumeshogisテーブル追加
+- [x] マイグレーション実行
+- [x] シードデータ作成・投入（13問）
+- [x] tsumeshogi.repository.ts / service.ts / router.ts
+- [x] アプリ側API連携
+- [x] API呼び出し最適化（paramsでキャッシュデータ渡し）
 
 ### Phase 12.5: 駒塾API（予定）
 - [ ] 駒塾CRUD（Router → Service → Repository）
 - [ ] レッスンステップ管理
 - [ ] ユニット・統合テスト（TDD）
 
-### Phase 13: ストリークAPI + BFF
-- [ ] ストリークシステム（連続記録・日付計算）
-- [ ] 学習記録
-- [ ] BFF統合エンドポイント
-  - GET /api/home/status
-  - GET /api/lesson/:id/study
-  - GET /api/tsumeshogi/:id/play
-- [ ] テスト作成（TDD）
+### Phase 13: 学習記録API（作業中）
 
-### Phase 14: API連携（アプリ）
+**目標**: LearningRecord設計でストリーク・学習履歴を管理
+
+詳細設計: `docs/designs/learning-record.md`
+
+**設計変更**:
+- Streakテーブル廃止 → LearningRecordから導出
+- 週間カレンダー対応（completedDates配列）
+- 苦手分析対応（間違えた記録も保存）
+
+**API側:**
+- [ ] Prismaスキーマ（LearningRecord + TsumeshogiRecord）
+- [ ] learning-record.repository.ts（DBアクセス）
+- [ ] learning.service.ts 書き換え（TDD）
+- [ ] hearts.schema.ts 拡張（contentType, contentId, isCorrect）
+- [ ] hearts.router.ts 拡張（completedDates追加）
+- [ ] learning.router.ts 新規（GET /api/learning/streak）
+- [ ] Streakテーブル・モジュール削除
+
+**エンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/learning/streak | ストリーク状態取得 | 必須 |
+| POST | /api/hearts/consume | 学習完了（拡張） | 必須 |
+
+**設計ポイント:**
+- LearningRecord: 全学習を記録（正解・不正解問わず）
+- TsumeshogiRecord: 詰将棋固有の詳細
+- ストリークは毎回LearningRecordから計算
+- 将来: LessonRecord, JosekiRecordを同パターンで追加
+
+### Phase 14: 駒塾API連携（予定）
 - [ ] 駒塾のAPI連携
-- [ ] 詰将棋のAPI連携
+- [ ] BFF統合エンドポイント（GET /api/home/status）
 - [ ] ゲーミフィケーションのAPI連携
 - [ ] ローディング状態UI
 - [ ] エラーハンドリングUI

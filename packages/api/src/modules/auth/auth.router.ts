@@ -2,11 +2,12 @@
  * 認証APIルーター
  */
 
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { FastifyInstance } from 'fastify'
 
 import { prisma } from '../../db/client.js'
 import { AppError } from '../../shared/errors/AppError.js'
 import { createAuthMiddleware } from '../../shared/middleware/auth.middleware.js'
+import { getAuthenticatedUserId } from '../../shared/utils/getAuthenticatedUserId.js'
 import { createAuthRepository } from './auth.repository.js'
 import { loginSchema, registerSchema } from './auth.schema.js'
 import { AuthService } from './auth.service.js'
@@ -15,17 +16,6 @@ import { AuthService } from './auth.service.js'
 
 /** 認証不要なルート（明示的に除外） */
 const PUBLIC_ROUTES = ['/register', '/login']
-
-/**
- * 認証済みユーザーIDを取得するヘルパー
- * preHandlerで設定されたuserが存在しない場合はエラーをスロー
- */
-function getAuthenticatedUserId(request: FastifyRequest): string {
-  if (!request.user) {
-    throw new AppError('UNAUTHORIZED')
-  }
-  return request.user.userId
-}
 
 export async function authRouter(app: FastifyInstance) {
   // 依存関係の初期化

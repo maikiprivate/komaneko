@@ -2,6 +2,7 @@
  * ハートサービス（ビジネスロジック）
  */
 
+import type { PrismaClientOrTx } from '../../db/client.js'
 import { AppError } from '../../shared/errors/AppError.js'
 import type { HeartsRepository } from './hearts.repository.js'
 
@@ -76,9 +77,17 @@ export class HeartsService {
    * recoveryStartedAtの更新ロジック:
    * - 満タンから消費: 消費時刻を新しいrecoveryStartedAtに（回復タイマー開始）
    * - 回復中に消費: recoveryStartedAtは変更なし（残り時間を保持）
+   *
+   * @param userId ユーザーID
+   * @param amount 消費量
+   * @param tx オプションのトランザクションクライアント
    */
-  async consumeHearts(userId: string, amount: number): Promise<ConsumeResult> {
-    const hearts = await this.repository.findByUserId(userId)
+  async consumeHearts(
+    userId: string,
+    amount: number,
+    tx?: PrismaClientOrTx
+  ): Promise<ConsumeResult> {
+    const hearts = await this.repository.findByUserId(userId, tx)
 
     // 新規ユーザーの場合はデフォルト値を使用（満タン状態）
     const currentData = hearts ?? {
@@ -105,11 +114,15 @@ export class HeartsService {
       : currentData.recoveryStartedAt // 回復中: 変更なし
 
     // DB更新
-    await this.repository.upsert(userId, {
-      count: remaining,
-      maxCount: currentData.maxCount,
-      recoveryStartedAt: newRecoveryStartedAt,
-    })
+    await this.repository.upsert(
+      userId,
+      {
+        count: remaining,
+        maxCount: currentData.maxCount,
+        recoveryStartedAt: newRecoveryStartedAt,
+      },
+      tx
+    )
 
     return {
       consumed: amount,

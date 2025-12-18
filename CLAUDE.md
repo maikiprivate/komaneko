@@ -178,14 +178,16 @@ users ─────┬──── sessions（匿名対応）
            │
            ├──── hearts（残機）
            │
-           ├──── streaks（連続記録）
-           │
            └──── learning_records（学習記録）
                       │
-                      ├──── lessons（駒塾）
+                      ├──── tsumeshogi_records（詰将棋詳細）
                       │
-                      └──── tsumeshogis（詰将棋）
+                      ├──── lesson_records（駒塾詳細）← 将来
+                      │
+                      └──── joseki_records（定跡詳細）← 将来
 ```
+
+**ストリーク**: learning_recordsのcompletedDateから導出（テーブルなし）
 
 ---
 
@@ -207,19 +209,35 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 13（次） |
-| 最終更新 | 2025-12-17 |
+| フェーズ | Phase 13（作業中） |
+| 最終更新 | 2025-12-18 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 13（次）- 駒塾API
+### Phase 13（作業中）- 学習記録API
 
-**目標**: 駒塾（レッスン）のCRUD APIを実装
+**目標**: LearningRecord設計でストリーク・学習履歴を管理
 
-- [ ] Prismaスキーマにlessonsテーブル追加
-- [ ] lesson.repository.ts
-- [ ] lesson.service.ts（TDD）
-- [ ] lesson.router.ts
-- [ ] シードデータ作成
+詳細設計: `docs/designs/learning-record.md`
+
+**設計変更**:
+- Streakテーブル廃止 → LearningRecordから導出
+- 週間カレンダー対応（completedDates配列）
+- 苦手分析対応（間違えた記録も保存）
+
+**API側:**
+- [ ] Prismaスキーマ（LearningRecord + TsumeshogiRecord）
+- [ ] learning-record.repository.ts（DBアクセス）
+- [ ] learning.service.ts 書き換え（TDD）
+- [ ] hearts.schema.ts 拡張
+- [ ] hearts.router.ts 拡張
+- [ ] learning.router.ts 新規
+- [ ] Streakテーブル・モジュール削除
+
+**エンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/learning/streak | ストリーク状態取得 | 必須 |
+| POST | /api/hearts/consume | 学習完了（拡張） | 必須 |
 
 ### Phase 12.5（完了）- 詰将棋アプリ-API連携
 
@@ -229,7 +247,7 @@ users ─────┬──── sessions（匿名対応）
 - [x] 一覧画面をAPI連携に変更（キャッシュ、リトライ機能付き）
 - [x] プレイ画面をAPI連携に変更
 - [x] モックデータ削除
-- [x] コードレビュー指摘対応
+- [x] API呼び出し最適化（paramsでキャッシュデータ渡し）
 
 **実装ファイル:**
 ```

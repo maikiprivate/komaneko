@@ -21,9 +21,9 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  sessions Session[]
-  hearts   Hearts?
-  streak   Streak?
+  sessions        Session[]
+  hearts          Hearts?
+  learningRecords LearningRecord[]
 
   @@map("users")
 }
@@ -55,17 +55,36 @@ model Hearts {
   @@map("hearts")
 }
 
-model Streak {
-  id           String   @id @default(uuid())
-  userId       String   @unique @map("user_id")
-  currentCount Int      @default(0) @map("current_count")
-  longestCount Int      @default(0) @map("longest_count")
-  lastActiveDate DateTime? @map("last_active_date")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+// ========== 学習記録 ==========
+
+model LearningRecord {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  contentType   String    @map("content_type")  // "tsumeshogi" | "lesson" | "joseki"
+  isCompleted   Boolean   @default(false) @map("is_completed")
+  completedDate String?   @map("completed_date")  // "YYYY-MM-DD" (JST) 完了時のみ
+  createdAt     DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("streaks")
+  // コンテンツ別詳細（1対1、どれか1つのみ紐づく）
+  tsumeshogiRecord TsumeshogiRecord?
+
+  @@index([userId, completedDate])
+  @@index([userId, isCompleted])
+  @@map("learning_records")
+}
+
+model TsumeshogiRecord {
+  id               String   @id @default(uuid())
+  learningRecordId String   @unique @map("learning_record_id")
+  tsumeshogiId     String   @map("tsumeshogi_id")
+  isCorrect        Boolean  @default(false) @map("is_correct")
+
+  learningRecord LearningRecord @relation(fields: [learningRecordId], references: [id], onDelete: Cascade)
+
+  @@index([tsumeshogiId])
+  @@map("tsumeshogi_records")
 }
 
 // ========== コンテンツ ==========
