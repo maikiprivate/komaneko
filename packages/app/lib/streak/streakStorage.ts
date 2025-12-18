@@ -76,6 +76,39 @@ export async function resetStreakData(): Promise<void> {
   }
 }
 
+/** APIレスポンスのストリーク情報 */
+export interface ApiStreakResult {
+  currentCount: number
+  longestCount: number
+  updated: boolean
+  isNewRecord: boolean
+}
+
+/**
+ * APIレスポンスからストリークデータを保存（キャッシュ更新用）
+ *
+ * 学習完了API（POST /api/tsumeshogi/record）のレスポンスを受けて、
+ * AsyncStorageのキャッシュを更新する。
+ *
+ * @param streak ストリーク情報（API response.streak）
+ * @param completedDates 完了日配列（API response.completedDates）
+ * @param lastActiveDate 最終学習日（正解時は今日の日付）
+ * @returns 保存成功時はtrue、失敗時はfalse
+ */
+export async function saveStreakFromApi(
+  streak: ApiStreakResult,
+  completedDates: string[],
+  lastActiveDate: string | null,
+): Promise<boolean> {
+  const data: StreakData = {
+    currentCount: streak.currentCount,
+    longestCount: streak.longestCount,
+    lastActiveDate,
+    completedDates,
+  }
+  return saveStreakData(data)
+}
+
 /**
  * デモデータを設定（テスト用）
  * ストリークが途切れた後に再開したシナリオ
