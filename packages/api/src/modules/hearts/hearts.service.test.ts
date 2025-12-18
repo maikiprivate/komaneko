@@ -96,11 +96,15 @@ describe('HeartsService', () => {
       // Assert
       expect(result.consumed).toBe(1)
       expect(result.remaining).toBe(4)
-      expect(mockRepository.upsert).toHaveBeenCalledWith('user-123', {
-        count: 4,
-        maxCount: 10,
-        recoveryStartedAt: now,
-      })
+      expect(mockRepository.upsert).toHaveBeenCalledWith(
+        'user-123',
+        {
+          count: 4,
+          maxCount: 10,
+          recoveryStartedAt: now,
+        },
+        undefined
+      )
     })
 
     it('複数ハートを一度に消費できる', async () => {

@@ -126,11 +126,15 @@ describe('StreakService', () => {
       expect(result.updated).toBe(true)
       expect(result.currentCount).toBe(1)
       expect(result.longestCount).toBe(1)
-      expect(mockRepository.upsert).toHaveBeenCalledWith('user-123', {
-        currentCount: 1,
-        longestCount: 1,
-        lastActiveDate: expect.any(Date),
-      })
+      expect(mockRepository.upsert).toHaveBeenCalledWith(
+        'user-123',
+        {
+          currentCount: 1,
+          longestCount: 1,
+          lastActiveDate: expect.any(Date),
+        },
+        undefined
+      )
     })
 
     it('昨日も学習していた場合、ストリーク継続', async () => {
@@ -234,11 +238,15 @@ describe('StreakService', () => {
       expect(result.updated).toBe(true)
       expect(result.currentCount).toBe(11)
       expect(result.longestCount).toBe(11) // 更新された
-      expect(mockRepository.upsert).toHaveBeenCalledWith('user-123', {
-        currentCount: 11,
-        longestCount: 11,
-        lastActiveDate: expect.any(Date),
-      })
+      expect(mockRepository.upsert).toHaveBeenCalledWith(
+        'user-123',
+        {
+          currentCount: 11,
+          longestCount: 11,
+          lastActiveDate: expect.any(Date),
+        },
+        undefined
+      )
     })
   })
 })

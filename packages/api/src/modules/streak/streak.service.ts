@@ -8,6 +8,7 @@ import {
   dateToJSTString,
   JST_OFFSET_HOURS,
 } from '@komaneko/shared/utils/date'
+import type { PrismaClientOrTx } from '../../db/client.js'
 import type { StreakRepository } from './streak.repository.js'
 
 interface GetStreakResult {
@@ -57,9 +58,15 @@ export class StreakService {
 
   /**
    * 学習完了を記録（ストリーク判定 → DB更新）
+   *
+   * @param userId ユーザーID
+   * @param tx オプションのトランザクションクライアント
    */
-  async recordStreak(userId: string): Promise<RecordResult> {
-    const streak = await this.repository.findByUserId(userId)
+  async recordStreak(
+    userId: string,
+    tx?: PrismaClientOrTx
+  ): Promise<RecordResult> {
+    const streak = await this.repository.findByUserId(userId, tx)
 
     const today = getDateString(new Date(), JST_OFFSET_HOURS)
     const yesterday = getYesterdayDateString(new Date(), JST_OFFSET_HOURS)
@@ -92,11 +99,15 @@ export class StreakService {
       const newLongestCount = Math.max(streak.longestCount, newCount)
 
       // DB更新
-      await this.repository.upsert(userId, {
-        currentCount: newCount,
-        longestCount: newLongestCount,
-        lastActiveDate: new Date(),
-      })
+      await this.repository.upsert(
+        userId,
+        {
+          currentCount: newCount,
+          longestCount: newLongestCount,
+          lastActiveDate: new Date(),
+        },
+        tx
+      )
 
       return {
         updated: true,
@@ -106,11 +117,15 @@ export class StreakService {
     }
 
     // 新規ユーザー: 初回記録
-    await this.repository.upsert(userId, {
-      currentCount: 1,
-      longestCount: 1,
-      lastActiveDate: new Date(),
-    })
+    await this.repository.upsert(
+      userId,
+      {
+        currentCount: 1,
+        longestCount: 1,
+        lastActiveDate: new Date(),
+      },
+      tx
+    )
 
     return {
       updated: true,

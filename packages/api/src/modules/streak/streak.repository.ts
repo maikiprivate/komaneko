@@ -3,26 +3,34 @@
  */
 
 import type { Streak, PrismaClient } from '@prisma/client'
+import type { PrismaClientOrTx } from '../../db/client.js'
 
 export interface StreakRepository {
-  findByUserId(userId: string): Promise<Streak | null>
+  findByUserId(userId: string, tx?: PrismaClientOrTx): Promise<Streak | null>
   upsert(
     userId: string,
-    data: { currentCount: number; longestCount: number; lastActiveDate: Date }
+    data: { currentCount: number; longestCount: number; lastActiveDate: Date },
+    tx?: PrismaClientOrTx
   ): Promise<Streak>
 }
 
 export function createStreakRepository(prisma: PrismaClient): StreakRepository {
   return {
-    async findByUserId(userId: string): Promise<Streak | null> {
-      return prisma.streak.findUnique({ where: { userId } })
+    async findByUserId(
+      userId: string,
+      tx?: PrismaClientOrTx
+    ): Promise<Streak | null> {
+      const client = tx ?? prisma
+      return client.streak.findUnique({ where: { userId } })
     },
 
     async upsert(
       userId: string,
-      data: { currentCount: number; longestCount: number; lastActiveDate: Date }
+      data: { currentCount: number; longestCount: number; lastActiveDate: Date },
+      tx?: PrismaClientOrTx
     ): Promise<Streak> {
-      return prisma.streak.upsert({
+      const client = tx ?? prisma
+      return client.streak.upsert({
         where: { userId },
         create: {
           userId,
