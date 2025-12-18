@@ -3,6 +3,8 @@
  */
 
 import type { LearningRecord, PrismaClient } from '@prisma/client'
+import { getDateString, JST_OFFSET_HOURS } from '@komaneko/shared/utils/date'
+
 import type { PrismaClientOrTx } from '../../db/client.js'
 
 export interface LearningRecordRepository {
@@ -84,17 +86,25 @@ export function createLearningRecordRepository(
     ): Promise<string[]> {
       const client = tx ?? prisma
 
-      // 過去N日間の完了日を取得（ユニーク）
+      // 過去N日間の日付範囲を計算（今日を含む）
+      const today = new Date()
+      const cutoffDate = new Date(today)
+      cutoffDate.setDate(cutoffDate.getDate() - days + 1)
+      const cutoffDateString = getDateString(cutoffDate, JST_OFFSET_HOURS)
+
+      // 過去N日間の完了日を取得（ユニーク、日付フィルタあり）
       const records = await client.learningRecord.findMany({
         where: {
           userId,
           isCompleted: true,
-          completedDate: { not: null },
+          completedDate: {
+            not: null,
+            gte: cutoffDateString,
+          },
         },
         select: { completedDate: true },
         distinct: ['completedDate'],
         orderBy: { completedDate: 'desc' },
-        take: days,
       })
 
       return records

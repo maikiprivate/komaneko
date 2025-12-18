@@ -2,25 +2,16 @@
  * 詰将棋APIルーター
  */
 
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { FastifyInstance } from 'fastify'
 
 import { prisma } from '../../db/client.js'
 import { AppError } from '../../shared/errors/AppError.js'
 import { createAuthMiddleware } from '../../shared/middleware/auth.middleware.js'
+import { getAuthenticatedUserId } from '../../shared/utils/getAuthenticatedUserId.js'
 import { createAuthRepository } from '../auth/auth.repository.js'
 import { createTsumeshogiRepository } from './tsumeshogi.repository.js'
 import { tsumeshogiQuerySchema } from './tsumeshogi.schema.js'
 import { TsumeshogiService } from './tsumeshogi.service.js'
-
-/**
- * 認証済みユーザーIDを取得するヘルパー
- */
-function getAuthenticatedUserId(request: FastifyRequest): string {
-  if (!request.user) {
-    throw new AppError('UNAUTHORIZED')
-  }
-  return request.user.userId
-}
 
 export async function tsumeshogiRouter(app: FastifyInstance) {
   // 依存関係の初期化

@@ -78,11 +78,12 @@ describe('LearningService', () => {
           completedDate: '2025-01-15',
           createdAt: new Date(),
         })
+        // レコード作成前: 今日はまだ記録なし
         vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
-          '2025-01-15',
           '2025-01-14',
           '2025-01-13',
         ])
+        // レコード作成後の全日付（今日を含む）
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-13',
           '2025-01-14',
@@ -114,8 +115,8 @@ describe('LearningService', () => {
         // ストリーク計算結果
         expect(result.streak.currentCount).toBe(3) // 3日連続
         expect(result.streak.longestCount).toBe(3)
-        expect(result.streak.updated).toBe(true)
-        // completedDates返却
+        expect(result.streak.updated).toBe(true) // 今日初めての完了
+        // completedDates返却（サービスが今日を追加）
         expect(result.completedDates).toEqual([
           '2025-01-15',
           '2025-01-14',
@@ -219,7 +220,7 @@ describe('LearningService', () => {
           completedDate: '2025-01-15',
           createdAt: new Date(),
         })
-        // 既に今日の記録がある
+        // レコード作成前: 既に今日の記録がある状態
         vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
           '2025-01-15',
           '2025-01-14',
@@ -237,8 +238,7 @@ describe('LearningService', () => {
         })
 
         expect(result.streak.currentCount).toBe(2)
-        // findCompletedDatesはcreateの後に呼ばれるので、既存+今回で判定
-        // ただしupdatedは「今日初めての完了か」で判定するため別途実装が必要
+        expect(result.streak.updated).toBe(false) // 同日2回目なのでfalse
       } finally {
         restoreDate()
       }
@@ -255,8 +255,8 @@ describe('LearningService', () => {
           completedDate: '2025-01-15',
           createdAt: new Date(),
         })
+        // レコード作成前: 今日はまだ記録なし（4日連続中）
         vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
-          '2025-01-15',
           '2025-01-14',
           '2025-01-13',
           '2025-01-12',
@@ -296,9 +296,8 @@ describe('LearningService', () => {
           completedDate: '2025-01-15',
           createdAt: new Date(),
         })
-        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
-          '2025-01-15',
-        ])
+        // レコード作成前: まだ記録なし（初日）
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([])
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-15',
         ])

@@ -75,7 +75,16 @@ export class LearningService {
       const today = getDateString(new Date(), JST_OFFSET_HOURS)
       const isCorrect = options.isCorrect ?? true
 
-      // 1. ハート消費（先に実行、失敗時はトランザクション全体がロールバック）
+      // 1. レコード作成前に今日の完了状況を確認（updated判定用）
+      const completedDatesBeforeCreate =
+        await this.learningRecordRepository.findCompletedDates(
+          userId,
+          COMPLETED_DATES_DAYS,
+          tx
+        )
+      const hadCompletedToday = completedDatesBeforeCreate.includes(today)
+
+      // 2. ハート消費（失敗時はトランザクション全体がロールバック）
       let heartsResult: HeartsResult | null = null
       if (options.consumeHeart) {
         const amount = options.heartAmount ?? 1
@@ -87,7 +96,7 @@ export class LearningService {
         }
       }
 
-      // 2. LearningRecord作成
+      // 3. LearningRecord作成
       const completedDate = isCorrect ? today : null
       if (options.contentType === 'tsumeshogi' && options.contentId) {
         await this.learningRecordRepository.createWithTsumeshogi(
@@ -101,12 +110,11 @@ export class LearningService {
         )
       }
 
-      // 3. ストリーク計算
-      const completedDates = await this.learningRecordRepository.findCompletedDates(
-        userId,
-        COMPLETED_DATES_DAYS,
-        tx
-      )
+      // 4. ストリーク計算（レコード作成後の状態を取得）
+      const completedDates =
+        isCorrect && !hadCompletedToday
+          ? [today, ...completedDatesBeforeCreate]
+          : completedDatesBeforeCreate
       const allDates = await this.learningRecordRepository.findAllCompletedDates(
         userId,
         tx
@@ -116,7 +124,7 @@ export class LearningService {
       const longestCount = calculateLongestStreak(allDates)
 
       // 今日初めて完了したか判定
-      const updated = isCorrect && completedDates.includes(today)
+      const updated = isCorrect && !hadCompletedToday
 
       // 最長記録を更新したか判定
       const isNewRecord =
@@ -208,7 +216,9 @@ function calculateLongestStreak(allDates: string[]): number {
   let currentStreak = 1
 
   for (let i = 1; i < sortedDates.length; i++) {
-    if (isConsecutiveDay(sortedDates[i - 1], sortedDates[i])) {
+    const prevDate = sortedDates[i - 1]
+    const currDate = sortedDates[i]
+    if (prevDate && currDate && isConsecutiveDay(prevDate, currDate)) {
       currentStreak++
       maxStreak = Math.max(maxStreak, currentStreak)
     } else {

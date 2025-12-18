@@ -28,12 +28,3 @@ export interface HeartsResponse {
   maxCount: number
   recoveryStartedAt: string
 }
-
-/**
- * ハート消費レスポンス（POST /api/hearts/consume）
- */
-export interface ConsumeHeartsResponse {
-  consumed: number
-  remaining: number
-  recoveryStartedAt: string
-}

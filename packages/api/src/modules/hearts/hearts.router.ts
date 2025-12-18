@@ -2,27 +2,18 @@
  * ハートAPIルーター
  */
 
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { FastifyInstance } from 'fastify'
 
 import { prisma } from '../../db/client.js'
 import { AppError } from '../../shared/errors/AppError.js'
 import { createAuthMiddleware } from '../../shared/middleware/auth.middleware.js'
+import { getAuthenticatedUserId } from '../../shared/utils/getAuthenticatedUserId.js'
 import { createAuthRepository } from '../auth/auth.repository.js'
 import { createLearningRecordRepository } from '../learning/learning-record.repository.js'
 import { LearningService } from '../learning/learning.service.js'
 import { createHeartsRepository } from './hearts.repository.js'
 import { consumeHeartsSchema } from './hearts.schema.js'
 import { HeartsService } from './hearts.service.js'
-
-/**
- * 認証済みユーザーIDを取得するヘルパー
- */
-function getAuthenticatedUserId(request: FastifyRequest): string {
-  if (!request.user) {
-    throw new AppError('UNAUTHORIZED')
-  }
-  return request.user.userId
-}
 
 export async function heartsRouter(app: FastifyInstance) {
   // 依存関係の初期化
