@@ -6,7 +6,6 @@ import { prisma } from './db/client.js'
 import { authRouter } from './modules/auth/auth.router.js'
 import { heartsRouter } from './modules/hearts/hearts.router.js'
 import { learningRouter } from './modules/learning/learning.router.js'
-import { streakRouter } from './modules/streak/streak.router.js'
 import { tsumeshogiRouter } from './modules/tsumeshogi/tsumeshogi.router.js'
 import { errorHandler } from './shared/errors/index.js'
 
@@ -63,9 +62,6 @@ export async function buildApp() {
 
   // ハートAPI
   await app.register(heartsRouter, { prefix: '/api/hearts' })
-
-  // ストリークAPI（後で削除予定）
-  await app.register(streakRouter, { prefix: '/api/streak' })
 
   // 学習API
   await app.register(learningRouter, { prefix: '/api/learning' })

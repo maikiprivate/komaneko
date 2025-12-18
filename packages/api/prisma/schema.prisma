@@ -23,7 +23,6 @@ model User {
 
   sessions        Session[]
   hearts          Hearts?
-  streak          Streak?           // 後で削除予定
   learningRecords LearningRecord[]
 
   @@map("users")
@@ -54,19 +53,6 @@ model Hearts {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("hearts")
-}
-
-model Streak {
-  id           String   @id @default(uuid())
-  userId       String   @unique @map("user_id")
-  currentCount Int      @default(0) @map("current_count")
-  longestCount Int      @default(0) @map("longest_count")
-  lastActiveDate DateTime? @map("last_active_date")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("streaks")
 }
 
 // ========== 学習記録 ==========
