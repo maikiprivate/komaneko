@@ -13,6 +13,9 @@ export const consumeHeartsSchema = z.object({
     .int()
     .min(1, '1以上の整数を指定してください')
     .max(10, '10以下の整数を指定してください'),
+  contentType: z.enum(['tsumeshogi', 'lesson']).optional(),
+  contentId: z.string().optional(),
+  isCorrect: z.boolean().optional(),
 })
 
 export type ConsumeHeartsInput = z.infer<typeof consumeHeartsSchema>

@@ -8,9 +8,8 @@ import { prisma } from '../../db/client.js'
 import { AppError } from '../../shared/errors/AppError.js'
 import { createAuthMiddleware } from '../../shared/middleware/auth.middleware.js'
 import { createAuthRepository } from '../auth/auth.repository.js'
+import { createLearningRecordRepository } from '../learning/learning-record.repository.js'
 import { LearningService } from '../learning/learning.service.js'
-import { createStreakRepository } from '../streak/streak.repository.js'
-import { StreakService } from '../streak/streak.service.js'
 import { createHeartsRepository } from './hearts.repository.js'
 import { consumeHeartsSchema } from './hearts.schema.js'
 import { HeartsService } from './hearts.service.js'
@@ -29,10 +28,9 @@ export async function heartsRouter(app: FastifyInstance) {
   // 依存関係の初期化
   const authRepository = createAuthRepository(prisma)
   const heartsRepository = createHeartsRepository(prisma)
-  const streakRepository = createStreakRepository(prisma)
+  const learningRecordRepository = createLearningRecordRepository(prisma)
   const heartsService = new HeartsService(heartsRepository)
-  const streakService = new StreakService(streakRepository)
-  const learningService = new LearningService(streakService, heartsService)
+  const learningService = new LearningService(learningRecordRepository, heartsService)
   const authMiddleware = createAuthMiddleware(authRepository)
 
   // 認証フック: 全エンドポイントで認証必須
@@ -73,10 +71,13 @@ export async function heartsRouter(app: FastifyInstance) {
       })
     }
 
-    // LearningService経由でストリーク更新 + ハート消費
+    // LearningService経由で学習記録作成 + ストリーク計算 + ハート消費
     const result = await learningService.recordCompletion(userId, {
       consumeHeart: true,
       heartAmount: parseResult.data.amount,
+      contentType: parseResult.data.contentType,
+      contentId: parseResult.data.contentId,
+      isCorrect: parseResult.data.isCorrect,
     })
 
     // consumeHeart: true の場合、hearts は必ず存在する
@@ -91,13 +92,15 @@ export async function heartsRouter(app: FastifyInstance) {
         consumed: result.hearts.consumed,
         remaining: result.hearts.remaining,
         recoveryStartedAt: result.hearts.recoveryStartedAt.toISOString(),
-        // ストリーク情報（追加）
+        // ストリーク情報
         streak: {
           currentCount: result.streak.currentCount,
           longestCount: result.streak.longestCount,
           updated: result.streak.updated,
           isNewRecord: result.streak.isNewRecord,
         },
+        // 週間カレンダー用
+        completedDates: result.completedDates,
       },
       meta: { timestamp: new Date().toISOString() },
     })
