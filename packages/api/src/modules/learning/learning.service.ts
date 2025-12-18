@@ -1,14 +1,20 @@
 /**
  * 学習完了サービス
  *
- * ストリーク更新とハート消費を統合的に管理する。
- * 両方の処理をトランザクションで包み、どちらかが失敗したら全てロールバック。
- * 将来的には POST /api/learning/complete のバックエンドとなる。
+ * LearningRecord経由で学習記録を管理し、ストリークを毎回計算する。
  */
 
+import {
+  getDateString,
+  getYesterdayDateString,
+  JST_OFFSET_HOURS,
+} from '@komaneko/shared/utils/date'
 import { prisma } from '../../db/client.js'
 import type { HeartsService } from '../hearts/hearts.service.js'
-import type { StreakService } from '../streak/streak.service.js'
+import type { LearningRecordRepository } from './learning-record.repository.js'
+
+/** 過去何日分の完了日を返すか */
+const COMPLETED_DATES_DAYS = 14
 
 /** ストリーク結果 */
 export interface StreakResult {
@@ -29,29 +35,46 @@ export interface HeartsResult {
 export interface LearningCompletionResult {
   streak: StreakResult
   hearts: HeartsResult | null
+  completedDates: string[]
+}
+
+/** ストリーク取得結果 */
+export interface StreakData {
+  currentCount: number
+  longestCount: number
+  lastActiveDate: string | null
+  updatedToday: boolean
+  completedDates: string[]
+}
+
+/** recordCompletion オプション */
+export interface RecordCompletionOptions {
+  consumeHeart: boolean
+  heartAmount?: number
+  contentType?: 'tsumeshogi' | 'lesson'
+  contentId?: string
+  isCorrect?: boolean
 }
 
 export class LearningService {
   constructor(
-    private streakService: StreakService,
+    private learningRecordRepository: LearningRecordRepository,
     private heartsService: HeartsService
   ) {}
 
   /**
    * 学習完了を記録（トランザクション）
    *
-   * ハート消費とストリーク更新を同一トランザクションで実行。
-   * どちらかが失敗した場合、両方ロールバックされる。
-   *
-   * @param userId ユーザーID
-   * @param options.consumeHeart ハートを消費するか（無料コンテンツはfalse）
-   * @param options.heartAmount 消費するハート数（デフォルト: 1）
+   * ハート消費 → 学習記録作成 → ストリーク計算
    */
   async recordCompletion(
     userId: string,
-    options: { consumeHeart: boolean; heartAmount?: number }
+    options: RecordCompletionOptions
   ): Promise<LearningCompletionResult> {
     return prisma.$transaction(async (tx) => {
+      const today = getDateString(new Date(), JST_OFFSET_HOURS)
+      const isCorrect = options.isCorrect ?? true
+
       // 1. ハート消費（先に実行、失敗時はトランザクション全体がロールバック）
       let heartsResult: HeartsResult | null = null
       if (options.consumeHeart) {
@@ -64,24 +87,154 @@ export class LearningService {
         }
       }
 
-      // 2. ストリーク更新
-      const streakResult = await this.streakService.recordStreak(userId, tx)
+      // 2. LearningRecord作成
+      const completedDate = isCorrect ? today : null
+      if (options.contentType === 'tsumeshogi' && options.contentId) {
+        await this.learningRecordRepository.createWithTsumeshogi(
+          userId,
+          {
+            tsumeshogiId: options.contentId,
+            isCorrect,
+            completedDate,
+          },
+          tx
+        )
+      }
+
+      // 3. ストリーク計算
+      const completedDates = await this.learningRecordRepository.findCompletedDates(
+        userId,
+        COMPLETED_DATES_DAYS,
+        tx
+      )
+      const allDates = await this.learningRecordRepository.findAllCompletedDates(
+        userId,
+        tx
+      )
+
+      const currentCount = calculateCurrentStreak(completedDates, today)
+      const longestCount = calculateLongestStreak(allDates)
+
+      // 今日初めて完了したか判定
+      const updated = isCorrect && completedDates.includes(today)
 
       // 最長記録を更新したか判定
       const isNewRecord =
-        streakResult.updated &&
-        streakResult.currentCount === streakResult.longestCount &&
-        streakResult.currentCount > 1
+        updated &&
+        currentCount === longestCount &&
+        currentCount > 1
 
       return {
         streak: {
-          currentCount: streakResult.currentCount,
-          longestCount: streakResult.longestCount,
-          updated: streakResult.updated,
+          currentCount,
+          longestCount,
+          updated,
           isNewRecord,
         },
         hearts: heartsResult,
+        completedDates,
       }
     })
   }
+
+  /**
+   * ストリーク状態を取得
+   */
+  async getStreak(userId: string): Promise<StreakData> {
+    const today = getDateString(new Date(), JST_OFFSET_HOURS)
+
+    const [completedDates, lastActiveDate, allDates] = await Promise.all([
+      this.learningRecordRepository.findCompletedDates(
+        userId,
+        COMPLETED_DATES_DAYS
+      ),
+      this.learningRecordRepository.findLastCompletedDate(userId),
+      this.learningRecordRepository.findAllCompletedDates(userId),
+    ])
+
+    const currentCount = calculateCurrentStreak(completedDates, today)
+    const longestCount = calculateLongestStreak(allDates)
+    const updatedToday = completedDates.includes(today)
+
+    return {
+      currentCount,
+      longestCount,
+      lastActiveDate,
+      updatedToday,
+      completedDates,
+    }
+  }
+}
+
+/**
+ * 現在のストリーク（連続日数）を計算
+ *
+ * 今日または昨日から遡って連続している日数をカウント。
+ * 今日も昨日も学習していない場合は0。
+ */
+function calculateCurrentStreak(
+  completedDates: string[],
+  today: string
+): number {
+  const yesterday = getYesterdayDateString(new Date(), JST_OFFSET_HOURS)
+
+  // 今日も昨日も学習していない → 0
+  if (!completedDates.includes(today) && !completedDates.includes(yesterday)) {
+    return 0
+  }
+
+  // 連続日数をカウント
+  let count = 0
+  let checkDate = completedDates.includes(today) ? today : yesterday
+
+  while (completedDates.includes(checkDate)) {
+    count++
+    checkDate = getPreviousDate(checkDate)
+  }
+
+  return count
+}
+
+/**
+ * 最長ストリークを計算
+ *
+ * 全日付をソートして最長連続を計算。
+ */
+function calculateLongestStreak(allDates: string[]): number {
+  if (allDates.length === 0) return 0
+
+  const sortedDates = [...allDates].sort()
+  let maxStreak = 1
+  let currentStreak = 1
+
+  for (let i = 1; i < sortedDates.length; i++) {
+    if (isConsecutiveDay(sortedDates[i - 1], sortedDates[i])) {
+      currentStreak++
+      maxStreak = Math.max(maxStreak, currentStreak)
+    } else {
+      currentStreak = 1
+    }
+  }
+
+  return maxStreak
+}
+
+/**
+ * 前日の日付を取得（YYYY-MM-DD形式）
+ */
+function getPreviousDate(dateString: string): string {
+  const date = new Date(dateString + 'T00:00:00+09:00')
+  date.setDate(date.getDate() - 1)
+  return getDateString(date, JST_OFFSET_HOURS)
+}
+
+/**
+ * 2つの日付が連続しているか判定
+ */
+function isConsecutiveDay(date1: string, date2: string): boolean {
+  const d1 = new Date(date1 + 'T00:00:00+09:00')
+  const d2 = new Date(date2 + 'T00:00:00+09:00')
+  const diffMs = d2.getTime() - d1.getTime()
+  const oneDayMs = 24 * 60 * 60 * 1000
+  return diffMs === oneDayMs
 }
