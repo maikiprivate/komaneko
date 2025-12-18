@@ -51,20 +51,6 @@ export async function streakRouter(app: FastifyInstance) {
     })
   })
 
-  /**
-   * POST /api/streak/record - 学習完了記録
-   */
-  app.post('/record', async (request, reply) => {
-    const userId = getAuthenticatedUserId(request)
-    const result = await streakService.recordStreak(userId)
-
-    return reply.send({
-      data: {
-        updated: result.updated,
-        currentCount: result.currentCount,
-        longestCount: result.longestCount,
-      },
-      meta: { timestamp: new Date().toISOString() },
-    })
-  })
+  // POST /api/streak/record は削除
+  // ストリーク更新は LearningService 経由で内部的に呼び出される
 }
