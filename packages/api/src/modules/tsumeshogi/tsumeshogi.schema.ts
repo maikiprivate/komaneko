@@ -37,3 +37,13 @@ export interface TsumeshogiDetailResponse {
   data: TsumeshogiResponse
   meta: { timestamp: string }
 }
+
+/**
+ * 学習記録リクエスト
+ */
+export const recordTsumeshogiSchema = z.object({
+  tsumeshogiId: z.string().min(1, '問題IDは必須です'),
+  isCorrect: z.boolean(),
+})
+
+export type RecordTsumeshogiInput = z.infer<typeof recordTsumeshogiSchema>
