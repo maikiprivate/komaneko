@@ -995,36 +995,37 @@ packages/api/src/modules/hearts/
 - [ ] レッスンステップ管理
 - [ ] ユニット・統合テスト（TDD）
 
-### Phase 13: ストリークAPI（作業中）
+### Phase 13: 学習記録API（作業中）
 
-**目標**: ストリーク（連続学習記録）をサーバー管理
+**目標**: LearningRecord設計でストリーク・学習履歴を管理
 
-詳細設計: `docs/designs/streak.md`
+詳細設計: `docs/designs/learning-record.md`
+
+**設計変更**:
+- Streakテーブル廃止 → LearningRecordから導出
+- 週間カレンダー対応（completedDates配列）
+- 苦手分析対応（間違えた記録も保存）
 
 **API側:**
-- [ ] streak.schema.ts（Zodスキーマ）
-- [ ] streak.repository.ts（DBアクセス）
-- [ ] streak.service.ts（ビジネスロジック、TDD）
-- [ ] streak.service.test.ts（サービステスト）
-- [ ] streak.router.ts（エンドポイント）
-- [ ] app.tsにルーター登録
-
-**アプリ側:**
-- [ ] lib/api/streak.ts（getStreak, recordStreak）
-- [ ] lib/streak/useStreak.ts（状態管理フック）
-- [ ] recordLearningCompletion.ts をAPI呼び出しに変更
-- [ ] ホーム画面をAPI連携に変更
+- [ ] Prismaスキーマ（LearningRecord + TsumeshogiRecord）
+- [ ] learning-record.repository.ts（DBアクセス）
+- [ ] learning.service.ts 書き換え（TDD）
+- [ ] hearts.schema.ts 拡張（contentType, contentId, isCorrect）
+- [ ] hearts.router.ts 拡張（completedDates追加）
+- [ ] learning.router.ts 新規（GET /api/learning/streak）
+- [ ] Streakテーブル・モジュール削除
 
 **エンドポイント:**
 | メソッド | パス | 説明 | 認証 |
 |---------|------|------|------|
-| GET | /api/streak | ストリーク状態取得 | 必須 |
-| POST | /api/streak/record | 学習完了記録 | 必須 |
+| GET | /api/learning/streak | ストリーク状態取得 | 必須 |
+| POST | /api/hearts/consume | 学習完了（拡張） | 必須 |
 
 **設計ポイント:**
-- Hearts APIと同パターン（取得時は更新なし、記録時のみDB更新）
-- タイムゾーンはJST基準
-- completedDates（週間表示用）はクライアント側で継続管理
+- LearningRecord: 全学習を記録（正解・不正解問わず）
+- TsumeshogiRecord: 詰将棋固有の詳細
+- ストリークは毎回LearningRecordから計算
+- 将来: LessonRecord, JosekiRecordを同パターンで追加
 
 ### Phase 14: 駒塾API連携（予定）
 - [ ] 駒塾のAPI連携
