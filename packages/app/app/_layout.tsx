@@ -10,7 +10,9 @@ import 'react-native-reanimated'
 
 import { useColorScheme } from '@/components/useColorScheme'
 import { useTheme } from '@/components/useTheme'
+import { getStreak } from '@/lib/api/learning'
 import { AuthProvider, useAuth } from '@/lib/auth/AuthContext'
+import { saveStreakData } from '@/lib/streak/streakStorage'
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -49,7 +51,7 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme()
   const { palette } = useTheme()
-  const { isLoading } = useAuth()
+  const { isLoading, isAuthenticated } = useAuth()
 
   // 認証状態の読み込みが完了したらスプラッシュを非表示
   useEffect(() => {
@@ -57,6 +59,26 @@ function RootLayoutNav() {
       SplashScreen.hideAsync()
     }
   }, [isLoading])
+
+  // アプリ起動時にサーバーと同期（認証時1回のみ）
+  useEffect(() => {
+    const syncStreak = async () => {
+      try {
+        const apiData = await getStreak()
+        await saveStreakData({
+          currentCount: apiData.currentCount,
+          longestCount: apiData.longestCount,
+          lastActiveDate: apiData.lastActiveDate,
+          completedDates: apiData.completedDates,
+        })
+      } catch {
+        // オフライン時は何もしない（キャッシュを使用）
+      }
+    }
+    if (isAuthenticated) {
+      syncStreak()
+    }
+  }, [isAuthenticated])
 
   // 認証状態の読み込み中は何も表示しない（スプラッシュを維持）
   if (isLoading) {
