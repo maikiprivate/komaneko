@@ -115,12 +115,11 @@ export class LearningService {
           },
           tx
         )
-      } else if (
-        options.contentType === 'lesson' &&
-        options.contentId &&
-        options.lessonData
-      ) {
+      } else if (options.contentType === 'lesson' && options.contentId) {
         // レッスン完了（常にisCompleted=true、completedDate=today）
+        if (!options.lessonData) {
+          throw new Error('lessonData is required for lesson contentType')
+        }
         await this.learningRecordRepository.createWithLesson(
           userId,
           {

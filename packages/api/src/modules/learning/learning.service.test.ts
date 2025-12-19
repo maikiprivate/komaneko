@@ -474,4 +474,130 @@ describe('LearningService', () => {
       expect(result.completedDates).toEqual([])
     })
   })
+
+  describe('recordCompletion (lesson)', () => {
+    it('レッスン完了時: createWithLessonが正しく呼ばれる', async () => {
+      const restoreDate = mockDate('2025-01-15T10:00:00+09:00')
+      try {
+        vi.mocked(mockLearningRecordRepository.createWithLesson).mockResolvedValue({
+          id: 'lr-1',
+          userId: 'user-1',
+          contentType: 'lesson',
+          isCompleted: true,
+          completedDate: '2025-01-15',
+          createdAt: new Date(),
+        })
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([])
+        vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
+          '2025-01-15',
+        ])
+        mockHeartsService.consumeHearts.mockResolvedValue({
+          consumed: 1,
+          remaining: 9,
+          recoveryStartedAt: new Date('2025-01-15T00:00:00Z'),
+        })
+
+        const problems = [
+          { problemId: 'p1', problemIndex: 0, isCorrect: true, usedHint: false, usedSolution: false },
+          { problemId: 'p2', problemIndex: 1, isCorrect: false, usedHint: true, usedSolution: false },
+          { problemId: 'p3', problemIndex: 2, isCorrect: false, usedHint: false, usedSolution: true },
+        ]
+
+        const result = await service.recordCompletion('user-1', {
+          consumeHeart: true,
+          contentType: 'lesson',
+          contentId: 'lesson-123',
+          isCorrect: true,
+          lessonData: {
+            correctCount: 1,
+            problems,
+          },
+        })
+
+        // createWithLessonが正しいパラメータで呼ばれたことを確認
+        expect(mockLearningRecordRepository.createWithLesson).toHaveBeenCalledWith(
+          'user-1',
+          {
+            lessonId: 'lesson-123',
+            correctCount: 1,
+            problems,
+            completedDate: '2025-01-15',
+          },
+          expect.anything()
+        )
+        // createWithTsumeshogiは呼ばれない
+        expect(mockLearningRecordRepository.createWithTsumeshogi).not.toHaveBeenCalled()
+        // ストリーク・ハートが正しく返される
+        expect(result.streak.currentCount).toBe(1)
+        expect(result.streak.updated).toBe(true)
+        expect(result.hearts?.consumed).toBe(1)
+      } finally {
+        restoreDate()
+      }
+    })
+
+    it('レッスン完了時: lessonDataがない場合はcreateWithLessonが呼ばれない', async () => {
+      const restoreDate = mockDate('2025-01-15T10:00:00+09:00')
+      try {
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([])
+        vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([])
+
+        // lessonDataなしでcontentType='lesson'を指定
+        await expect(
+          service.recordCompletion('user-1', {
+            consumeHeart: false,
+            contentType: 'lesson',
+            contentId: 'lesson-123',
+            isCorrect: true,
+            // lessonData: undefined
+          })
+        ).rejects.toThrow('lessonData is required')
+
+        // 記録メソッドは呼ばれない
+        expect(mockLearningRecordRepository.createWithLesson).not.toHaveBeenCalled()
+        expect(mockLearningRecordRepository.createWithTsumeshogi).not.toHaveBeenCalled()
+      } finally {
+        restoreDate()
+      }
+    })
+
+    it('レッスン完了時: 同日2回目でもストリークupdated=falseになる', async () => {
+      const restoreDate = mockDate('2025-01-15T10:00:00+09:00')
+      try {
+        vi.mocked(mockLearningRecordRepository.createWithLesson).mockResolvedValue({
+          id: 'lr-2',
+          userId: 'user-1',
+          contentType: 'lesson',
+          isCompleted: true,
+          completedDate: '2025-01-15',
+          createdAt: new Date(),
+        })
+        // 既に今日の記録がある
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
+          '2025-01-15',
+        ])
+        vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
+          '2025-01-15',
+        ])
+
+        const result = await service.recordCompletion('user-1', {
+          consumeHeart: false,
+          contentType: 'lesson',
+          contentId: 'lesson-456',
+          isCorrect: true,
+          lessonData: {
+            correctCount: 3,
+            problems: [
+              { problemId: 'p1', problemIndex: 0, isCorrect: true, usedHint: false, usedSolution: false },
+            ],
+          },
+        })
+
+        expect(result.streak.updated).toBe(false) // 同日2回目
+        expect(result.streak.currentCount).toBe(1)
+      } finally {
+        restoreDate()
+      }
+    })
+  })
 })
