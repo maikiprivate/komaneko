@@ -25,13 +25,29 @@ import type { Lesson, Problem } from '@/mocks/lessonData'
 /** フィードバック状態 */
 export type FeedbackType = 'none' | 'correct' | 'incorrect'
 
+/** 問題ごとの試行記録（内部用） */
+export interface ProblemAttemptState {
+  problemId: string
+  problemIndex: number
+  isCorrect: boolean // 初回正解 && ヒント未使用 && 解答未使用
+  usedHint: boolean
+  usedSolution: boolean
+}
+
+/** 完了データ（API送信用） */
+export interface LessonCompletionData {
+  correctCount: number // 初回正解数（結果画面表示用）
+  totalCount: number // 総問題数
+  problems: ProblemAttemptState[] // 問題ごとの詳細
+}
+
 /** フックの引数 */
 interface UseLessonGameOptions {
   courseId: string
   lessonId: string
   lesson: Lesson | undefined
   /** レッスン完了時のコールバック（ハート消費など）。falseを返すと遷移しない */
-  onComplete?: () => Promise<boolean>
+  onComplete?: (data: LessonCompletionData) => Promise<boolean>
 }
 
 /** フックの戻り値 */
@@ -156,6 +172,15 @@ export function useLessonGame({
   // 現在の問題で間違えたかどうか（初回正解判定用）
   const [hasAttemptedWrong, setHasAttemptedWrong] = useState(false)
 
+  // 現在の問題でヒント・解答を使用したか
+  const [usedHint, setUsedHint] = useState(false)
+  const [usedSolution, setUsedSolution] = useState(false)
+
+  // 全問題の記録（API送信用）
+  const [problemAttempts, setProblemAttempts] = useState<ProblemAttemptState[]>(
+    []
+  )
+
   // 解答再生フック
   const solutionPlayback = useSolutionPlayback()
 
@@ -176,15 +201,25 @@ export function useLessonGame({
     setCurrentProblemIndex(nextIndex)
     setBoardState(parseSfen(nextProblem.sfen))
     clearSelection()
+    // フラグリセット
     setHasAttemptedWrong(false)
+    setUsedHint(false)
+    setUsedSolution(false)
   }, [currentProblemIndex, problems, clearSelection])
 
   // レッスン完了処理
   const handleLessonComplete = useCallback(
-    async (finalCorrectCount: number): Promise<boolean> => {
+    async (
+      finalCorrectCount: number,
+      allAttempts: ProblemAttemptState[]
+    ): Promise<boolean> => {
       // onCompleteコールバック（ハート消費など）を呼び出し
       if (onComplete) {
-        const success = await onComplete()
+        const success = await onComplete({
+          correctCount: finalCorrectCount,
+          totalCount: totalProblems,
+          problems: allAttempts,
+        })
         if (!success) {
           return false
         }
@@ -209,24 +244,37 @@ export function useLessonGame({
       })
       return true
     },
-    [onComplete, totalProblems, courseId, lessonId],
+    [onComplete, totalProblems, courseId, lessonId]
   )
 
   // フィードバック完了時の処理
   const handleFeedbackComplete = useCallback(async () => {
     if (pendingAction === 'advance') {
-      // 正解カウントを更新
-      const isFirstTryCorrect = !hasAttemptedWrong
-      const newCorrectCount = isFirstTryCorrect ? correctCount + 1 : correctCount
-      if (isFirstTryCorrect) {
+      // 完全正解判定: 初回正解 && ヒント未使用 && 解答未使用
+      const isPerfectCorrect = !hasAttemptedWrong && !usedHint && !usedSolution
+      const newCorrectCount = isPerfectCorrect
+        ? correctCount + 1
+        : correctCount
+      if (isPerfectCorrect) {
         setCorrectCount(newCorrectCount)
       }
+
+      // 問題の記録を追加
+      const attempt: ProblemAttemptState = {
+        problemId: currentProblem?.id ?? '',
+        problemIndex: currentProblemIndex,
+        isCorrect: isPerfectCorrect,
+        usedHint,
+        usedSolution,
+      }
+      const newAttempts = [...problemAttempts, attempt]
+      setProblemAttempts(newAttempts)
 
       // 次の問題へ or レッスン完了
       if (currentProblemIndex < totalProblems - 1) {
         advanceToNextProblem()
       } else {
-        const success = await handleLessonComplete(newCorrectCount)
+        const success = await handleLessonComplete(newCorrectCount, newAttempts)
         if (!success) {
           // ハート消費失敗時は遷移しない
           setPendingAction(null)
@@ -248,10 +296,13 @@ export function useLessonGame({
   }, [
     pendingAction,
     hasAttemptedWrong,
+    usedHint,
+    usedSolution,
     correctCount,
     currentProblemIndex,
     totalProblems,
     currentProblem,
+    problemAttempts,
     advanceToNextProblem,
     handleLessonComplete,
   ])
@@ -427,6 +478,9 @@ export function useLessonGame({
   const handleHint = useCallback(() => {
     if (!currentProblem) return
 
+    // ヒント使用を記録
+    setUsedHint(true)
+
     const correct = currentProblem.correctMove
     setHintHighlight({
       from: correct.from,
@@ -443,7 +497,8 @@ export function useLessonGame({
       return
     }
 
-    // 解答を見た場合も間違えとしてカウント
+    // 解答使用を記録（間違えとしてもカウント）
+    setUsedSolution(true)
     setHasAttemptedWrong(true)
 
     solutionPlayback.play(

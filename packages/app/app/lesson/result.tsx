@@ -2,16 +2,17 @@
  * レッスン結果画面
  *
  * レッスン完了後に正答率と次のアクションを表示
+ *
+ * 注: ストリーク更新はレッスン画面（[lessonId].tsx）のAPI呼び出しで処理されるため、
+ * この画面ではストリーク関連の処理は行わない。
  */
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import { Stack, router, useLocalSearchParams } from 'expo-router'
+import { Image, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
-import { recordLearningCompletion } from '@/lib/streak/recordLearningCompletion'
 import { getNextLesson } from '@/mocks/lessonData'
 
 const confettiBackground = require('@/assets/images/background/confetti.png')
@@ -28,39 +29,6 @@ export default function LessonResultScreen() {
     lessonId: string
     time: string
   }>()
-
-  // ストリーク更新チェック（画面表示時に1回だけ実行）
-  // チェック完了までボタンを非表示にする
-  const [isReady, setIsReady] = useState(false)
-  const hasNavigatedToStreak = useRef(false)
-
-  useEffect(() => {
-    const checkStreak = async () => {
-      try {
-        const result = await recordLearningCompletion()
-        if (result.updated) {
-          // ストリーク画面へ遷移する場合はisReadyをtrueにしない
-          // これによりナビゲーション完了までスピナーが表示され続ける
-          hasNavigatedToStreak.current = true
-          router.push(`/streak-update?count=${result.newCount}`)
-          return
-        }
-      } catch (error) {
-        console.error('[LessonResult] Failed to check streak:', error)
-      }
-      setIsReady(true)
-    }
-    checkStreak()
-  }, [])
-
-  // ストリーク画面から戻ってきたときにボタンを表示
-  useFocusEffect(
-    useCallback(() => {
-      if (hasNavigatedToStreak.current && !isReady) {
-        setIsReady(true)
-      }
-    }, [isReady])
-  )
 
   // 必須パラメータの検証
   if (!params.courseId || !params.lessonId) {
@@ -219,38 +187,32 @@ export default function LessonResultScreen() {
 
         <View style={styles.spacerBottom} />
 
-        {/* アクションボタン（ストリークチェック完了後に表示） */}
+        {/* アクションボタン */}
         {/* TODO: accessibilityLabel と accessibilityRole を追加する */}
-        {isReady ? (
-          <View style={styles.actions}>
-            {!isPerfect && (
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.secondaryButton,
-                  { backgroundColor: colors.background.primary },
-                ]}
-                onPress={handleRetry}
-              >
-                <Text style={[styles.buttonText, { color: colors.text.primary }]}>
-                  間違えた問題を復習
-                </Text>
-              </TouchableOpacity>
-            )}
+        <View style={styles.actions}>
+          {!isPerfect && (
             <TouchableOpacity
-              style={[styles.button, styles.primaryButton, { backgroundColor: palette.orange }]}
-              onPress={isPerfect && nextLesson ? handleNextLesson : handleGoHome}
+              style={[
+                styles.button,
+                styles.secondaryButton,
+                { backgroundColor: colors.background.primary },
+              ]}
+              onPress={handleRetry}
             >
-              <Text style={[styles.buttonText, { color: palette.white }]}>
-                {isPerfect && nextLesson ? '次のレッスンへ' : '終了する'}
+              <Text style={[styles.buttonText, { color: colors.text.primary }]}>
+                間違えた問題を復習
               </Text>
             </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.actions}>
-            <ActivityIndicator size="large" color={palette.orange} />
-          </View>
-        )}
+          )}
+          <TouchableOpacity
+            style={[styles.button, styles.primaryButton, { backgroundColor: palette.orange }]}
+            onPress={isPerfect && nextLesson ? handleNextLesson : handleGoHome}
+          >
+            <Text style={[styles.buttonText, { color: palette.white }]}>
+              {isPerfect && nextLesson ? '次のレッスンへ' : '終了する'}
+            </Text>
+          </TouchableOpacity>
+        </View>
         </View>
       </View>
     </>

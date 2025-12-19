@@ -6,7 +6,14 @@
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import { useCallback, useEffect, useRef } from 'react'
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
@@ -17,10 +24,22 @@ import { PieceStand } from '@/components/shogi/PieceStand'
 import { PromotionDialog } from '@/components/shogi/PromotionDialog'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { useTheme } from '@/components/useTheme'
-import { useLessonGame } from '@/hooks/useLessonGame'
-import { useHeartsGate } from '@/lib/hearts/useHeartsGate'
+import {
+  type LessonCompletionData,
+  useLessonGame,
+} from '@/hooks/useLessonGame'
+import { recordLesson } from '@/lib/api/lesson'
+import {
+  checkHeartsAvailable,
+  hasEnoughHearts,
+} from '@/lib/hearts/checkHeartsAvailable'
+import { useHearts } from '@/lib/hearts/useHearts'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
 import type { Perspective } from '@/lib/shogi/types'
+import {
+  getTodayDateString,
+  saveStreakFromApi,
+} from '@/lib/streak/streakStorage'
 import { getLessonById } from '@/mocks/lessonData'
 
 // 消費ハート数（将来的にはlesson.heartCostから取得）
@@ -30,39 +49,113 @@ export default function LessonPlayScreen() {
   const { colors, palette } = useTheme()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  const { courseId, lessonId } = useLocalSearchParams<{ courseId: string; lessonId: string }>()
+  const { courseId, lessonId } = useLocalSearchParams<{
+    courseId: string
+    lessonId: string
+  }>()
 
-  // ハート管理（開始時チェック + 完了時消費）
-  const heartsGate = useHeartsGate({ heartCost: HEART_COST })
+  // ハート管理
+  const { hearts, isLoading, error, updateFromConsumeResponse } = useHearts()
+
+  // 初回チェック済みフラグ
+  const hasCheckedRef = useRef(false)
 
   // レッスンデータを取得
   const lesson = getLessonById(courseId ?? '', lessonId ?? '')
 
+  // 初回ロード完了時にハートチェック
+  useEffect(() => {
+    if (isLoading || hasCheckedRef.current) return
+    hasCheckedRef.current = true
+
+    // エラー時はチェックしない
+    if (error) return
+
+    // ハートが足りない場合はアラート表示して戻る
+    if (!hasEnoughHearts(hearts, HEART_COST)) {
+      checkHeartsAvailable(hearts, HEART_COST)
+      router.back()
+    }
+  }, [isLoading, error, hearts])
+
+  /**
+   * レッスン完了時のコールバック
+   *
+   * API: POST /api/lesson/record
+   * - 学習記録作成（問題ごとの詳細含む）
+   * - ハート消費
+   * - ストリーク更新
+   */
+  const handleComplete = useCallback(
+    async (data: LessonCompletionData): Promise<boolean> => {
+      if (!lessonId) return false
+
+      try {
+        const result = await recordLesson({
+          lessonId,
+          problems: data.problems.map((p) => ({
+            problemId: p.problemId,
+            problemIndex: p.problemIndex,
+            isCorrect: p.isCorrect,
+            usedHint: p.usedHint,
+            usedSolution: p.usedSolution,
+          })),
+        })
+
+        // ハート状態を更新
+        if (result.hearts) {
+          updateFromConsumeResponse(result.hearts)
+        }
+
+        // ストリークをAsyncStorageに保存
+        const today = getTodayDateString()
+        await saveStreakFromApi(result.streak, result.completedDates, today)
+
+        // ストリーク更新画面への遷移
+        if (result.streak.updated) {
+          router.push(
+            `/streak-update?count=${result.streak.currentCount}&isNewRecord=${result.streak.isNewRecord}`
+          )
+        }
+
+        return true
+      } catch (err) {
+        console.error('Failed to record lesson completion:', err)
+        return false
+      }
+    },
+    [lessonId, updateFromConsumeResponse]
+  )
+
   /**
    * ゲームロジックフック（条件分岐の前に呼び出す - Rules of Hooks）
-   *
-   * ハート消費パターン:
-   * - レッスン: 最終問題完了時にonComplete()で消費（自動進行のため事前チェック不要）
-   * - 詰将棋: 正解時に消費 + 次の問題へ遷移前にcheckAvailable()
    */
   const game = useLessonGame({
     courseId: courseId ?? '',
     lessonId: lessonId ?? '',
     lesson,
-    onComplete: heartsGate.consumeOnComplete,
+    onComplete: handleComplete,
   })
 
   // ローディング中
-  if (heartsGate.isLoading) {
+  if (isLoading) {
     return (
-      <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
-        <Text style={[styles.loadingText, { color: colors.text.secondary }]}>読み込み中...</Text>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: palette.gameBackground },
+        ]}
+      >
+        <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
+          読み込み中...
+        </Text>
       </View>
     )
   }
 
   // エラー発生時
-  if (heartsGate.error) {
+  if (error) {
     return (
       <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -108,7 +201,7 @@ export default function LessonPlayScreen() {
   const { top: topStand, bottom: bottomStand } = getPieceStandOrder(
     game.board.state.capturedPieces.sente,
     game.board.state.capturedPieces.gote,
-    perspective,
+    perspective
   )
 
   return (
@@ -125,11 +218,16 @@ export default function LessonPlayScreen() {
             <FontAwesome name="times" size={24} color={colors.text.secondary} />
           </TouchableOpacity>
           <View style={styles.progressContainer}>
-            <View style={[styles.progressBar, { backgroundColor: colors.background.primary }]}>
+            <View
+              style={[styles.progressBar, { backgroundColor: colors.background.primary }]}
+            >
               <View
                 style={[
                   styles.progressFill,
-                  { width: `${game.problem.progressPercent}%`, backgroundColor: palette.orange },
+                  {
+                    width: `${game.problem.progressPercent}%`,
+                    backgroundColor: palette.orange,
+                  },
                 ]}
               />
             </View>
