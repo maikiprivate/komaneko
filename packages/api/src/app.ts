@@ -6,6 +6,7 @@ import { prisma } from './db/client.js'
 import { authRouter } from './modules/auth/auth.router.js'
 import { heartsRouter } from './modules/hearts/hearts.router.js'
 import { learningRouter } from './modules/learning/learning.router.js'
+import { lessonRouter } from './modules/lesson/lesson.router.js'
 import { tsumeshogiRouter } from './modules/tsumeshogi/tsumeshogi.router.js'
 import { errorHandler } from './shared/errors/index.js'
 
@@ -65,6 +66,9 @@ export async function buildApp() {
 
   // 学習API
   await app.register(learningRouter, { prefix: '/api/learning' })
+
+  // レッスンAPI
+  await app.register(lessonRouter, { prefix: '/api/lesson' })
 
   // 詰将棋API
   await app.register(tsumeshogiRouter, { prefix: '/api/tsumeshogi' })
