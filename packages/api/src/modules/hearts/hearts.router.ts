@@ -50,6 +50,11 @@ export async function heartsRouter(app: FastifyInstance) {
    * POST /api/hearts/consume - ハート消費 + ストリーク更新
    *
    * LearningService経由で両方を処理し、統合レスポンスを返す。
+   *
+   * @deprecated
+   * TODO: レッスン機能が POST /api/lesson/record に移行したら、このエンドポイントを削除する。
+   * 現在はレッスン画面からのみ使用。
+   * 詰将棋は POST /api/tsumeshogi/record に移行済み。
    */
   app.post('/consume', async (request, reply) => {
     const userId = getAuthenticatedUserId(request)

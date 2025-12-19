@@ -1,6 +1,11 @@
 /**
  * 学習完了記録関数
  * どの学習コンテンツからも呼び出せる共通関数
+ *
+ * @deprecated
+ * TODO: レッスン機能が POST /api/lesson/record に移行したら、このファイルを削除する。
+ * 現在はレッスン結果画面（lesson/result.tsx）でのみ使用。
+ * 詰将棋は POST /api/tsumeshogi/record に移行済み。
  */
 
 import {

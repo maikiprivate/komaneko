@@ -3,6 +3,11 @@
  *
  * コンテンツ完了時にハートを消費する共通ロジック。
  * 消費失敗時はアラートを表示し、完了扱いにしない（不正防止）。
+ *
+ * @deprecated
+ * TODO: レッスン機能が POST /api/lesson/record に移行したら、このファイルを削除する。
+ * 現在はuseHeartsGate経由でレッスン画面でのみ使用。
+ * 詰将棋は POST /api/tsumeshogi/record に移行済み。
  */
 
 import { useCallback, useRef, useState } from 'react'
