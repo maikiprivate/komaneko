@@ -38,11 +38,12 @@ export interface RecordTsumeshogiRequest {
 
 /** 学習記録レスポンス */
 export interface RecordTsumeshogiResponse {
+  // 正解時のみハート情報が返る（不正解時はnull）
   hearts: {
     consumed: number
     remaining: number
     recoveryStartedAt: string
-  }
+  } | null
   streak: {
     currentCount: number
     longestCount: number

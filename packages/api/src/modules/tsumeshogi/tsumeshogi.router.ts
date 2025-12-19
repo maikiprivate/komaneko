@@ -104,26 +104,27 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
 
     const { tsumeshogiId, isCorrect } = parseResult.data
 
-    // サーバー側でハート消費を決定（常に1ハート消費）
+    // 詰将棋の存在確認（存在しない場合はエラー）
+    await tsumeshogiService.getById(tsumeshogiId)
+
+    // サーバー側でハート消費を決定（正解時のみ1ハート消費）
     const result = await learningService.recordCompletion(userId, {
-      consumeHeart: true,
+      consumeHeart: isCorrect,
       contentType: 'tsumeshogi',
       contentId: tsumeshogiId,
       isCorrect,
     })
 
-    // hearts は必ず存在する（consumeHeart: true なので）
-    if (!result.hearts) {
-      throw new AppError('INTERNAL_ERROR')
-    }
-
     return reply.send({
       data: {
-        hearts: {
-          consumed: result.hearts.consumed,
-          remaining: result.hearts.remaining,
-          recoveryStartedAt: result.hearts.recoveryStartedAt.toISOString(),
-        },
+        // 正解時のみハート情報を返す
+        hearts: result.hearts
+          ? {
+              consumed: result.hearts.consumed,
+              remaining: result.hearts.remaining,
+              recoveryStartedAt: result.hearts.recoveryStartedAt.toISOString(),
+            }
+          : null,
         streak: result.streak,
         completedDates: result.completedDates,
       },

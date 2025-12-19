@@ -1,21 +1,36 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import {
+  Alert,
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KomanekoComment } from '@/components/KomanekoComment'
-import { useHeartsGate } from '@/lib/hearts/useHeartsGate'
-import { recordLearningCompletion } from '@/lib/streak/recordLearningCompletion'
 import { FeedbackOverlay } from '@/components/shogi/FeedbackOverlay'
 import { PieceStand } from '@/components/shogi/PieceStand'
 import { PromotionDialog } from '@/components/shogi/PromotionDialog'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { useTheme } from '@/components/useTheme'
-import { useTsumeshogiGame, type TsumeshogiProblemForGame } from '@/hooks/useTsumeshogiGame'
+import { type TsumeshogiProblemForGame, useTsumeshogiGame } from '@/hooks/useTsumeshogiGame'
+import { ApiError } from '@/lib/api/client'
+import {
+  type TsumeshogiProblem,
+  getTsumeshogi,
+  getTsumeshogiList,
+  recordTsumeshogi,
+} from '@/lib/api/tsumeshogi'
+import { checkHeartsAvailable, hasEnoughHearts } from '@/lib/hearts/checkHeartsAvailable'
+import { useHearts } from '@/lib/hearts/useHearts'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
 import type { Perspective } from '@/lib/shogi/types'
-import { getTsumeshogi, getTsumeshogiList, type TsumeshogiProblem } from '@/lib/api/tsumeshogi'
+import { getTodayDateString, saveStreakFromApi } from '@/lib/streak/streakStorage'
 
 /** 手数の表示名 */
 const MOVES_LABELS: Record<number, string> = {
@@ -44,13 +59,13 @@ export default function TsumeshogiPlayScreen() {
   const cachedData = useMemo(() => {
     if (!params.sfen || !params.moveCount) return null
     try {
-      const moveCount = parseInt(params.moveCount, 10)
+      const moveCount = Number.parseInt(params.moveCount, 10)
       if (Number.isNaN(moveCount)) return null
       return {
         sfen: params.sfen,
         moveCount,
-        problemIds: params.problemIds ? JSON.parse(params.problemIds) as string[] : null,
-        problemSfens: params.problemSfens ? JSON.parse(params.problemSfens) as string[] : null,
+        problemIds: params.problemIds ? (JSON.parse(params.problemIds) as string[]) : null,
+        problemSfens: params.problemSfens ? (JSON.parse(params.problemSfens) as string[]) : null,
       }
     } catch {
       // パース失敗時はAPIから取得
@@ -124,8 +139,30 @@ export default function TsumeshogiPlayScreen() {
     ? { sfen: problem.sfen, moves: problem.moveCount }
     : undefined
 
-  // ハート管理（開始時チェック + 完了時消費）
-  const heartsGate = useHeartsGate({ heartCost: HEART_COST })
+  // ハート状態管理
+  const {
+    hearts,
+    isLoading: heartsLoading,
+    error: heartsError,
+    updateFromConsumeResponse,
+  } = useHearts()
+
+  // 初回チェック済みフラグ（アラート・自動戻りは一度だけ）
+  const hasCheckedHeartsRef = useRef(false)
+
+  // 初回ロード完了時にハートチェック
+  useEffect(() => {
+    if (heartsLoading || hasCheckedHeartsRef.current) return
+    hasCheckedHeartsRef.current = true
+
+    if (heartsError) return
+
+    // ハートが足りない場合はアラート表示して戻る
+    if (!hasEnoughHearts(hearts, HEART_COST)) {
+      checkHeartsAvailable(hearts, HEART_COST)
+      router.back()
+    }
+  }, [heartsLoading, heartsError, hearts])
 
   // 正解状態
   const [isSolved, setIsSolved] = useState(false)
@@ -146,22 +183,79 @@ export default function TsumeshogiPlayScreen() {
   }, [feedback])
 
   /**
-   * 正解時のハート消費（useTsumeshogiGameに渡す）
+   * 正解時の処理（useTsumeshogiGameに渡す）
    *
-   * ハート消費パターン:
-   * - 詰将棋: 正解時に消費 + 次の問題へ遷移前にcheckAvailable()
-   * - レッスン: 最終問題完了時にonComplete()で消費（自動進行のため事前チェック不要）
+   * 新API: POST /api/tsumeshogi/record
+   * - 学習記録作成
+   * - ハート消費（正解時のみ）
+   * - ストリーク更新
    */
   const handleCorrect = useCallback(async (): Promise<boolean> => {
+    if (!problem) return false
     setFeedback('correct')
-    return heartsGate.consumeOnComplete()
-  }, [heartsGate])
+
+    try {
+      const result = await recordTsumeshogi({
+        tsumeshogiId: problem.id,
+        isCorrect: true,
+      })
+
+      // ハート状態を更新（正解時のみheartsが返る）
+      if (result.hearts) {
+        updateFromConsumeResponse(result.hearts)
+      }
+
+      // ストリークをAsyncStorageに保存（キャッシュ更新）
+      const today = getTodayDateString()
+      await saveStreakFromApi(result.streak, result.completedDates, today)
+
+      // ストリーク更新画面への遷移
+      if (result.streak.updated) {
+        setIsSolved(true)
+        router.push(`/streak-update?count=${result.streak.currentCount}`)
+        return true
+      }
+
+      return true
+    } catch (error) {
+      console.error('[Tsumeshogi] recordTsumeshogi failed:', error)
+      if (error instanceof ApiError) {
+        if (error.code === 'NO_HEARTS_LEFT') {
+          Alert.alert('ハートが足りません', 'ハートが回復するまでお待ちください。')
+        } else {
+          Alert.alert('エラー', error.message)
+        }
+      } else {
+        Alert.alert('通信エラー', '通信に失敗しました。もう一度お試しください。')
+      }
+      return false
+    }
+  }, [problem, updateFromConsumeResponse])
+
+  /**
+   * 不正解時の処理（useTsumeshogiGameに渡す）
+   *
+   * 学習記録のみ作成（ハート消費なし、ストリーク更新なし）
+   */
+  const handleIncorrect = useCallback(() => {
+    if (!problem) return
+    setFeedback('incorrect')
+
+    // バックグラウンドでAPI呼び出し（結果は待たない）
+    recordTsumeshogi({
+      tsumeshogiId: problem.id,
+      isCorrect: false,
+    }).catch((error) => {
+      console.error('[Tsumeshogi] recordTsumeshogi (incorrect) failed:', error)
+    })
+  }, [problem])
 
   // ゲームフックを使用（Hooks呼び出しは条件分岐の前に行う）
   const game = useTsumeshogiGame(problemForGame, {
     onCorrect: handleCorrect,
-    onIncorrect: () => setFeedback('incorrect'),
-    onNotCheck: () => Alert.alert('王手ではありません', '詰将棋では王手の連続で詰ませる必要があります'),
+    onIncorrect: handleIncorrect,
+    onNotCheck: () =>
+      Alert.alert('王手ではありません', '詰将棋では王手の連続で詰ませる必要があります'),
   })
 
   // 正解時の「次の問題へ」ボタンアニメーション
@@ -183,23 +277,6 @@ export default function TsumeshogiPlayScreen() {
     }
   }, [isSolved, scaleAnim])
 
-  // 正解時のストリーク更新チェック
-  useEffect(() => {
-    if (isSolved) {
-      const checkStreak = async () => {
-        try {
-          const result = await recordLearningCompletion()
-          if (result.updated) {
-            router.push(`/streak-update?count=${result.newCount}`)
-          }
-        } catch (error) {
-          console.error('[Tsumeshogi] Failed to check streak:', error)
-        }
-      }
-      checkStreak()
-    }
-  }, [isSolved])
-
   // ヘッダータイトル用の情報（メモ化）※フックは早期リターンの前に呼ぶ
   const { headerTitle, nextId, nextSfen } = useMemo(() => {
     if (!problem || !problemIds) {
@@ -220,7 +297,7 @@ export default function TsumeshogiPlayScreen() {
   const handleNextProblem = useCallback(() => {
     if (!nextId) return
     // 次の問題に遷移する前にハートをチェック（手動遷移のため事前確認が必要）
-    if (!heartsGate.checkAvailable()) return
+    if (!checkHeartsAvailable(hearts, HEART_COST)) return
 
     // キャッシュデータがあればparamsで渡す（API呼び出し削減）
     if (nextSfen && problem && problemIds && problemSfens) {
@@ -238,23 +315,35 @@ export default function TsumeshogiPlayScreen() {
       // キャッシュがなければIDのみで遷移（API取得になる）
       router.replace({ pathname: `/tsumeshogi/[id]`, params: { id: nextId } })
     }
-  }, [nextId, nextSfen, problem, problemIds, problemSfens, heartsGate])
+  }, [nextId, nextSfen, problem, problemIds, problemSfens, hearts])
 
   // ローディング中
-  if (heartsGate.isLoading || isLoadingProblem) {
+  if (heartsLoading || isLoadingProblem) {
     return (
-      <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: palette.gameBackground },
+        ]}
+      >
         <Text style={[styles.loadingText, { color: colors.text.secondary }]}>読み込み中...</Text>
       </View>
     )
   }
 
   // エラー発生時
-  if (heartsGate.error || problemError) {
+  if (heartsError || problemError) {
     return (
-      <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: palette.gameBackground },
+        ]}
+      >
         <Text style={[styles.errorText, { color: colors.text.primary }]}>
-          {problemError || heartsGate.error || 'データの取得に失敗しました'}
+          {problemError || heartsError || 'データの取得に失敗しました'}
         </Text>
         <View style={styles.errorButtons}>
           {problemError && (
@@ -351,11 +440,7 @@ export default function TsumeshogiPlayScreen() {
         <View style={styles.footerArea}>
           {isSolved ? (
             // 正解後: 次の問題へボタン
-            <TouchableOpacity
-              onPress={handleNextProblem}
-              disabled={!nextId}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity onPress={handleNextProblem} disabled={!nextId} activeOpacity={0.8}>
               <Animated.View
                 style={[
                   styles.footerButton,
@@ -365,9 +450,7 @@ export default function TsumeshogiPlayScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.footerButtonText, { color: palette.white }]}>
-                  次の問題へ
-                </Text>
+                <Text style={[styles.footerButtonText, { color: palette.white }]}>次の問題へ</Text>
                 <FontAwesome name="chevron-right" size={14} color={palette.white} />
               </Animated.View>
             </TouchableOpacity>
@@ -385,14 +468,17 @@ export default function TsumeshogiPlayScreen() {
                 ]}
               >
                 <FontAwesome name="refresh" size={14} color={palette.orange} />
-                <Text style={[styles.footerButtonText, { color: palette.orange }]}>
-                  やり直し
-                </Text>
+                <Text style={[styles.footerButtonText, { color: palette.orange }]}>やり直し</Text>
               </View>
             </TouchableOpacity>
           )}
         </View>
-        <View style={[styles.homeIndicatorArea, { backgroundColor: palette.gameBackground, height: insets.bottom }]} />
+        <View
+          style={[
+            styles.homeIndicatorArea,
+            { backgroundColor: palette.gameBackground, height: insets.bottom },
+          ]}
+        />
       </View>
     </>
   )
