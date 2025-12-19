@@ -2,49 +2,116 @@
 
 ## 概要
 
-レッスン機能を詰将棋と同様の新APIパターンに移行する。
-- サーバー側でハート消費・ストリーク計算
-- `@deprecated`マークした古いコードを削除
+レッスン機能のAPI連携を実装する。詰将棋と異なり、レッスンは複数問題で構成されるため、問題ごとの記録が必要。
+
+### ユーザー要件（確定済み）
+
+| 項目 | 決定内容 |
+|------|---------|
+| ログ粒度 | **詳細ログ**（ヒント・解答使用含む）- 問題ごとに記録 |
+| 中断時の挙動 | **記録なし** - 完了時のみAPI呼び出し |
+| 復習機能 | **後回し**（Phase 15）- ただし想定した設計にする |
 
 ---
 
 ## 現状分析
 
-### レッスンの現在の実装（旧パターン）
+### レッスンの構造
 
-**lesson/[courseId]/[lessonId].tsx:**
-- `useHeartsGate({ heartCost: 1 })` でハート管理
-- 最終問題完了時に `heartsGate.consumeOnComplete()` でハート消費
-- 内部で `POST /api/hearts/consume` を呼び出し
+```
+Course（コース）
+  └── Section（セクション）
+        └── Lesson（レッスン）
+              └── Problem（問題）× 複数
+```
 
-**lesson/result.tsx:**
-- `recordLearningCompletion()` でローカルストリーク計算
-- `updated: true` の場合に `/streak-update` へ遷移
+**問題の状態管理（useLessonGame.ts）:**
+- `hasAttemptedWrong`: 現在の問題で間違えたか
+- `correctCount`: 初回正解した問題数
+- ヒント使用: `handleHint()` でハイライト表示
+- 解答使用: `handleSolution()` で自動再生
 
-### 詰将棋の新パターン（移行後）
+### 現在の不足点
 
-**tsumeshogi/[id].tsx:**
-- `useHearts()` でハート状態管理
-- `recordTsumeshogi()` で直接API呼び出し
-- `updateFromConsumeResponse()` でハート状態更新
-- `saveStreakFromApi()` でストリークをAsyncStorageに保存
+1. 問題ごとのログがDB保存されない
+2. ヒント・解答使用の記録がない
+3. 中断時のAPI呼び出しがない
+4. 復習モードが「全問やり直し」のみ
 
 ---
 
-## 新規API設計
+## 新規DB設計
+
+### LessonRecord（レッスン記録）
+
+完了時のみ作成。シンプルな構造。
+
+```prisma
+model LessonRecord {
+  id               String   @id @default(uuid())
+  learningRecordId String   @unique @map("learning_record_id")
+  lessonId         String   @map("lesson_id")      // モックデータのID
+  correctCount     Int      @default(0) @map("correct_count")  // 初回正解数
+
+  learningRecord LearningRecord @relation(...)
+  problemAttempts LessonProblemAttempt[]
+
+  @@index([lessonId])
+  @@map("lesson_records")
+}
+```
+
+### LessonProblemAttempt（問題ごとの記録）
+
+1問題につき1レコード。復習モードで「間違えた問題のみ」を抽出するために使用。
+
+```prisma
+model LessonProblemAttempt {
+  id             String   @id @default(uuid())
+  lessonRecordId String   @map("lesson_record_id")
+  problemId      String   @map("problem_id")       // モックデータの問題ID
+  problemIndex   Int      @map("problem_index")    // 問題番号（0-indexed）
+  isCorrect      Boolean  @map("is_correct")       // 初回正解したか（ヒント・解答なしで一発正解）
+  usedHint       Boolean  @default(false) @map("used_hint")
+  usedSolution   Boolean  @default(false) @map("used_solution")
+
+  lessonRecord LessonRecord @relation(...)
+
+  @@index([lessonRecordId])
+  @@map("lesson_problem_attempts")
+}
+```
+
+### 削除したフィールド
+
+| フィールド | 削除理由 |
+|-----------|---------|
+| courseId | lessonIdからたどれる |
+| status | 完了時のみ作成するため不要 |
+| totalCount | Lessonから取得可能 |
+| completionTime | 計測機能なし |
+| attemptCount | シンプル化（復習モード実装時に再検討） |
+| createdAt | LearningRecordのcreatedAtで代用 |
+
+---
+
+## API設計
 
 ### POST /api/lesson/record
 
-詰将棋と同じ設計を踏襲。
+レッスン完了時に一括送信。中断時はAPI呼び出しなし。
 
 **リクエスト:**
 ```typescript
 {
-  lessonId: string,      // レッスンID
-  isCorrect: boolean,    // 全問正解したか
-  correctCount: number,  // 正解数
-  totalCount: number,    // 総問題数
-  completionTime: number // 完了時間（秒）
+  lessonId: string,
+  problems: Array<{
+    problemId: string,
+    problemIndex: number,
+    isCorrect: boolean,      // 初回正解か（ヒント・解答なしで一発正解）
+    usedHint: boolean,
+    usedSolution: boolean,
+  }>
 }
 ```
 
@@ -56,7 +123,7 @@
       consumed: number,
       remaining: number,
       recoveryStartedAt: string,
-    } | null,  // isCorrect=true の時のみ
+    },
     streak: {
       currentCount: number,
       longestCount: number,
@@ -68,91 +135,92 @@
 }
 ```
 
+### GET /api/lesson/:lessonId/review（Phase 15で実装）
+
+復習用の未正解問題一覧を取得。今回は実装しない。
+
 ---
 
-## 実装ステップ
+## アプリ側のデータ構造
 
-### Step 1: API - lesson.schema.ts にスキーマ追加
+### 1. 内部状態（useLessonGame.ts）
 
-**ファイル:** `packages/api/src/modules/lesson/lesson.schema.ts`（新規）
-
-```typescript
-import { z } from 'zod'
-
-export const recordLessonSchema = z.object({
-  lessonId: z.string().min(1, 'レッスンIDは必須です'),
-  isCorrect: z.boolean(),
-  correctCount: z.number().int().min(0),
-  totalCount: z.number().int().min(1),
-  completionTime: z.number().int().min(0),
-})
-```
-
-### Step 2: API - lesson.router.ts に POST /record 追加
-
-**ファイル:** `packages/api/src/modules/lesson/lesson.router.ts`（新規）
+レッスン中にメモリ上で保持するデータ構造。
 
 ```typescript
-// POST /api/lesson/record
-app.post('/record', async (request, reply) => {
-  const userId = getAuthenticatedUserId(request)
-  const parseResult = recordLessonSchema.safeParse(request.body)
-  // バリデーション...
-
-  const { lessonId, isCorrect, correctCount, totalCount, completionTime } = parseResult.data
-
-  // サーバー側でハート消費を決定（正解時のみ1ハート消費）
-  const result = await learningService.recordCompletion(userId, {
-    consumeHeart: isCorrect,
-    contentType: 'lesson',
-    contentId: lessonId,
-    isCorrect,
-  })
-
-  return reply.send({
-    data: {
-      hearts: result.hearts ? {
-        consumed: result.hearts.consumed,
-        remaining: result.hearts.remaining,
-        recoveryStartedAt: result.hearts.recoveryStartedAt.toISOString(),
-      } : null,
-      streak: result.streak,
-      completedDates: result.completedDates,
-    },
-  })
-})
-```
-
-### Step 3: API - app.ts にルーター登録
-
-**ファイル:** `packages/api/src/app.ts`
-
-```typescript
-import { lessonRouter } from './modules/lesson/lesson.router.js'
-
-// 既存のルーター登録に追加
-app.register(lessonRouter, { prefix: '/api/lesson' })
-```
-
-### Step 4: アプリ - lesson.ts にAPI関数追加
-
-**ファイル:** `packages/app/lib/api/lesson.ts`（新規）
-
-```typescript
-export interface RecordLessonRequest {
-  lessonId: string
-  isCorrect: boolean
-  correctCount: number
-  totalCount: number
-  completionTime: number
+/** 問題ごとの試行記録（内部用） */
+interface ProblemAttemptState {
+  problemId: string
+  problemIndex: number
+  isCorrect: boolean       // 初回正解 && ヒント未使用 && 解答未使用
+  usedHint: boolean
+  usedSolution: boolean
 }
 
+// 既存の状態
+const [currentProblemIndex, setCurrentProblemIndex] = useState(0)
+const [correctCount, setCorrectCount] = useState(0)        // 結果画面表示用
+const [hasAttemptedWrong, setHasAttemptedWrong] = useState(false)  // 現在の問題で間違えたか
+
+// 新規追加
+const [usedHint, setUsedHint] = useState(false)            // 現在の問題でヒント使用したか
+const [usedSolution, setUsedSolution] = useState(false)    // 現在の問題で解答使用したか
+const [problemAttempts, setProblemAttempts] = useState<ProblemAttemptState[]>([])  // 全問題の記録
+```
+
+### 2. 状態遷移のタイミング
+
+```
+問題開始
+│
+├─ ヒントボタン押下 → usedHint = true
+├─ 解答ボタン押下 → usedSolution = true
+├─ 不正解 → hasAttemptedWrong = true
+│
+正解（次の問題へ）
+│
+├─ isCorrect = !hasAttemptedWrong && !usedHint && !usedSolution
+├─ problemAttempts に追加
+├─ correctCount += 1（isCorrect=true の場合）
+│
+├─ usedHint = false（リセット）
+├─ usedSolution = false（リセット）
+├─ hasAttemptedWrong = false（リセット）
+│
+次の問題へ...
+│
+最終問題完了
+│
+└─ onComplete(problemAttempts) → API送信
+```
+
+### 3. API送信データ（lib/api/lesson.ts）
+
+完了時にAPIに送信するデータ構造。
+
+```typescript
+/** APIリクエスト */
+export interface RecordLessonRequest {
+  lessonId: string
+  problems: ProblemAttemptInput[]
+}
+
+/** 問題ごとの記録（API用） */
+export interface ProblemAttemptInput {
+  problemId: string
+  problemIndex: number
+  isCorrect: boolean
+  usedHint: boolean
+  usedSolution: boolean
+}
+
+/** APIレスポンス */
 export interface RecordLessonResponse {
   hearts: {
     consumed: number
     remaining: number
     recoveryStartedAt: string
-  } | null
+  }
   streak: {
     currentCount: number
     longestCount: number
@@ -161,217 +229,242 @@ export interface RecordLessonResponse {
   }
   completedDates: string[]
 }
+```
 
-export async function recordLesson(
-  request: RecordLessonRequest
-): Promise<RecordLessonResponse> {
-  return apiRequest<RecordLessonResponse>('/api/lesson/record', {
-    method: 'POST',
-    body: request,
-  })
+### 4. onCompleteコールバックの変更
+
+```typescript
+// useLessonGame.ts
+
+/** フックの引数 */
+interface UseLessonGameOptions {
+  courseId: string
+  lessonId: string
+  lesson: Lesson | undefined
+  /** レッスン完了時のコールバック */
+  onComplete?: (data: LessonCompletionData) => Promise<boolean>
+}
+
+/** 完了データ（変更後） */
+export interface LessonCompletionData {
+  correctCount: number        // 初回正解数（結果画面表示用）
+  totalCount: number          // 総問題数
+  problems: ProblemAttemptState[]  // 問題ごとの詳細
 }
 ```
 
-### Step 5: アプリ - lesson/[courseId]/[lessonId].tsx 更新
+### 5. 使用例（[lessonId].tsx）
 
-**変更前:**
 ```typescript
-import { useHeartsGate } from '@/lib/hearts/useHeartsGate'
-
-const heartsGate = useHeartsGate({ heartCost: 1 })
-
-const handleComplete = async () => {
-  const success = await heartsGate.consumeOnComplete()
-  if (success) {
-    router.push('/lesson/result?...')
-  }
-}
-```
-
-**変更後:**
-```typescript
-import { useHearts } from '@/lib/hearts/useHearts'
-import { checkHeartsAvailable } from '@/lib/hearts/checkHeartsAvailable'
-import { recordLesson } from '@/lib/api/lesson'
-import { saveStreakFromApi, getTodayDateString } from '@/lib/streak/streakStorage'
-
-const { hearts, isLoading, error, updateFromConsumeResponse } = useHearts()
-
-const handleComplete = async () => {
-  // レッスン完了 = 常にtrue（部分正解でもストリーク更新）
-  const isCorrect = true
-
+const handleComplete = async (data: LessonCompletionData): Promise<boolean> => {
   try {
     const result = await recordLesson({
-      lessonId: lesson.id,
-      isCorrect,
-      correctCount,
-      totalCount,
-      completionTime,
+      lessonId,
+      problems: data.problems.map(p => ({
+        problemId: p.problemId,
+        problemIndex: p.problemIndex,
+        isCorrect: p.isCorrect,
+        usedHint: p.usedHint,
+        usedSolution: p.usedSolution,
+      })),
     })
 
-    // 正解時のみハート状態を更新
-    if (result.hearts) {
-      updateFromConsumeResponse(result.hearts)
-    }
+    // ハート状態更新
+    updateFromConsumeResponse(result.hearts)
 
-    // ストリークをAsyncStorageに保存
-    const today = getTodayDateString()
-    await saveStreakFromApi(result.streak, result.completedDates, today)
+    // ストリーク保存
+    await saveStreakFromApi(result.streak, result.completedDates, getTodayDateString())
 
     // ストリーク更新画面への遷移
     if (result.streak.updated) {
       router.push(`/streak-update?count=${result.streak.currentCount}`)
-    } else {
-      router.push('/lesson/result?...')
     }
+
+    return true
   } catch (error) {
-    console.error('[Lesson] recordLesson failed:', error)
-    // エラー時は結果画面に遷移（ハート消費失敗）
-    router.push('/lesson/result?...')
+    // エラーハンドリング
+    return false
   }
 }
 ```
 
-### Step 6: アプリ - lesson/result.tsx 更新
+### 6. 中断時の挙動
 
-**変更前:**
 ```typescript
-import { recordLearningCompletion } from '@/lib/streak/recordLearningCompletion'
-
-useEffect(() => {
-  const record = async () => {
-    const result = await recordLearningCompletion()
-    if (result.updated) {
-      router.replace(`/streak-update?count=${result.newCount}`)
-    }
-  }
-  record()
-}, [])
+// ×ボタン押下時はAPI呼び出しなし
+// メモリ上のデータは破棄される
+router.back()
 ```
 
-**変更後:**
-```typescript
-// recordLearningCompletion() の呼び出しを削除
-// ストリーク更新はPlayScreen側で既に処理済み
-// result.tsxは単純に結果表示のみ
+---
+
+## 実装ステップ
+
+### Step 1: Prismaスキーマ追加
+
+`packages/api/prisma/schema.prisma` にLessonRecord, LessonProblemAttemptを追加
+
+### Step 2: マイグレーション実行
+
+```bash
+cd packages/api
+npx prisma migrate dev --name add_lesson_records
 ```
 
-### Step 7: 古いコード削除
+### Step 3: lesson.schema.ts 更新
 
-以下のファイル/関数を削除:
+新スキーマに対応したZodスキーマに更新
 
-1. `packages/app/lib/streak/recordLearningCompletion.ts` - ファイル削除
-2. `packages/app/lib/hearts/useHeartsGate.ts` - ファイル削除
-3. `packages/app/lib/hearts/useHeartsConsume.ts` - ファイル削除
-4. `packages/app/lib/api/hearts.ts` の `consumeHearts()` - 関数削除
-5. `packages/api/src/modules/hearts/hearts.router.ts` の `POST /consume` - エンドポイント削除
+### Step 4: lesson.service.ts 作成（TDD）
+
+レッスン記録のビジネスロジック:
+- LearningRecord作成（contentType: 'lesson'）
+- LessonRecord作成
+- LessonProblemAttempt一括作成
+- ハート消費・ストリーク更新（LearningService経由）
+
+### Step 5: lesson.router.ts 更新
+
+`POST /record` を新スキーマ対応に更新
+
+### Step 6: アプリ - lib/api/lesson.ts 更新
+
+新スキーマ対応のインターフェースに変更
+
+### Step 7: アプリ - useLessonGame.ts 拡張
+
+- `ProblemAttemptState` 型追加
+- `problemAttempts` 状態追加
+- `usedHint`, `usedSolution` 状態追加（問題ごと）
+- ヒント・解答使用時のフラグ更新
+- onCompleteに`problems`を渡す
+
+### Step 8: アプリ - lesson/[courseId]/[lessonId].tsx 更新
+
+- 完了時に問題詳細を送信
+- handleCompleteを更新
+
+### Step 9: 古いコード削除
+
+- `useHeartsGate.ts` 削除
+- `useHeartsConsume.ts` 削除
+- `recordLearningCompletion.ts` 削除
 
 ---
 
 ## 変更ファイル一覧
 
-### API側（新規/変更）
+### API側
 | ファイル | 変更内容 |
 |---------|---------|
-| `api/src/modules/lesson/lesson.schema.ts` | 新規: recordLessonSchema |
-| `api/src/modules/lesson/lesson.router.ts` | 新規: POST /record 追加 |
-| `api/src/app.ts` | lessonRouter登録 |
+| `prisma/schema.prisma` | LessonRecord, LessonProblemAttempt追加 |
+| `modules/lesson/lesson.schema.ts` | 新スキーマに更新 |
+| `modules/lesson/lesson.service.ts` | 新規: レッスン記録ロジック |
+| `modules/lesson/lesson.router.ts` | POST /record 更新 |
 
-### API側（削除）
+### アプリ側
 | ファイル | 変更内容 |
 |---------|---------|
-| `api/src/modules/hearts/hearts.router.ts` | POST /consume 削除 |
-| `api/src/modules/hearts/hearts.schema.ts` | consumeHeartsSchema 削除（任意） |
+| `lib/api/lesson.ts` | 新インターフェース |
+| `hooks/useLessonGame.ts` | problemAttempts, usedHint, usedSolution追加 |
+| `app/lesson/[courseId]/[lessonId].tsx` | handleComplete更新 |
+| `app/lesson/result.tsx` | recordLearningCompletion削除 |
 
-### アプリ側（新規/変更）
-| ファイル | 変更内容 |
-|---------|---------|
-| `app/lib/api/lesson.ts` | 新規: recordLesson() |
-| `app/app/lesson/[courseId]/[lessonId].tsx` | useHearts + recordLesson() に変更 |
-| `app/app/lesson/result.tsx` | recordLearningCompletion() 削除 |
-
-### アプリ側（削除）
-| ファイル | 変更内容 |
-|---------|---------|
-| `app/lib/streak/recordLearningCompletion.ts` | ファイル削除 |
-| `app/lib/hearts/useHeartsGate.ts` | ファイル削除 |
-| `app/lib/hearts/useHeartsConsume.ts` | ファイル削除 |
-| `app/lib/api/hearts.ts` | consumeHearts() 削除 |
+### 削除
+| ファイル |
+|---------|
+| `lib/hearts/useHeartsGate.ts` |
+| `lib/hearts/useHeartsConsume.ts` |
+| `lib/streak/recordLearningCompletion.ts` |
 
 ---
 
-## 実装順序
+## データフロー
 
-1. **Step 1-3**: API側 - POST /api/lesson/record 実装
-2. **Step 4**: アプリAPI関数 - recordLesson() 作成
-3. **Step 5**: lesson/[courseId]/[lessonId].tsx - 新API呼び出しに変更
-4. **Step 6**: lesson/result.tsx - 古いコード削除
-5. **動作確認**
-6. **Step 7**: 古いコード削除（useHeartsGate等）
+### レッスン完了時
+
+```
+最終問題正解
+    │
+    ▼
+recordLesson({
+  lessonId,
+  problems: [
+    { problemId, problemIndex, isCorrect, usedHint, usedSolution },
+    ...
+  ]
+})
+    │
+    ▼
+POST /api/lesson/record
+    │
+    ├──▶ LearningRecord作成（contentType: 'lesson', isCompleted: true）
+    ├──▶ LessonRecord作成
+    ├──▶ LessonProblemAttempt × N 作成
+    ├──▶ ハート消費
+    └──▶ ストリーク計算・更新
+    │
+    ▼
+レスポンス: {hearts, streak, completedDates}
+```
+
+### 中断時
+
+```
+×ボタン押下
+    │
+    ▼
+router.back()  // API呼び出しなし
+```
 
 ---
 
 ## 注意事項
 
-### レッスンと詰将棋の違い
+### isCorrectの定義
 
-| 項目 | 詰将棋 | レッスン |
-|------|--------|---------|
-| 問題数 | 1問 | 複数問題 |
-| ハート消費タイミング | 正解時に即座 | 最終問題完了時 |
-| isCorrect判定 | 1問の正解/不正解 | レッスン完了=true（常にtrue） |
-| 不正解時のAPI呼び出し | あり（fire-and-forget） | なし（途中離脱時はAPI呼び出しなし） |
+`isCorrect = true` の条件:
+- 初回で正解（hasAttemptedWrong = false）
+- ヒント未使用（usedHint = false）
+- 解答未使用（usedSolution = false）
 
-### ストリーク更新の条件
+すべてを満たした場合のみ「完全正解」とする。
 
-- **レッスン完了時に常にストリーク更新**（部分正解でもOK）
-- `isCorrect: true` = レッスン完了フラグとして扱う
-- 途中離脱の場合のみ `isCorrect: false`（API呼び出しなし）
+### 既存実装との整合性
 
----
+現在の `useLessonGame.ts` には以下の状態がある:
+- `correctCount`: 引き続き使用（結果画面表示用）
+- `hasAttemptedWrong`: 引き続き使用（isCorrect判定に利用）
 
-## データフロー（実装後）
+新規追加:
+- `usedHint`: 問題ごとのヒント使用フラグ
+- `usedSolution`: 問題ごとの解答使用フラグ
+- `problemAttempts`: 完了時にAPIに送信するデータ
 
-```
-レッスン最終問題完了
-    |
-    v
-recordLesson({
-  lessonId: lesson.id,
-  isCorrect: true,  // レッスン完了 = 常にtrue
-  correctCount,
-  totalCount,
-  completionTime,
-})
-    |
-    v
-POST /api/lesson/record
-    |
-    v
-API: LearningRecord作成 + ハート消費（正解時のみ） + ストリーク計算
-    |
-    v
-レスポンス: {hearts, streak, completedDates}
-    |
-    +---> updateFromConsumeResponse(): ハート状態更新（正解時のみ）
-    |
-    +---> saveStreakFromApi(): AsyncStorage更新（キャッシュ）
-    |
-    +---> streak.updated ? -> ストリーク更新画面へ遷移
-              +---> false -> 結果画面へ遷移
-```
+### 復習機能の実装方針（Phase 15）
+
+Phase 14では基本的なログ記録のみ実装。復習機能は以下の方針:
+1. `GET /api/lesson/:lessonId/review` でisCorrect=falseの問題ID取得
+2. アプリ側でフィルタして表示
+3. 詳細はPhase 15で検討
+
+### 同じレッスンの複数挑戦
+
+毎回新しいLearningRecord + LessonRecordを作成。
+過去の記録は残るため、正答率の推移を分析可能。
 
 ---
 
 ## テスト計画
 
 ### 手動テスト
-1. レッスンを最後まで完了 -> ハート消費・ストリーク更新確認
-2. 途中で離脱 -> ハート消費されないこと確認
-3. 部分正解 -> ストリーク更新されること確認（レッスン完了=ストリーク更新）
-4. オフライン時 -> エラーハンドリング確認
+1. レッスン完了 → 問題詳細がDB保存されること
+2. ヒント使用 → usedHint=trueで記録
+3. 解答使用 → usedSolution=trueで記録
+4. 中断 → API呼び出しなし、記録なし
+5. ハート消費・ストリーク更新が正常に動作すること
 
-### 自動テスト（任意）
-- lesson.router.ts のユニットテスト
-- recordLesson() のモックテスト
+### 自動テスト
+- lesson.service.ts のユニットテスト（TDD）
+- 正常系: 完了記録作成
+- 異常系: バリデーションエラー
