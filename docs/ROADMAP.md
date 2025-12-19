@@ -995,9 +995,9 @@ packages/api/src/modules/hearts/
 - [ ] レッスンステップ管理
 - [ ] ユニット・統合テスト（TDD）
 
-### Phase 13: 学習記録API（作業中）
+### Phase 13: 学習API連携（完了）
 
-**目標**: LearningRecord設計でストリーク・学習履歴を管理
+**目標**: 詰将棋の学習記録をサーバーAPIに統合
 
 詳細設計: `docs/designs/learning-record.md`
 
@@ -1006,33 +1006,45 @@ packages/api/src/modules/hearts/
 - 週間カレンダー対応（completedDates配列）
 - 苦手分析対応（間違えた記録も保存）
 
-**API側:**
-- [ ] Prismaスキーマ（LearningRecord + TsumeshogiRecord）
-- [ ] learning-record.repository.ts（DBアクセス）
-- [ ] learning.service.ts 書き換え（TDD）
-- [ ] hearts.schema.ts 拡張（contentType, contentId, isCorrect）
-- [ ] hearts.router.ts 拡張（completedDates追加）
-- [ ] learning.router.ts 新規（GET /api/learning/streak）
-- [ ] Streakテーブル・モジュール削除
+**実装内容:**
+- [x] Prismaスキーマ（LearningRecord + TsumeshogiRecord）
+- [x] learning-record.repository.ts（DBアクセス）
+- [x] learning.service.ts 書き換え（TDD）
+- [x] POST /api/tsumeshogi/record エンドポイント追加
+- [x] learning.router.ts 新規（GET /api/learning/streak）
+- [x] Streakテーブル・モジュール削除
+- [x] アプリAPI関数（recordTsumeshogi, getStreak）
+- [x] saveStreakFromApi()でAsyncStorageキャッシュ更新
+- [x] tsumeshogi/[id].tsx を新API呼び出しに変更
+- [x] アプリ起動時にサーバーからストリーク同期
+- [x] 将来削除予定のコードに@deprecated TODO追加
 
-**エンドポイント:**
+**実装済みエンドポイント:**
 | メソッド | パス | 説明 | 認証 |
 |---------|------|------|------|
 | GET | /api/learning/streak | ストリーク状態取得 | 必須 |
-| POST | /api/hearts/consume | 学習完了（拡張） | 必須 |
+| POST | /api/tsumeshogi/record | 詰将棋学習記録 | 必須 |
 
 **設計ポイント:**
 - LearningRecord: 全学習を記録（正解・不正解問わず）
 - TsumeshogiRecord: 詰将棋固有の詳細
 - ストリークは毎回LearningRecordから計算
-- 将来: LessonRecord, JosekiRecordを同パターンで追加
+- サーバー側でハート消費量を決定（セキュリティ向上）
 
 ### Phase 14: 駒塾API連携（予定）
-- [ ] 駒塾のAPI連携
+
+**目標**: レッスン機能を詰将棋と同様の新APIパターンに移行
+
+- [ ] POST /api/lesson/record エンドポイント追加
+- [ ] レッスン画面から`useHeartsGate`を削除し、直接API呼び出しに変更
+- [ ] `@deprecated`マークした古いコード削除
+  - `recordLearningCompletion.ts`
+  - `useHeartsGate.ts`
+  - `useHeartsConsume.ts`
+  - `hearts.ts`の`consumeHearts()`
+  - `hearts.router.ts`の`POST /consume`
 - [ ] BFF統合エンドポイント（GET /api/home/status）
-- [ ] ゲーミフィケーションのAPI連携
-- [ ] ローディング状態UI
-- [ ] エラーハンドリングUI
+- [ ] エラーハンドリングUI改善
 - [ ] オフライン対応（任意）
 
 ### Phase 15: 管理画面

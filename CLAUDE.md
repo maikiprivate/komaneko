@@ -209,35 +209,44 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 13（作業中） |
-| 最終更新 | 2025-12-18 |
+| フェーズ | Phase 14（予定） |
+| 最終更新 | 2025-12-19 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 13（作業中）- 学習記録API
+### Phase 14（予定）- 駒塾API連携
 
-**目標**: LearningRecord設計でストリーク・学習履歴を管理
+**目標**: レッスン機能を詰将棋と同様の新APIパターンに移行
+
+**作業内容:**
+- [ ] POST /api/lesson/record エンドポイント追加
+- [ ] レッスン画面から`useHeartsGate`を削除し、直接API呼び出しに変更
+- [ ] `@deprecated`マークした古いコード削除
+  - `recordLearningCompletion.ts`
+  - `useHeartsGate.ts`
+  - `useHeartsConsume.ts`
+  - `hearts.ts`の`consumeHearts()`
+  - `hearts.router.ts`の`POST /consume`
+
+### Phase 13（完了）- 学習API連携
+
+**目標**: 詰将棋の学習記録をサーバーAPIに統合
 
 詳細設計: `docs/designs/learning-record.md`
 
-**設計変更**:
-- Streakテーブル廃止 → LearningRecordから導出
-- 週間カレンダー対応（completedDates配列）
-- 苦手分析対応（間違えた記録も保存）
+**実装内容:**
+- [x] POST /api/tsumeshogi/record エンドポイント追加
+- [x] サーバー側でハート消費・ストリーク計算
+- [x] アプリAPI関数（recordTsumeshogi, getStreak）
+- [x] saveStreakFromApi()でAsyncStorageキャッシュ更新
+- [x] tsumeshogi/[id].tsx を新API呼び出しに変更
+- [x] アプリ起動時にサーバーからストリーク同期
+- [x] 将来削除予定のコードに@deprecated TODO追加
 
-**API側:**
-- [ ] Prismaスキーマ（LearningRecord + TsumeshogiRecord）
-- [ ] learning-record.repository.ts（DBアクセス）
-- [ ] learning.service.ts 書き換え（TDD）
-- [ ] hearts.schema.ts 拡張
-- [ ] hearts.router.ts 拡張
-- [ ] learning.router.ts 新規
-- [ ] Streakテーブル・モジュール削除
-
-**エンドポイント:**
+**実装済みエンドポイント:**
 | メソッド | パス | 説明 | 認証 |
 |---------|------|------|------|
 | GET | /api/learning/streak | ストリーク状態取得 | 必須 |
-| POST | /api/hearts/consume | 学習完了（拡張） | 必須 |
+| POST | /api/tsumeshogi/record | 詰将棋学習記録 | 必須 |
 
 ### Phase 12.5（完了）- 詰将棋アプリ-API連携
 
