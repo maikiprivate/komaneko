@@ -32,11 +32,12 @@ export async function lessonRouter(app: FastifyInstance) {
   })
 
   /**
-   * POST /api/lesson/record - 学習記録
+   * POST /api/lesson/record - レッスン完了記録
    *
    * レッスンの学習結果を記録し、ハート消費とストリーク更新を行う。
-   * - レッスン完了時に常にストリーク更新（部分正解でもOK）
-   * - ハート消費は isCorrect=true の時のみ
+   * - 完了時のみ呼び出し（中断時はAPI呼び出しなし）
+   * - 問題ごとの詳細（isCorrect, usedHint, usedSolution）を記録
+   * - 常に1ハート消費、常にストリーク更新
    */
   app.post('/record', async (request, reply) => {
     const userId = getAuthenticatedUserId(request)
@@ -49,19 +50,25 @@ export async function lessonRouter(app: FastifyInstance) {
       })
     }
 
-    const { lessonId, isCorrect } = parseResult.data
+    const { lessonId, problems } = parseResult.data
 
-    // サーバー側でハート消費を決定（正解時のみ1ハート消費）
+    // 初回正解数をカウント（isCorrect=trueの問題数）
+    const correctCount = problems.filter((p) => p.isCorrect).length
+
+    // レッスン完了は常にハート消費・ストリーク更新
     const result = await learningService.recordCompletion(userId, {
-      consumeHeart: isCorrect,
+      consumeHeart: true,
       contentType: 'lesson',
       contentId: lessonId,
-      isCorrect,
+      isCorrect: true, // 完了時のみ呼ばれるため常にtrue
+      lessonData: {
+        correctCount,
+        problems,
+      },
     })
 
     return reply.send({
       data: {
-        // 正解時のみハート情報を返す
         hearts: result.hearts
           ? {
               consumed: result.hearts.consumed,

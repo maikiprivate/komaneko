@@ -20,6 +20,7 @@ vi.mock('../../db/client.js', () => ({
 // モックリポジトリ
 const mockLearningRecordRepository: LearningRecordRepository = {
   createWithTsumeshogi: vi.fn(),
+  createWithLesson: vi.fn(),
   findCompletedDates: vi.fn(),
   findLastCompletedDate: vi.fn(),
   findAllCompletedDates: vi.fn(),
