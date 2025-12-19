@@ -31,6 +31,11 @@ export async function getHearts(): Promise<HeartsResponse> {
 /**
  * ハートを消費
  *
+ * @deprecated
+ * TODO: レッスン機能が POST /api/lesson/record に移行したら、この関数を削除する。
+ * 現在はuseHeartsConsume経由でレッスン画面でのみ使用。
+ * 詰将棋は POST /api/tsumeshogi/record に移行済み。
+ *
  * @param amount 消費するハート数（通常は1）
  */
 export async function consumeHearts(amount: number = 1): Promise<ConsumeHeartsResponse> {

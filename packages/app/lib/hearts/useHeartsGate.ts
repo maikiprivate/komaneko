@@ -4,6 +4,11 @@
  * コンテンツ開始時のハートチェックと完了時のハート消費を一括管理する。
  * 詰将棋・レッスンなど、ハート消費が必要なコンテンツで共通利用。
  *
+ * @deprecated
+ * TODO: レッスン機能が POST /api/lesson/record に移行したら、このファイルを削除する。
+ * 現在はレッスン画面（lesson/[courseId]/[lessonId].tsx）でのみ使用。
+ * 詰将棋は POST /api/tsumeshogi/record に移行済み（useHearts + 直接API呼び出し）。
+ *
  * 使用例:
  * ```
  * const heartsGate = useHeartsGate({ heartCost: 1 })

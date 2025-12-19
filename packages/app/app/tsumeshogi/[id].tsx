@@ -302,7 +302,7 @@ export default function TsumeshogiPlayScreen() {
     // キャッシュデータがあればparamsで渡す（API呼び出し削減）
     if (nextSfen && problem && problemIds && problemSfens) {
       router.replace({
-        pathname: `/tsumeshogi/[id]`,
+        pathname: '/tsumeshogi/[id]',
         params: {
           id: nextId,
           sfen: nextSfen,
@@ -313,7 +313,7 @@ export default function TsumeshogiPlayScreen() {
       })
     } else {
       // キャッシュがなければIDのみで遷移（API取得になる）
-      router.replace({ pathname: `/tsumeshogi/[id]`, params: { id: nextId } })
+      router.replace({ pathname: '/tsumeshogi/[id]', params: { id: nextId } })
     }
   }, [nextId, nextSfen, problem, problemIds, problemSfens, hearts])
 
