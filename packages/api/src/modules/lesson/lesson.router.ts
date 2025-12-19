@@ -24,10 +24,7 @@ export async function lessonRouter(app: FastifyInstance) {
   const learningRecordRepository = createLearningRecordRepository(prisma)
   const heartsRepository = createHeartsRepository(prisma)
   const heartsService = new HeartsService(heartsRepository)
-  const learningService = new LearningService(
-    learningRecordRepository,
-    heartsService
-  )
+  const learningService = new LearningService(learningRecordRepository, heartsService)
 
   // 認証フック: 全エンドポイントで認証必須
   app.addHook('preHandler', async (request) => {
