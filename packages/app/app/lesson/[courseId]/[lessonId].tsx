@@ -49,10 +49,14 @@ export default function LessonPlayScreen() {
   const { colors, palette } = useTheme()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  const { courseId, lessonId } = useLocalSearchParams<{
+  const { courseId, lessonId, isReview } = useLocalSearchParams<{
     courseId: string
     lessonId: string
+    isReview?: string
   }>()
+
+  // 復習モードかどうか
+  const isReviewMode = isReview === 'true'
 
   // ハート管理
   const { hearts, isLoading, error, updateFromConsumeResponse } = useHearts()
@@ -63,9 +67,9 @@ export default function LessonPlayScreen() {
   // レッスンデータを取得
   const lesson = getLessonById(courseId ?? '', lessonId ?? '')
 
-  // 初回ロード完了時にハートチェック
+  // 初回ロード完了時にハートチェック（復習モードではスキップ）
   useEffect(() => {
-    if (isLoading || hasCheckedRef.current) return
+    if (isLoading || hasCheckedRef.current || isReviewMode) return
     hasCheckedRef.current = true
 
     // エラー時はチェックしない
@@ -76,7 +80,7 @@ export default function LessonPlayScreen() {
       checkHeartsAvailable(hearts, HEART_COST)
       router.back()
     }
-  }, [isLoading, error, hearts])
+  }, [isLoading, error, hearts, isReviewMode])
 
   /**
    * レッスン完了時のコールバック
@@ -85,10 +89,17 @@ export default function LessonPlayScreen() {
    * - 学習記録作成（問題ごとの詳細含む）
    * - ハート消費
    * - ストリーク更新
+   *
+   * 復習モードではAPIを呼ばない（ハート消費なし、記録なし）
    */
   const handleComplete = useCallback(
     async (data: LessonCompletionData): Promise<boolean> => {
       if (!lessonId) return false
+
+      // 復習モードではAPI呼び出しをスキップ
+      if (isReviewMode) {
+        return true
+      }
 
       try {
         const result = await recordLesson({
@@ -124,7 +135,7 @@ export default function LessonPlayScreen() {
         return false
       }
     },
-    [lessonId, updateFromConsumeResponse]
+    [lessonId, isReviewMode, updateFromConsumeResponse]
   )
 
   /**

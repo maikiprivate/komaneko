@@ -73,9 +73,10 @@ export default function LessonResultScreen() {
   // 同じレッスンをもう一度（復習）
   // dismissTo + push: スタックをセクション一覧まで戻してから新画面を開く
   // これにより「戻る」でセクション一覧に戻れる正しいスタック構造になる
+  // isReview=true: 復習時はAPI記録しない（ハート消費なし）
   const handleRetry = () => {
     router.dismissTo(`/lesson/${params.courseId}`)
-    router.push(`/lesson/${params.courseId}/${params.lessonId}`)
+    router.push(`/lesson/${params.courseId}/${params.lessonId}?isReview=true`)
   }
 
   // 次のレッスンへ
