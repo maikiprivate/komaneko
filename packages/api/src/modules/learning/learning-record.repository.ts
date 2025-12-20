@@ -40,6 +40,7 @@ export interface LearningRecordRepository {
       correctCount: number
       problems: ProblemAttemptData[]
       completedDate: string // 完了時のみ呼ばれるため必須
+      completionSeconds?: number
     },
     tx?: PrismaClientOrTx
   ): Promise<LearningRecord>
