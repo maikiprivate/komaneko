@@ -13,6 +13,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
+import { useHearts } from '@/lib/hearts/useHearts'
 import { getNextLesson } from '@/mocks/lessonData'
 
 const confettiBackground = require('@/assets/images/background/confetti.png')
@@ -22,6 +23,7 @@ export default function LessonResultScreen() {
   const { colors, palette } = useTheme()
   const { width: screenWidth } = useWindowDimensions()
   const insets = useSafeAreaInsets()
+  const { hearts } = useHearts()
   const params = useLocalSearchParams<{
     correct: string
     total: string
@@ -174,12 +176,15 @@ export default function LessonResultScreen() {
             </View>
             <Text style={[styles.statLabel, { color: colors.text.secondary }]}>完了時間</Text>
           </View>
-          {/* TODO: ハートシステム実装後、実際の残り体力を表示する */}
           <View style={[styles.statCard, { backgroundColor: colors.background.primary }]}>
             <FontAwesome name="heart" size={18} color={palette.red} />
             <View style={styles.statValueRow}>
-              <Text style={[styles.statValueMain, { color: colors.text.primary }]}>7</Text>
-              <Text style={[styles.statValueSub, { color: colors.text.secondary }]}>/10</Text>
+              <Text style={[styles.statValueMain, { color: colors.text.primary }]}>
+                {hearts?.current ?? '-'}
+              </Text>
+              <Text style={[styles.statValueSub, { color: colors.text.secondary }]}>
+                /{hearts?.max ?? 10}
+              </Text>
             </View>
             <Text style={[styles.statLabel, { color: colors.text.secondary }]}>体力</Text>
           </View>
