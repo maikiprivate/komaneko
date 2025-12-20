@@ -47,6 +47,8 @@ export interface StreakData {
   completedDates: string[]
 }
 
+import type { ProblemAttemptData } from './learning-record.repository.js'
+
 /** recordCompletion オプション */
 export interface RecordCompletionOptions {
   consumeHeart: boolean
@@ -54,6 +56,12 @@ export interface RecordCompletionOptions {
   contentType?: 'tsumeshogi' | 'lesson'
   contentId?: string
   isCorrect?: boolean
+  /** レッスン用: 問題ごとの詳細 */
+  lessonData?: {
+    correctCount: number
+    problems: ProblemAttemptData[]
+    completionSeconds?: number
+  }
 }
 
 export class LearningService {
@@ -105,6 +113,22 @@ export class LearningService {
             tsumeshogiId: options.contentId,
             isCorrect,
             completedDate,
+          },
+          tx
+        )
+      } else if (options.contentType === 'lesson' && options.contentId) {
+        // レッスン完了（常にisCompleted=true、completedDate=today）
+        if (!options.lessonData) {
+          throw new Error('lessonData is required for lesson contentType')
+        }
+        await this.learningRecordRepository.createWithLesson(
+          userId,
+          {
+            lessonId: options.contentId,
+            correctCount: options.lessonData.correctCount,
+            problems: options.lessonData.problems,
+            completedDate: today,
+            completionSeconds: options.lessonData.completionSeconds,
           },
           tx
         )

@@ -7,6 +7,15 @@ import { getDateString, JST_OFFSET_HOURS } from '@komaneko/shared/utils/date'
 
 import type { PrismaClientOrTx } from '../../db/client.js'
 
+/** 問題ごとの試行データ */
+export interface ProblemAttemptData {
+  problemId: string
+  problemIndex: number
+  isCorrect: boolean
+  usedHint: boolean
+  usedSolution: boolean
+}
+
 export interface LearningRecordRepository {
   /**
    * 詰将棋の学習記録を作成（LearningRecord + TsumeshogiRecord）
@@ -17,6 +26,20 @@ export interface LearningRecordRepository {
       tsumeshogiId: string
       isCorrect: boolean
       completedDate: string | null // 完了時のみ設定（YYYY-MM-DD）
+    },
+    tx?: PrismaClientOrTx
+  ): Promise<LearningRecord>
+
+  /**
+   * レッスンの学習記録を作成（LearningRecord + LessonRecord + LessonProblemAttempt）
+   */
+  createWithLesson(
+    userId: string,
+    data: {
+      lessonId: string
+      correctCount: number
+      problems: ProblemAttemptData[]
+      completedDate: string // 完了時のみ呼ばれるため必須
     },
     tx?: PrismaClientOrTx
   ): Promise<LearningRecord>
@@ -73,6 +96,44 @@ export function createLearningRecordRepository(
             create: {
               tsumeshogiId: data.tsumeshogiId,
               isCorrect: data.isCorrect,
+            },
+          },
+        },
+      })
+    },
+
+    async createWithLesson(
+      userId: string,
+      data: {
+        lessonId: string
+        correctCount: number
+        problems: ProblemAttemptData[]
+        completedDate: string
+        completionSeconds?: number
+      },
+      tx?: PrismaClientOrTx
+    ): Promise<LearningRecord> {
+      const client = tx ?? prisma
+      return client.learningRecord.create({
+        data: {
+          userId,
+          contentType: 'lesson',
+          isCompleted: true, // レッスン完了時のみ呼ばれる
+          completedDate: data.completedDate,
+          lessonRecord: {
+            create: {
+              lessonId: data.lessonId,
+              correctCount: data.correctCount,
+              completionSeconds: data.completionSeconds,
+              problemAttempts: {
+                create: data.problems.map((p) => ({
+                  problemId: p.problemId,
+                  problemIndex: p.problemIndex,
+                  isCorrect: p.isCorrect,
+                  usedHint: p.usedHint,
+                  usedSolution: p.usedSolution,
+                })),
+              },
             },
           },
         },

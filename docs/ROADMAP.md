@@ -1031,21 +1031,38 @@ packages/api/src/modules/hearts/
 - ストリークは毎回LearningRecordから計算
 - サーバー側でハート消費量を決定（セキュリティ向上）
 
-### Phase 14: 駒塾API連携（予定）
+### Phase 14: 駒塾API連携（作業中）
 
 **目標**: レッスン機能を詰将棋と同様の新APIパターンに移行
 
-- [ ] POST /api/lesson/record エンドポイント追加
-- [ ] レッスン画面から`useHeartsGate`を削除し、直接API呼び出しに変更
-- [ ] `@deprecated`マークした古いコード削除
-  - `recordLearningCompletion.ts`
-  - `useHeartsGate.ts`
-  - `useHeartsConsume.ts`
-  - `hearts.ts`の`consumeHearts()`
-  - `hearts.router.ts`の`POST /consume`
-- [ ] BFF統合エンドポイント（GET /api/home/status）
-- [ ] エラーハンドリングUI改善
-- [ ] オフライン対応（任意）
+詳細設計: `docs/designs/lesson-api.md`
+
+**設計ポイント:**
+- サーバー側でハート消費・ストリーク計算
+- レッスン完了時に常にストリーク更新（部分正解でもOK）
+- `isCorrect: true` = レッスン完了フラグとして扱う
+
+**API側:**
+- [ ] lesson.schema.ts（recordLessonSchema）
+- [ ] lesson.router.ts（POST /record）
+- [ ] app.tsにルーター登録
+
+**アプリ側:**
+- [ ] lib/api/lesson.ts（recordLesson()）
+- [ ] lesson/[courseId]/[lessonId].tsx を新API呼び出しに変更
+- [ ] lesson/result.tsx から recordLearningCompletion() 削除
+
+**古いコード削除:**
+- [ ] `recordLearningCompletion.ts`
+- [ ] `useHeartsGate.ts`
+- [ ] `useHeartsConsume.ts`
+- [ ] `hearts.ts`の`consumeHearts()`
+- [ ] `hearts.router.ts`の`POST /consume`
+
+**実装予定エンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| POST | /api/lesson/record | レッスン学習記録 | 必須 |
 
 ### Phase 15: 管理画面
 - [ ] React + Vite設定

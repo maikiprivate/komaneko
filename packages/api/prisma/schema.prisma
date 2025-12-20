@@ -69,6 +69,7 @@ model LearningRecord {
 
   // コンテンツ別詳細（1対1、どれか1つのみ紐づく）
   tsumeshogiRecord TsumeshogiRecord?
+  lessonRecord     LessonRecord?
 
   @@index([userId, completedDate])
   @@index([userId, isCompleted])
@@ -85,6 +86,35 @@ model TsumeshogiRecord {
 
   @@index([tsumeshogiId])
   @@map("tsumeshogi_records")
+}
+
+model LessonRecord {
+  id                String @id @default(uuid())
+  learningRecordId  String @unique @map("learning_record_id")
+  lessonId          String @map("lesson_id") // モックデータのID
+  correctCount      Int    @default(0) @map("correct_count") // 初回正解数
+  completionSeconds Int?   @map("completion_seconds") // 完了時間（秒）
+
+  learningRecord  LearningRecord         @relation(fields: [learningRecordId], references: [id], onDelete: Cascade)
+  problemAttempts LessonProblemAttempt[]
+
+  @@index([lessonId])
+  @@map("lesson_records")
+}
+
+model LessonProblemAttempt {
+  id             String  @id @default(uuid())
+  lessonRecordId String  @map("lesson_record_id")
+  problemId      String  @map("problem_id") // モックデータの問題ID
+  problemIndex   Int     @map("problem_index") // 問題番号（0-indexed）
+  isCorrect      Boolean @map("is_correct") // 初回正解したか（ヒント・解答なしで一発正解）
+  usedHint       Boolean @default(false) @map("used_hint")
+  usedSolution   Boolean @default(false) @map("used_solution")
+
+  lessonRecord LessonRecord @relation(fields: [lessonRecordId], references: [id], onDelete: Cascade)
+
+  @@index([lessonRecordId])
+  @@map("lesson_problem_attempts")
 }
 
 // ========== コンテンツ ==========

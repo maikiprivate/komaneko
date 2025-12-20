@@ -209,23 +209,32 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 14（予定） |
+| フェーズ | Phase 14（作業中） |
 | 最終更新 | 2025-12-19 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 14（予定）- 駒塾API連携
+### Phase 14（作業中）- 駒塾API連携
 
 **目標**: レッスン機能を詰将棋と同様の新APIパターンに移行
 
+詳細設計: `docs/designs/lesson-api.md`
+
+**設計ポイント:**
+- サーバー側でハート消費・ストリーク計算
+- レッスン完了時に常にストリーク更新（部分正解でもOK）
+- `isCorrect: true` = レッスン完了フラグとして扱う
+
 **作業内容:**
-- [ ] POST /api/lesson/record エンドポイント追加
-- [ ] レッスン画面から`useHeartsGate`を削除し、直接API呼び出しに変更
+- [ ] API側: lesson.schema.ts, lesson.router.ts（POST /record）
+- [ ] アプリ側: lib/api/lesson.ts（recordLesson()）
+- [ ] lesson/[courseId]/[lessonId].tsx を新API呼び出しに変更
+- [ ] lesson/result.tsx から recordLearningCompletion() 削除
 - [ ] `@deprecated`マークした古いコード削除
-  - `recordLearningCompletion.ts`
-  - `useHeartsGate.ts`
-  - `useHeartsConsume.ts`
-  - `hearts.ts`の`consumeHearts()`
-  - `hearts.router.ts`の`POST /consume`
+
+**実装予定エンドポイント:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| POST | /api/lesson/record | レッスン学習記録 | 必須 |
 
 ### Phase 13（完了）- 学習API連携
 
