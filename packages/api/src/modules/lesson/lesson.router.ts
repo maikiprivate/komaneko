@@ -50,7 +50,7 @@ export async function lessonRouter(app: FastifyInstance) {
       })
     }
 
-    const { lessonId, problems } = parseResult.data
+    const { lessonId, problems, completionSeconds } = parseResult.data
 
     // 初回正解数をカウント（isCorrect=trueの問題数）
     const correctCount = problems.filter((p) => p.isCorrect).length
@@ -64,6 +64,7 @@ export async function lessonRouter(app: FastifyInstance) {
       lessonData: {
         correctCount,
         problems,
+        completionSeconds,
       },
     })
 

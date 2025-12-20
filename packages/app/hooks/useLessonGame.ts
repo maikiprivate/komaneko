@@ -39,6 +39,7 @@ export interface LessonCompletionData {
   correctCount: number // 初回正解数（結果画面表示用）
   totalCount: number // 総問題数
   problems: ProblemAttemptState[] // 問題ごとの詳細
+  completionSeconds: number // 完了時間（秒）
 }
 
 /** フックの引数 */
@@ -213,24 +214,25 @@ export function useLessonGame({
       finalCorrectCount: number,
       allAttempts: ProblemAttemptState[]
     ): Promise<boolean> => {
-      // onCompleteコールバック（ハート消費など）を呼び出し
-      if (onComplete) {
-        const success = await onComplete({
-          correctCount: finalCorrectCount,
-          totalCount: totalProblems,
-          problems: allAttempts,
-        })
-        if (!success) {
-          return false
-        }
-      }
-
       // 完了時間を計算
       const elapsedMs = Date.now() - startTimeRef.current
       const totalSeconds = Math.floor(elapsedMs / 1000)
       const minutes = Math.floor(totalSeconds / 60)
       const seconds = totalSeconds % 60
       const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`
+
+      // onCompleteコールバック（ハート消費など）を呼び出し
+      if (onComplete) {
+        const success = await onComplete({
+          correctCount: finalCorrectCount,
+          totalCount: totalProblems,
+          problems: allAttempts,
+          completionSeconds: totalSeconds,
+        })
+        if (!success) {
+          return false
+        }
+      }
 
       router.replace({
         pathname: '/lesson/result',

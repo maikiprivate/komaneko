@@ -23,6 +23,7 @@ export type ProblemAttemptInput = z.infer<typeof problemAttemptSchema>
 export const recordLessonSchema = z.object({
   lessonId: z.string().min(1, 'レッスンIDは必須です'),
   problems: z.array(problemAttemptSchema).min(1, '問題が必要です'),
+  completionSeconds: z.number().int().min(0).optional(),
 })
 
 export type RecordLessonInput = z.infer<typeof recordLessonSchema>

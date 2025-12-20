@@ -60,6 +60,7 @@ export interface RecordCompletionOptions {
   lessonData?: {
     correctCount: number
     problems: ProblemAttemptData[]
+    completionSeconds?: number
   }
 }
 
@@ -127,6 +128,7 @@ export class LearningService {
             correctCount: options.lessonData.correctCount,
             problems: options.lessonData.problems,
             completedDate: today,
+            completionSeconds: options.lessonData.completionSeconds,
           },
           tx
         )

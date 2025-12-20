@@ -109,6 +109,7 @@ export function createLearningRecordRepository(
         correctCount: number
         problems: ProblemAttemptData[]
         completedDate: string
+        completionSeconds?: number
       },
       tx?: PrismaClientOrTx
     ): Promise<LearningRecord> {
@@ -123,6 +124,7 @@ export function createLearningRecordRepository(
             create: {
               lessonId: data.lessonId,
               correctCount: data.correctCount,
+              completionSeconds: data.completionSeconds,
               problemAttempts: {
                 create: data.problems.map((p) => ({
                   problemId: p.problemId,

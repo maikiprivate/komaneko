@@ -111,6 +111,7 @@ export default function LessonPlayScreen() {
             usedHint: p.usedHint,
             usedSolution: p.usedSolution,
           })),
+          completionSeconds: data.completionSeconds,
         })
 
         // ハート状態を更新

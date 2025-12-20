@@ -89,10 +89,11 @@ model TsumeshogiRecord {
 }
 
 model LessonRecord {
-  id               String @id @default(uuid())
-  learningRecordId String @unique @map("learning_record_id")
-  lessonId         String @map("lesson_id") // モックデータのID
-  correctCount     Int    @default(0) @map("correct_count") // 初回正解数
+  id                String @id @default(uuid())
+  learningRecordId  String @unique @map("learning_record_id")
+  lessonId          String @map("lesson_id") // モックデータのID
+  correctCount      Int    @default(0) @map("correct_count") // 初回正解数
+  completionSeconds Int?   @map("completion_seconds") // 完了時間（秒）
 
   learningRecord  LearningRecord         @relation(fields: [learningRecordId], references: [id], onDelete: Cascade)
   problemAttempts LessonProblemAttempt[]

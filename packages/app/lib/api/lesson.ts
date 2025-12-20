@@ -17,6 +17,7 @@ export interface ProblemAttemptInput {
 export interface RecordLessonRequest {
   lessonId: string
   problems: ProblemAttemptInput[]
+  completionSeconds?: number
 }
 
 /** 学習記録レスポンス */
