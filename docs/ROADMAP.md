@@ -990,11 +990,6 @@ packages/api/src/modules/hearts/
 - [x] アプリ側API連携
 - [x] API呼び出し最適化（paramsでキャッシュデータ渡し）
 
-### Phase 12.5: 駒塾API（予定）
-- [ ] 駒塾CRUD（Router → Service → Repository）
-- [ ] レッスンステップ管理
-- [ ] ユニット・統合テスト（TDD）
-
 ### Phase 13: 学習API連携（完了）
 
 **目標**: 詰将棋の学習記録をサーバーAPIに統合
@@ -1031,43 +1026,44 @@ packages/api/src/modules/hearts/
 - ストリークは毎回LearningRecordから計算
 - サーバー側でハート消費量を決定（セキュリティ向上）
 
-### Phase 14: 駒塾API連携（作業中）
+### Phase 14: 駒塾API連携（完了）
 
 **目標**: レッスン機能を詰将棋と同様の新APIパターンに移行
 
 詳細設計: `docs/designs/lesson-api.md`
 
-**設計ポイント:**
-- サーバー側でハート消費・ストリーク計算
-- レッスン完了時に常にストリーク更新（部分正解でもOK）
-- `isCorrect: true` = レッスン完了フラグとして扱う
+- [x] LessonRecord, LessonProblemAttemptテーブル追加
+- [x] POST /api/lesson/record エンドポイント追加
+- [x] 問題ごとの詳細記録（isCorrect, usedHint, usedSolution）
+- [x] 完了時間（completionSeconds）保存
+- [x] 復習モードではAPI記録スキップ
+- [x] 古いコード削除（useHeartsGate, useHeartsConsume, recordLearningCompletion）
 
-**API側:**
-- [ ] lesson.schema.ts（recordLessonSchema）
-- [ ] lesson.router.ts（POST /record）
-- [ ] app.tsにルーター登録
-
-**アプリ側:**
-- [ ] lib/api/lesson.ts（recordLesson()）
-- [ ] lesson/[courseId]/[lessonId].tsx を新API呼び出しに変更
-- [ ] lesson/result.tsx から recordLearningCompletion() 削除
-
-**古いコード削除:**
-- [ ] `recordLearningCompletion.ts`
-- [ ] `useHeartsGate.ts`
-- [ ] `useHeartsConsume.ts`
-- [ ] `hearts.ts`の`consumeHearts()`
-- [ ] `hearts.router.ts`の`POST /consume`
-
-**実装予定エンドポイント:**
+**実装済みエンドポイント:**
 | メソッド | パス | 説明 | 認証 |
 |---------|------|------|------|
 | POST | /api/lesson/record | レッスン学習記録 | 必須 |
 
-### Phase 15: 管理画面
-- [ ] React + Vite設定
-- [ ] 駒塾・詰将棋管理画面
-- [ ] コンテンツ投入
+### Phase 15: 管理画面（作業中）
+
+**目標**: 詰将棋・レッスンのコンテンツ管理画面を実装
+
+詳細設計: `docs/designs/admin-panel.md`
+
+**技術スタック:** React + Vite + React Router + TailwindCSS
+
+**実装ステップ:**
+- [ ] Step 1: User.role追加
+- [ ] Step 2: 管理画面プロジェクト初期化
+- [ ] Step 3: 管理者認証ミドルウェア
+- [ ] Step 4: 詰将棋管理API
+- [ ] Step 5: 詰将棋管理UI
+- [ ] Step 6: レッスンDBスキーマ
+- [ ] Step 7: レッスンシードデータ
+- [ ] Step 8: レッスン管理API
+- [ ] Step 9: レッスン管理UI
+- [ ] Step 10: バックアップ機能
+- [ ] Step 11: アプリ側API切り替え
 
 ### Phase 16: 本番リリース準備
 - [ ] シードデータ作成

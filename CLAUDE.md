@@ -209,29 +209,46 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 14（作業中） |
-| 最終更新 | 2025-12-19 |
+| フェーズ | Phase 15（作業中） |
+| 最終更新 | 2025-12-22 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 14（作業中）- 駒塾API連携
+### Phase 15（作業中）- 管理画面
+
+**目標**: 詰将棋・レッスンのコンテンツ管理画面を実装
+
+詳細設計: `docs/designs/admin-panel.md`
+
+**技術スタック:**
+- React + Vite + React Router + TailwindCSS
+
+**実装ステップ:**
+- [ ] Step 1: User.role追加
+- [ ] Step 2: 管理画面プロジェクト初期化
+- [ ] Step 3: 管理者認証ミドルウェア
+- [ ] Step 4: 詰将棋管理API
+- [ ] Step 5: 詰将棋管理UI
+- [ ] Step 6: レッスンDBスキーマ
+- [ ] Step 7: レッスンシードデータ
+- [ ] Step 8: レッスン管理API
+- [ ] Step 9: レッスン管理UI
+- [ ] Step 10: バックアップ機能
+- [ ] Step 11: アプリ側API切り替え
+
+### Phase 14（完了）- 駒塾API連携
 
 **目標**: レッスン機能を詰将棋と同様の新APIパターンに移行
 
 詳細設計: `docs/designs/lesson-api.md`
 
-**設計ポイント:**
-- サーバー側でハート消費・ストリーク計算
-- レッスン完了時に常にストリーク更新（部分正解でもOK）
-- `isCorrect: true` = レッスン完了フラグとして扱う
+- [x] LessonRecord, LessonProblemAttemptテーブル追加
+- [x] POST /api/lesson/record エンドポイント追加
+- [x] 問題ごとの詳細記録（isCorrect, usedHint, usedSolution）
+- [x] 完了時間（completionSeconds）保存
+- [x] 復習モードではAPI記録スキップ
+- [x] 古いコード削除（useHeartsGate, useHeartsConsume, recordLearningCompletion）
 
-**作業内容:**
-- [ ] API側: lesson.schema.ts, lesson.router.ts（POST /record）
-- [ ] アプリ側: lib/api/lesson.ts（recordLesson()）
-- [ ] lesson/[courseId]/[lessonId].tsx を新API呼び出しに変更
-- [ ] lesson/result.tsx から recordLearningCompletion() 削除
-- [ ] `@deprecated`マークした古いコード削除
-
-**実装予定エンドポイント:**
+**実装済みエンドポイント:**
 | メソッド | パス | 説明 | 認証 |
 |---------|------|------|------|
 | POST | /api/lesson/record | レッスン学習記録 | 必須 |
