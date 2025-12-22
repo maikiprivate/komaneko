@@ -13,6 +13,10 @@
     "./utils/date": {
       "types": "./dist/utils/date.d.ts",
       "import": "./dist/utils/date.js"
+    },
+    "./brand/colors": {
+      "types": "./dist/brand/colors.d.ts",
+      "import": "./dist/brand/colors.js"
     }
   },
   "scripts": {

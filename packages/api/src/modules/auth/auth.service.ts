@@ -20,6 +20,7 @@ interface AuthResult {
     id: string
     email: string
     username: string
+    role: string
   }
   accessToken: string
 }
@@ -105,6 +106,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         username: user.username,
+        role: user.role,
       },
       accessToken,
     }
@@ -145,6 +147,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         username: user.username,
+        role: user.role,
       },
       accessToken,
     }
@@ -173,6 +176,7 @@ export class AuthService {
     id: string
     email: string
     username: string
+    role: string
   }> {
     const user = await this.repository.findUserById(userId)
     if (!user || !user.email || !user.username) {
@@ -183,6 +187,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       username: user.username,
+      role: user.role,
     }
   }
 }
