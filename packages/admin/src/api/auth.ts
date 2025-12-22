@@ -50,7 +50,8 @@ export async function logout(): Promise<void> {
  */
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    return await apiRequest<User>('/api/auth/me')
+    const response = await apiRequest<{ user: User }>('/api/auth/me')
+    return response.user
   } catch (error) {
     // 認証エラー（401/403）の場合のみトークンをクリア
     if (error instanceof ApiClientError && (error.statusCode === 401 || error.statusCode === 403)) {
