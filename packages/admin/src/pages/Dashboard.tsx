@@ -2,8 +2,14 @@
  * ダッシュボードページ
  */
 import { Link } from 'react-router-dom'
+import { ShogiBoardWithStands } from '../components/shogi/ShogiBoardWithStands'
+import { parseSfen } from '../lib/shogi/sfen'
+
+// デモ用の局面（持ち駒あり）
+const DEMO_SFEN = '4k4/9/4P4/9/9/9/9/9/4K4 b G2r2b2g4s4n4l17p 1'
 
 export function Dashboard() {
+  const demoBoard = parseSfen(DEMO_SFEN)
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">ダッシュボード</h1>
@@ -44,6 +50,23 @@ export function Dashboard() {
             レッスンを管理
           </Link>
         </div>
+      </div>
+
+      {/* 将棋盤コンポーネントのプレビュー（開発用） */}
+      <div className="mt-8 bg-white p-6 rounded-lg shadow">
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">
+          将棋盤コンポーネント（開発プレビュー）
+        </h2>
+        <div className="flex justify-center">
+          <ShogiBoardWithStands
+            boardState={demoBoard}
+            perspective="sente"
+            cellSize={44}
+          />
+        </div>
+        <p className="text-sm text-gray-500 mt-4 text-center">
+          SFEN: {DEMO_SFEN}
+        </p>
       </div>
     </div>
   )
