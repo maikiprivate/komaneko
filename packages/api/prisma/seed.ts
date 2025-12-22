@@ -2,8 +2,28 @@
  * シードデータ投入スクリプト
  */
 import { PrismaClient } from '@prisma/client'
+import { hashPassword } from '../src/shared/utils/password.js'
 
 const prisma = new PrismaClient()
+
+// 環境変数から管理者情報を取得
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+
+/**
+ * パスワードがルールに従っているかチェック
+ * - 8文字以上
+ * - 小文字を含む
+ * - 大文字を含む
+ * - 数字を含む
+ */
+function validatePassword(password: string): boolean {
+  if (password.length < 8) return false
+  if (!/[a-z]/.test(password)) return false
+  if (!/[A-Z]/.test(password)) return false
+  if (!/[0-9]/.test(password)) return false
+  return true
+}
 
 // データソース: /Users/maikishinbo/Documents/ソースコード/mate3_5_7_9_11
 // 先手番（b）のみを選択
@@ -48,15 +68,56 @@ const tsumeshogiProblems = [
 async function main() {
   console.log('Seeding database...')
 
-  // 既存データをクリア
-  await prisma.tsumeshogi.deleteMany()
-  console.log('Cleared existing tsumeshogi data')
+  // ========== 管理者アカウント ==========
+  if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+    if (!validatePassword(ADMIN_PASSWORD)) {
+      console.error('ADMIN_PASSWORD does not meet requirements:')
+      console.error('  - At least 8 characters')
+      console.error('  - At least one lowercase letter')
+      console.error('  - At least one uppercase letter')
+      console.error('  - At least one number')
+      process.exit(1)
+    }
 
-  // 詰将棋データの投入
-  const result = await prisma.tsumeshogi.createMany({
-    data: tsumeshogiProblems,
-  })
-  console.log(`Created ${result.count} tsumeshogi problems`)
+    const existingAdmin = await prisma.user.findUnique({
+      where: { email: ADMIN_EMAIL },
+    })
+
+    if (existingAdmin) {
+      // 既存のアカウントを管理者に更新
+      await prisma.user.update({
+        where: { email: ADMIN_EMAIL },
+        data: { role: 'admin' },
+      })
+      console.log(`Updated existing user to admin: ${ADMIN_EMAIL}`)
+    } else {
+      // 新規作成
+      const passwordHash = await hashPassword(ADMIN_PASSWORD)
+      await prisma.user.create({
+        data: {
+          email: ADMIN_EMAIL,
+          username: 'admin',
+          passwordHash,
+          isAnonymous: false,
+          role: 'admin',
+        },
+      })
+      console.log(`Created admin user: ${ADMIN_EMAIL}`)
+    }
+  } else {
+    console.log('Skipping admin creation (ADMIN_EMAIL or ADMIN_PASSWORD not set)')
+  }
+
+  // ========== 詰将棋データ ==========
+  const existingCount = await prisma.tsumeshogi.count()
+  if (existingCount > 0) {
+    console.log(`Skipping tsumeshogi seeding (${existingCount} problems already exist)`)
+  } else {
+    const result = await prisma.tsumeshogi.createMany({
+      data: tsumeshogiProblems,
+    })
+    console.log(`Created ${result.count} tsumeshogi problems`)
+  }
 
   // 投入結果を確認
   const counts = await prisma.tsumeshogi.groupBy({
