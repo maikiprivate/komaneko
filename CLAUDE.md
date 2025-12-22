@@ -217,14 +217,17 @@ users ─────┬──── sessions（匿名対応）
 
 **目標**: 詰将棋・レッスンのコンテンツ管理画面を実装
 
-詳細設計: `docs/designs/admin-panel.md`
+詳細設計:
+- `docs/designs/admin-panel.md` - 管理画面全体設計
+- `docs/designs/lesson-admin-ui.md` - レッスン管理UI設計（作業中）
 
 **技術スタック:**
 - React + Vite + React Router + TailwindCSS
 
 **実装ステップ:**
-- [ ] Step 1: User.role追加
-- [ ] Step 2: 管理画面プロジェクト初期化
+- [x] Step 1: User.role追加
+- [x] Step 2: 管理画面プロジェクト初期化
+- [ ] Step 2.5: レッスン管理UIモック（作業中）
 - [ ] Step 3: 管理者認証ミドルウェア
 - [ ] Step 4: 詰将棋管理API
 - [ ] Step 5: 詰将棋管理UI
@@ -234,6 +237,18 @@ users ─────┬──── sessions（匿名対応）
 - [ ] Step 9: レッスン管理UI
 - [ ] Step 10: バックアップ機能
 - [ ] Step 11: アプリ側API切り替え
+
+**Step 2完了内容:**
+- Vite + React + TypeScript + TailwindCSS 環境構築
+- React Router によるルーティング（認証ガード付き）
+- 認証フック（useAuth）- role=admin チェック
+- APIクライアント（Bearer認証）
+- ログイン画面・ダッシュボード・レイアウト
+
+**Step 2.5 レッスン管理UIモック:**
+- 将棋盤共通コンポーネント（ShogiBoard, Piece, PieceStand）
+- レッスン管理一覧（ネスト/アコーディオン型）
+- 問題編集ページ（将棋盤GUI）
 
 ### Phase 14（完了）- 駒塾API連携
 
