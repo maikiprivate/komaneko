@@ -6,6 +6,7 @@ import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { LessonList } from './pages/lesson/LessonList'
+import { ProblemEdit } from './pages/lesson/ProblemEdit'
 import { useAuth } from './hooks/useAuth'
 import type { ReactNode } from 'react'
 
@@ -82,7 +83,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'lessons/problems/:lessonId',
-        element: <div className="p-8"><h1 className="text-2xl font-bold">問題編集</h1><p className="text-gray-500 mt-2">Step 5で実装中</p></div>,
+        element: <ProblemEdit />,
       },
       {
         path: 'backup',

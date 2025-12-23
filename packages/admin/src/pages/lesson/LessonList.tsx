@@ -63,7 +63,7 @@ function ActionButton({
 }: {
   children: React.ReactNode
   variant?: 'primary' | 'secondary' | 'danger'
-  onClick?: () => void
+  onClick?: (e: React.MouseEvent) => void
   disabled?: boolean
 }) {
   const styles = {

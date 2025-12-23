@@ -92,10 +92,26 @@ function parseHandString(handStr: string): { sente: CapturedPieces; gote: Captur
 
 /**
  * SFEN文字列を解析してBoardStateを返す
+ *
+ * 不正なSFENが渡された場合は空の盤面を返す
  */
 export function parseSfen(sfen: string): BoardState {
+  // 入力検証
+  if (!sfen || typeof sfen !== 'string') {
+    return createEmptyBoardState()
+  }
+
   const parts = sfen.trim().split(/\s+/)
+  if (parts.length < 2) {
+    return createEmptyBoardState()
+  }
+
   const [boardStr, turnStr, handStr] = parts
+
+  // 盤面文字列の基本検証
+  if (!boardStr || !boardStr.includes('/')) {
+    return createEmptyBoardState()
+  }
 
   const board = parseBoardString(boardStr)
   const turn: Player = turnStr === 'b' ? 'sente' : 'gote'
@@ -118,6 +134,17 @@ export const INITIAL_SFEN = 'lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNS
  */
 export function createEmptyBoard(): Board {
   return Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => null))
+}
+
+/**
+ * 空のBoardStateを作成
+ */
+export function createEmptyBoardState(): BoardState {
+  return {
+    board: createEmptyBoard(),
+    capturedPieces: { sente: {}, gote: {} },
+    turn: 'sente',
+  }
 }
 
 /**

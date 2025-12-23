@@ -4,7 +4,7 @@
  * 階層構造: Course → Section → Lesson → Problem
  */
 
-import type { Position } from '../lib/shogi/types'
+import type { CorrectMove } from '../lib/lesson/types'
 
 // =============================================================================
 // 型定義（管理画面用）
@@ -13,12 +13,8 @@ import type { Position } from '../lib/shogi/types'
 /** コースのステータス（管理用） */
 export type CourseStatus = 'draft' | 'published' | 'archived'
 
-/** 正解の手 */
-export interface CorrectMove {
-  from: Position
-  to: Position
-  promote?: boolean
-}
+// CorrectMove は types.ts から import
+export type { CorrectMove }
 
 /** 問題 */
 export interface Problem {

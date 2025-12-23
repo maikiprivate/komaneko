@@ -93,3 +93,22 @@ export const PIECE_NAMES: Record<PieceType, string> = {
 export const HAND_PIECE_TYPES: PieceType[] = [
   'hi', 'kaku', 'kin', 'gin', 'kei', 'kyo', 'fu',
 ]
+
+/** 盤上の駒を動かす手 */
+export interface MoveAction {
+  type: 'move'
+  from: Position
+  to: Position
+  piece: PieceType
+  promote: boolean
+}
+
+/** 持ち駒を打つ手 */
+export interface DropAction {
+  type: 'drop'
+  to: Position
+  piece: PieceType
+}
+
+/** 手（移動または打ち） */
+export type Move = MoveAction | DropAction
