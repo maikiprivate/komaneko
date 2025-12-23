@@ -77,12 +77,12 @@ export const router = createBrowserRouter([
         element: <div className="p-8"><h1 className="text-2xl font-bold">詰将棋管理</h1><p className="text-gray-500 mt-2">Step 5で実装</p></div>,
       },
       {
-        path: 'lesson',
+        path: 'lessons',
         element: <LessonList />,
       },
       {
-        path: 'lesson/problems/:lessonId',
-        element: <div className="p-8"><h1 className="text-2xl font-bold">問題編集</h1><p className="text-gray-500 mt-2">Step 5で実装</p></div>,
+        path: 'lessons/problems/:lessonId',
+        element: <div className="p-8"><h1 className="text-2xl font-bold">問題編集</h1><p className="text-gray-500 mt-2">Step 5で実装中</p></div>,
       },
       {
         path: 'backup',

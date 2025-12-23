@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 const navItems = [
   { path: '/', label: 'ダッシュボード', icon: '📊' },
   { path: '/tsumeshogi', label: '詰将棋', icon: '♟️' },
-  { path: '/lesson', label: 'レッスン', icon: '📚' },
+  { path: '/lessons', label: 'レッスン', icon: '📚' },
   { path: '/backup', label: 'バックアップ', icon: '💾' },
 ]
 

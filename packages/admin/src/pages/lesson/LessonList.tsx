@@ -149,7 +149,7 @@ function LessonRow({
       </div>
       <div className="flex items-center gap-2">
         <Link
-          to={`/lesson/problems/${lesson.id}`}
+          to={`/lessons/problems/${lesson.id}`}
           onClick={(e) => e.stopPropagation()}
         >
           <ActionButton variant="primary">問題編集</ActionButton>

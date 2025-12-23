@@ -44,7 +44,7 @@ export function Dashboard() {
             詰将棋を追加
           </Link>
           <Link
-            to="/lesson"
+            to="/lessons"
             className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
           >
             レッスンを管理
