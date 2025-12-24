@@ -13,6 +13,7 @@ import { parseSfen, boardStateToSfen } from '../../lib/shogi/sfen'
 import { getLessonById, type Problem } from '../../mocks/lessonData'
 import type { EditorMode } from '../../lib/lesson/types'
 import type { PieceType, Player } from '../../lib/shogi/types'
+import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
 
 // =============================================================================
@@ -459,6 +460,68 @@ export function ProblemEdit() {
     setSelectedPalettePiece(null)
   }, [selectedProblem, problems, selectedIndex])
 
+  // 駒台クリック（持ち駒追加）
+  const handleStandClick = useCallback((player: Player) => {
+    if (mode !== 'setup' || !selectedProblem || !selectedPalettePiece) return
+
+    // 成駒は持ち駒にできない
+    if (!HAND_PIECE_TYPES.includes(selectedPalettePiece)) return
+
+    const currentBoard = parseSfen(selectedProblem.sfen)
+    const newCapturedPieces = {
+      sente: { ...currentBoard.capturedPieces.sente },
+      gote: { ...currentBoard.capturedPieces.gote },
+    }
+
+    // 持ち駒を追加
+    const currentCount = newCapturedPieces[player][selectedPalettePiece] ?? 0
+    newCapturedPieces[player][selectedPalettePiece] = currentCount + 1
+
+    const newBoardState = {
+      ...currentBoard,
+      capturedPieces: newCapturedPieces,
+    }
+    const newSfen = boardStateToSfen(newBoardState)
+
+    const newProblems = [...problems]
+    newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+    setProblems(newProblems)
+  }, [mode, selectedProblem, selectedPalettePiece, problems, selectedIndex])
+
+  const handleSenteStandClick = useCallback(() => handleStandClick('sente'), [handleStandClick])
+  const handleGoteStandClick = useCallback(() => handleStandClick('gote'), [handleStandClick])
+
+  // 持ち駒クリック（削除）
+  const handleHandPieceClick = useCallback((pieceType: PieceType) => {
+    if (mode !== 'setup' || !selectedProblem) return
+
+    const currentBoard = parseSfen(selectedProblem.sfen)
+    const newCapturedPieces = {
+      sente: { ...currentBoard.capturedPieces.sente },
+      gote: { ...currentBoard.capturedPieces.gote },
+    }
+
+    // 先手の持ち駒から削除を試みる（先手駒台がクリック可能なので）
+    const senteCount = newCapturedPieces.sente[pieceType] ?? 0
+    if (senteCount > 0) {
+      if (senteCount === 1) {
+        delete newCapturedPieces.sente[pieceType]
+      } else {
+        newCapturedPieces.sente[pieceType] = senteCount - 1
+      }
+
+      const newBoardState = {
+        ...currentBoard,
+        capturedPieces: newCapturedPieces,
+      }
+      const newSfen = boardStateToSfen(newBoardState)
+
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+      setProblems(newProblems)
+    }
+  }, [mode, selectedProblem, problems, selectedIndex])
+
   // レッスンが見つからない場合
   if (!lessonData) {
     return (
@@ -518,6 +581,9 @@ export function ProblemEdit() {
                   perspective="sente"
                   cellSize={40}
                   onCellClick={mode === 'setup' ? handleCellClick : undefined}
+                  onSenteStandClick={mode === 'setup' ? handleSenteStandClick : undefined}
+                  onGoteStandClick={mode === 'setup' ? handleGoteStandClick : undefined}
+                  onHandPieceClick={mode === 'setup' ? handleHandPieceClick : undefined}
                 />
               </div>
             </div>

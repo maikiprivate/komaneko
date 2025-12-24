@@ -25,6 +25,8 @@ interface PieceStandProps {
   width?: number
   /** 持ち駒クリック時のコールバック */
   onPieceClick?: (pieceType: PieceType) => void
+  /** 駒台の空きエリアクリック時のコールバック（エディタ用） */
+  onStandClick?: () => void
   /** 選択中の駒 */
   selectedPiece?: PieceType | null
   /** ヒント表示中の駒 */
@@ -38,6 +40,7 @@ export function PieceStand({
   label,
   width,
   onPieceClick,
+  onStandClick,
   selectedPiece,
   hintPiece,
 }: PieceStandProps) {
@@ -48,12 +51,15 @@ export function PieceStand({
 
   // タップ可能かどうか（相手の駒台はタップ不可）
   const isClickable = !isOpponent && !!onPieceClick
+  // 駒台全体がクリック可能か（エディタ用）
+  const isStandClickable = !!onStandClick
 
   // 駒台の高さ（駒の有無に関わらず一定）
   const standHeight = pieceSize + 14
 
   return (
     <div
+      onClick={isStandClickable ? onStandClick : undefined}
       style={{
         display: 'flex',
         flexDirection: containerDirection,
@@ -68,6 +74,7 @@ export function PieceStand({
         height: standHeight,
         width: width,
         boxSizing: 'border-box',
+        cursor: isStandClickable ? 'pointer' : 'default',
       }}
     >
       {label && (
@@ -106,7 +113,10 @@ export function PieceStand({
           return (
             <div
               key={pieceType}
-              onClick={() => isClickable && onPieceClick(pieceType)}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (isClickable) onPieceClick(pieceType)
+              }}
               style={{
                 position: 'relative',
                 borderRadius: 4,
