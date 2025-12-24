@@ -13,16 +13,22 @@ interface ShogiBoardWithStandsProps {
   cellSize?: number
   /** 盤面セルクリック時 */
   onCellClick?: (row: number, col: number) => void
-  /** 持ち駒クリック時 */
+  /** 持ち駒クリック時（下側の駒台のみ、後方互換用） */
   onHandPieceClick?: (pieceType: PieceType) => void
+  /** 先手持ち駒クリック時 */
+  onSenteHandPieceClick?: (pieceType: PieceType) => void
+  /** 後手持ち駒クリック時 */
+  onGoteHandPieceClick?: (pieceType: PieceType) => void
   /** 先手駒台クリック時（エディタ用） */
   onSenteStandClick?: () => void
   /** 後手駒台クリック時（エディタ用） */
   onGoteStandClick?: () => void
   /** 選択中のマス */
   selectedPosition?: Position | null
-  /** 選択中の持ち駒 */
+  /** 選択中の持ち駒（先手） */
   selectedHandPiece?: PieceType | null
+  /** 選択中の持ち駒（後手） */
+  selectedGoteHandPiece?: PieceType | null
   /** 移動可能なマス一覧 */
   possibleMoves?: Position[]
   /** 最後に指された手 */
@@ -39,10 +45,13 @@ export function ShogiBoardWithStands({
   cellSize = 40,
   onCellClick,
   onHandPieceClick,
+  onSenteHandPieceClick,
+  onGoteHandPieceClick,
   onSenteStandClick,
   onGoteStandClick,
   selectedPosition,
   selectedHandPiece,
+  selectedGoteHandPiece,
   possibleMoves = [],
   lastMove,
   hintHighlight,
@@ -61,6 +70,16 @@ export function ShogiBoardWithStands({
   const topStandClick = perspective === 'sente' ? onGoteStandClick : onSenteStandClick
   const bottomStandClick = perspective === 'sente' ? onSenteStandClick : onGoteStandClick
 
+  // 視点に応じて持ち駒クリックハンドラを決定
+  const topPieceClick = perspective === 'sente' ? onGoteHandPieceClick : onSenteHandPieceClick
+  const bottomPieceClick = perspective === 'sente'
+    ? (onSenteHandPieceClick ?? onHandPieceClick)
+    : (onGoteHandPieceClick ?? onHandPieceClick)
+
+  // 視点に応じて選択状態を決定
+  const topSelectedPiece = perspective === 'sente' ? selectedGoteHandPiece : selectedHandPiece
+  const bottomSelectedPiece = perspective === 'sente' ? selectedHandPiece : selectedGoteHandPiece
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
       {/* 上側の駒台（相手） */}
@@ -70,7 +89,9 @@ export function ShogiBoardWithStands({
         pieceSize={cellSize - 8}
         label={top.label}
         width={boardWidth}
+        onPieceClick={topPieceClick}
         onStandClick={topStandClick}
+        selectedPiece={topSelectedPiece}
       />
 
       {/* 将棋盤 */}
@@ -92,9 +113,9 @@ export function ShogiBoardWithStands({
         pieceSize={cellSize - 8}
         label={bottom.label}
         width={boardWidth}
-        onPieceClick={onHandPieceClick}
+        onPieceClick={bottomPieceClick}
         onStandClick={bottomStandClick}
-        selectedPiece={selectedHandPiece}
+        selectedPiece={bottomSelectedPiece}
         hintPiece={hintHandPiece}
       />
     </div>

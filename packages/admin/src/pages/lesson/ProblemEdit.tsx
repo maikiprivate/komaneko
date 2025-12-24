@@ -6,15 +6,18 @@
  * - 右パネル: 問題リスト
  */
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShogiBoardWithStands } from '../../components/shogi/ShogiBoardWithStands'
 import { parseSfen, boardStateToSfen } from '../../lib/shogi/sfen'
 import { getLessonById, type Problem } from '../../mocks/lessonData'
 import type { EditorMode } from '../../lib/lesson/types'
-import type { PieceType, Player } from '../../lib/shogi/types'
+import type { PieceType, Player, Position } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
+import { getPossibleMoves, getDropPositions, canPromote, mustPromote, makeMove, makeDrop } from '../../lib/shogi/moveGenerator'
+import type { MoveNode } from '../../lib/lesson/types'
+import { createMoveNode, positionToSfenMove, dropToSfenMove } from '../../lib/lesson/moveTreeUtils'
 
 // =============================================================================
 // エディタヘッダー
@@ -114,30 +117,37 @@ function EditorPanel({
   )
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-3 space-y-2">
-      {/* 1行目: 初期配置・手順設定 */}
-      <div className="flex items-center justify-center gap-2">
-        <button
-          onClick={() => onModeChange('setup')}
-          className={`text-sm font-medium transition-colors ${
-            mode === 'setup'
-              ? 'text-slate-800'
-              : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          初期配置
-        </button>
-        <span className="text-slate-300">・</span>
-        <button
-          onClick={() => onModeChange('moves')}
-          className={`text-sm font-medium transition-colors ${
-            mode === 'moves'
-              ? 'text-slate-800'
-              : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          手順設定
-        </button>
+    <div className="bg-white rounded-lg border border-slate-200 p-3 space-y-3">
+      {/* モード切り替えタブ */}
+      <div className="flex items-center justify-center">
+        <div className="inline-flex rounded-lg bg-slate-100 p-1">
+          <button
+            onClick={() => onModeChange('setup')}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+              mode === 'setup'
+                ? 'bg-white text-slate-800 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
+            初期配置
+          </button>
+          <button
+            onClick={() => onModeChange('moves')}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+              mode === 'moves'
+                ? 'bg-white text-slate-800 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+            手順設定
+          </button>
+        </div>
       </div>
 
       {/* 初期配置モード時のみ駒パレット表示 */}
@@ -187,32 +197,112 @@ function EditorPanel({
           </div>
         </>
       )}
+
+      {/* 手順設定モード時のヒント */}
+      {mode === 'moves' && (
+        <div className="text-center text-xs text-slate-400 py-1">
+          駒をクリックして手を入力
+        </div>
+      )}
     </div>
   )
 }
 
 // =============================================================================
-// 手順ツリー（プレースホルダー）
+// 成り確認ダイアログ
 // =============================================================================
 
-function MoveTreePanel() {
+function PromotionDialog({
+  pieceType,
+  onChoice,
+}: {
+  pieceType: PieceType
+  onChoice: (promote: boolean) => void
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-xs w-full mx-4">
+        <h3 className="text-lg font-medium text-slate-800 mb-4 text-center">
+          成りますか？
+        </h3>
+        <div className="flex gap-3">
+          <button
+            onClick={() => onChoice(true)}
+            className="flex-1 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors"
+          >
+            成る
+          </button>
+          <button
+            onClick={() => onChoice(false)}
+            className="flex-1 py-3 border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            不成
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// 手順ツリーパネル
+// =============================================================================
+
+function MoveTreePanel({
+  nodes,
+  currentTurn,
+  onClear,
+}: {
+  nodes: MoveNode[]
+  currentTurn: Player
+  onClear: () => void
+}) {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
         <h2 className="font-medium text-slate-700">手順ツリー</h2>
+        <span className="text-xs text-slate-400">
+          {currentTurn === 'sente' ? '先手番' : '後手番'}
+        </span>
       </div>
-      <div className="flex-1 p-4">
-        <div className="text-center py-8 text-slate-400 text-sm">
-          手順設定モードで<br />盤面をクリックして手を追加
-        </div>
+      <div className="flex-1 p-4 overflow-auto">
+        {nodes.length === 0 ? (
+          <div className="text-center py-8 text-slate-400 text-sm">
+            手順設定モードで<br />盤面をクリックして手を追加
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {nodes.map((node, index) => (
+              <div
+                key={node.id}
+                className={`flex items-center gap-2 px-2 py-1 rounded text-sm ${
+                  node.isPlayerMove ? 'bg-blue-50' : 'bg-orange-50'
+                }`}
+              >
+                <span className="text-slate-400 w-5">{index + 1}.</span>
+                <span className={node.isPlayerMove ? 'text-blue-700' : 'text-orange-700'}>
+                  {node.isPlayerMove ? '▶' : '△'} {node.move}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <div className="px-4 py-3 border-t border-slate-100">
+      <div className="px-4 py-3 border-t border-slate-100 flex justify-between">
         <button className="flex items-center gap-2 text-xs text-primary hover:text-primary-dark font-medium transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           分岐を追加
         </button>
+        {nodes.length > 0 && (
+          <button
+            onClick={onClear}
+            className="text-xs text-slate-400 hover:text-red-600 transition-colors"
+          >
+            クリア
+          </button>
+        )}
       </div>
     </div>
   )
@@ -337,18 +427,47 @@ export function ProblemEdit() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [problems, setProblems] = useState<Problem[]>(lessonData?.lesson.problems ?? [])
 
-  // 駒パレット状態
+  // 駒パレット状態（初期配置モード用）
   const [selectedPalettePiece, setSelectedPalettePiece] = useState<PieceType | null>(null)
   const [selectedOwner, setSelectedOwner] = useState<Player>('sente')
+
+  // 手順設定モード用状態
+  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
+  const [selectedHandPiece, setSelectedHandPiece] = useState<PieceType | null>(null)
+  const [selectedHandPieceOwner, setSelectedHandPieceOwner] = useState<Player>('sente')
+  const [possibleMoves, setPossibleMoves] = useState<Position[]>([])
+  const [pendingPromotion, setPendingPromotion] = useState<{
+    from: Position
+    to: Position
+    pieceType: PieceType
+  } | null>(null)
+  const [moveTreeNodes, setMoveTreeNodes] = useState<MoveNode[]>([])
+  const [currentTurn, setCurrentTurn] = useState<Player>('sente')
 
   // 現在選択中の問題
   const selectedProblem = problems[selectedIndex]
 
-  // 盤面状態
-  const boardState = useMemo(() => {
+  // 初期盤面状態（問題のSFENから）
+  const initialBoardState = useMemo(() => {
     if (!selectedProblem) return createEmptyBoardState()
     return parseSfen(selectedProblem.sfen)
   }, [selectedProblem?.sfen])
+
+  // 手順設定モード用の現在盤面
+  const [moveModeBoardState, setMoveModeBoardState] = useState(initialBoardState)
+
+  // モードに応じて使用する盤面を選択
+  const boardState = mode === 'moves' ? moveModeBoardState : initialBoardState
+
+  // モード切り替え・問題切り替え時に手順モード状態をリセット
+  useEffect(() => {
+    setMoveModeBoardState(initialBoardState)
+    setMoveTreeNodes([])
+    setCurrentTurn('sente')
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [initialBoardState, mode])
 
   // 指示文変更
   const handleInstructionChange = useCallback((value: string) => {
@@ -417,8 +536,8 @@ export function ProblemEdit() {
   }, [])
 
   // 盤面セルクリック（初期配置モード）
-  const handleCellClick = useCallback((row: number, col: number) => {
-    if (mode !== 'setup' || !selectedProblem) return
+  const handleSetupCellClick = useCallback((row: number, col: number) => {
+    if (!selectedProblem) return
 
     const currentBoard = parseSfen(selectedProblem.sfen)
     const newBoard = currentBoard.board.map((r) => [...r])
@@ -448,7 +567,171 @@ export function ProblemEdit() {
     const newProblems = [...problems]
     newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
     setProblems(newProblems)
-  }, [mode, selectedProblem, selectedPalettePiece, selectedOwner, problems, selectedIndex])
+  }, [selectedProblem, selectedPalettePiece, selectedOwner, problems, selectedIndex])
+
+  // 盤面セルクリック（手順設定モード）
+  const handleMovesCellClick = useCallback((row: number, col: number) => {
+    const clickedPos = { row, col }
+    const piece = boardState.board[row][col]
+
+    // 持ち駒が選択されていて、打てる位置の場合
+    if (selectedHandPiece && possibleMoves.some(m => m.row === row && m.col === col)) {
+      executeDrop(selectedHandPiece, clickedPos)
+      return
+    }
+
+    // 移動先が選択されている場合
+    if (selectedPosition && possibleMoves.some(m => m.row === row && m.col === col)) {
+      const fromPiece = boardState.board[selectedPosition.row][selectedPosition.col]
+      if (!fromPiece) return
+
+      // 成り判定
+      if (canPromote(fromPiece.type, selectedPosition, clickedPos, currentTurn)) {
+        if (mustPromote(fromPiece.type, clickedPos, currentTurn)) {
+          // 強制成り
+          executeMove(selectedPosition, clickedPos, true)
+        } else {
+          // 成り選択ダイアログ表示
+          setPendingPromotion({
+            from: selectedPosition,
+            to: clickedPos,
+            pieceType: fromPiece.type,
+          })
+        }
+      } else {
+        // 成れない
+        executeMove(selectedPosition, clickedPos, false)
+      }
+      return
+    }
+
+    // 自分の駒をクリックした場合：選択して合法手を表示
+    if (piece && piece.owner === currentTurn) {
+      const moves = getPossibleMoves(boardState.board, clickedPos, piece)
+      setSelectedPosition(clickedPos)
+      setSelectedHandPiece(null)
+      setPossibleMoves(moves)
+      return
+    }
+
+    // それ以外：選択解除
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [boardState, selectedPosition, selectedHandPiece, possibleMoves, currentTurn])
+
+  // 手を実行（盤上の移動）
+  const executeMove = useCallback((from: Position, to: Position, promote: boolean) => {
+    const sfenMove = positionToSfenMove(from, to, promote)
+    const isPlayerMove = currentTurn === 'sente' // 先手がプレイヤー想定
+
+    // 新しいノードを作成
+    const newNode = createMoveNode(sfenMove, isPlayerMove)
+
+    // ツリーに追加（現在はルートに追加）
+    setMoveTreeNodes(prev => [...prev, newNode])
+
+    // 盤面を更新
+    const newBoardState = makeMove(moveModeBoardState, from, to, promote)
+    if (newBoardState) {
+      setMoveModeBoardState(newBoardState)
+    }
+
+    // 手番を切り替え
+    setCurrentTurn(prev => prev === 'sente' ? 'gote' : 'sente')
+
+    // 選択状態をリセット
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [currentTurn, moveModeBoardState])
+
+  // 駒を打つ
+  const executeDrop = useCallback((pieceType: PieceType, to: Position) => {
+    const sfenMove = dropToSfenMove(pieceType, to)
+    const isPlayerMove = selectedHandPieceOwner === 'sente'
+
+    // 新しいノードを作成
+    const newNode = createMoveNode(sfenMove, isPlayerMove)
+
+    // ツリーに追加
+    setMoveTreeNodes(prev => [...prev, newNode])
+
+    // 盤面を更新
+    const newBoardState = makeDrop(moveModeBoardState, pieceType, to, selectedHandPieceOwner)
+    if (newBoardState) {
+      setMoveModeBoardState(newBoardState)
+    }
+
+    // 手番を切り替え
+    setCurrentTurn(prev => prev === 'sente' ? 'gote' : 'sente')
+
+    // 選択状態をリセット
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [selectedHandPieceOwner, moveModeBoardState])
+
+  // 成り選択
+  const handlePromotionChoice = useCallback((promote: boolean) => {
+    if (!pendingPromotion) return
+    executeMove(pendingPromotion.from, pendingPromotion.to, promote)
+    setPendingPromotion(null)
+  }, [pendingPromotion, executeMove])
+
+  // 手順クリア
+  const handleMoveTreeClear = useCallback(() => {
+    setMoveModeBoardState(initialBoardState)
+    setMoveTreeNodes([])
+    setCurrentTurn('sente')
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [initialBoardState])
+
+  // 持ち駒クリック（手順設定モード：駒を打つために選択）
+  const handleMovesHandPieceClick = useCallback((pieceType: PieceType, owner: Player) => {
+    // 手番のプレイヤーでなければ無視
+    if (owner !== currentTurn) return
+
+    // 既に選択中の駒を再クリックした場合は解除
+    if (selectedHandPiece === pieceType && selectedHandPieceOwner === owner) {
+      setSelectedHandPiece(null)
+      setPossibleMoves([])
+      return
+    }
+
+    // 持ち駒を持っているか確認
+    const handPieces = boardState.capturedPieces[owner]
+    if (!handPieces[pieceType] || handPieces[pieceType] === 0) return
+
+    // 打てる場所を計算
+    const dropPositions = getDropPositions(boardState.board, pieceType, owner)
+
+    setSelectedPosition(null)
+    setSelectedHandPiece(pieceType)
+    setSelectedHandPieceOwner(owner)
+    setPossibleMoves(dropPositions)
+  }, [selectedHandPiece, selectedHandPieceOwner, boardState, currentTurn])
+
+  // 先手持ち駒クリック
+  const handleSenteHandPieceClick = useCallback((pieceType: PieceType) => {
+    handleMovesHandPieceClick(pieceType, 'sente')
+  }, [handleMovesHandPieceClick])
+
+  // 後手持ち駒クリック
+  const handleGoteHandPieceClick = useCallback((pieceType: PieceType) => {
+    handleMovesHandPieceClick(pieceType, 'gote')
+  }, [handleMovesHandPieceClick])
+
+  // 統合クリックハンドラ
+  const handleCellClick = useCallback((row: number, col: number) => {
+    if (mode === 'setup') {
+      handleSetupCellClick(row, col)
+    } else {
+      handleMovesCellClick(row, col)
+    }
+  }, [mode, handleSetupCellClick, handleMovesCellClick])
 
   // 盤面リセット
   const handleBoardReset = useCallback(() => {
@@ -580,10 +863,16 @@ export function ProblemEdit() {
                   boardState={boardState}
                   perspective="sente"
                   cellSize={40}
-                  onCellClick={mode === 'setup' ? handleCellClick : undefined}
+                  onCellClick={handleCellClick}
                   onSenteStandClick={mode === 'setup' ? handleSenteStandClick : undefined}
                   onGoteStandClick={mode === 'setup' ? handleGoteStandClick : undefined}
                   onHandPieceClick={mode === 'setup' ? handleHandPieceClick : undefined}
+                  onSenteHandPieceClick={mode === 'moves' ? handleSenteHandPieceClick : undefined}
+                  onGoteHandPieceClick={mode === 'moves' ? handleGoteHandPieceClick : undefined}
+                  selectedPosition={mode === 'moves' ? selectedPosition : undefined}
+                  selectedHandPiece={mode === 'moves' && selectedHandPieceOwner === 'sente' ? selectedHandPiece : undefined}
+                  selectedGoteHandPiece={mode === 'moves' && selectedHandPieceOwner === 'gote' ? selectedHandPiece : undefined}
+                  possibleMoves={mode === 'moves' ? possibleMoves : undefined}
                 />
               </div>
             </div>
@@ -616,9 +905,21 @@ export function ProblemEdit() {
 
         {/* 右パネル: 手順ツリー */}
         <div className="w-[260px] flex-shrink-0 bg-white border-l border-slate-200">
-          <MoveTreePanel />
+          <MoveTreePanel
+            nodes={moveTreeNodes}
+            currentTurn={currentTurn}
+            onClear={handleMoveTreeClear}
+          />
         </div>
       </div>
+
+      {/* 成り確認ダイアログ */}
+      {pendingPromotion && (
+        <PromotionDialog
+          pieceType={pendingPromotion.pieceType}
+          onChoice={handlePromotionChoice}
+        />
+      )}
     </div>
   )
 }

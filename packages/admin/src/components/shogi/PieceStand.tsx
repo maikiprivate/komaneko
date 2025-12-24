@@ -49,8 +49,8 @@ export function PieceStand({
   // 相手はラベル左、自分はラベル右
   const containerDirection = isOpponent ? 'row' : 'row-reverse'
 
-  // タップ可能かどうか（相手の駒台はタップ不可）
-  const isClickable = !isOpponent && !!onPieceClick
+  // タップ可能かどうか（onPieceClickが渡されていればクリック可能）
+  const isClickable = !!onPieceClick
   // 駒台全体がクリック可能か（エディタ用）
   const isStandClickable = !!onStandClick
 
