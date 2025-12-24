@@ -62,44 +62,7 @@ function EditorHeader({
 }
 
 // =============================================================================
-// モード切替
-// =============================================================================
-
-function ModeToggle({
-  mode,
-  onChange,
-}: {
-  mode: EditorMode
-  onChange: (mode: EditorMode) => void
-}) {
-  return (
-    <div className="inline-flex p-1 bg-slate-100 rounded-lg">
-      <button
-        onClick={() => onChange('setup')}
-        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-          mode === 'setup'
-            ? 'bg-white text-slate-800 shadow-sm'
-            : 'text-slate-500 hover:text-slate-700'
-        }`}
-      >
-        初期配置
-      </button>
-      <button
-        onClick={() => onChange('moves')}
-        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-          mode === 'moves'
-            ? 'bg-white text-slate-800 shadow-sm'
-            : 'text-slate-500 hover:text-slate-700'
-        }`}
-      >
-        手順設定
-      </button>
-    </div>
-  )
-}
-
-// =============================================================================
-// 駒パレット（初期配置モード用）
+// 編集パネル（モード切替 + 駒パレット統合）
 // =============================================================================
 
 /** 通常駒 */
@@ -112,19 +75,23 @@ const PROMOTED_PIECES: PieceType[] = [
   'ryu', 'uma', 'narigin', 'narikei', 'narikyo', 'to',
 ]
 
-function PiecePalette({
+function EditorPanel({
+  mode,
+  onModeChange,
   selectedPiece,
   selectedOwner,
-  onSelect,
+  onPieceSelect,
 }: {
+  mode: EditorMode
+  onModeChange: (mode: EditorMode) => void
   selectedPiece: PieceType | null
   selectedOwner: Player
-  onSelect: (piece: PieceType | null, owner: Player) => void
+  onPieceSelect: (piece: PieceType | null, owner: Player) => void
 }) {
   const renderPieceButton = (piece: PieceType) => (
     <button
       key={piece}
-      onClick={() => onSelect(selectedPiece === piece ? null : piece, selectedOwner)}
+      onClick={() => onPieceSelect(selectedPiece === piece ? null : piece, selectedOwner)}
       className={`w-9 h-9 rounded border-2 transition-all flex items-center justify-center ${
         selectedPiece === piece
           ? 'border-primary bg-primary/10'
@@ -141,54 +108,83 @@ function PiecePalette({
   )
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-3">
-      {/* ヘッダー: 先手/後手 + 選択解除 */}
-      <div className="flex items-center gap-3 mb-2">
-        {/* 先手/後手トグル */}
-        <div className="inline-flex p-0.5 bg-slate-100 rounded">
-          <button
-            onClick={() => onSelect(selectedPiece, 'sente')}
-            className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
-              selectedOwner === 'sente'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            先手
-          </button>
-          <button
-            onClick={() => onSelect(selectedPiece, 'gote')}
-            className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
-              selectedOwner === 'gote'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            後手
-          </button>
-        </div>
-        {/* 選択解除 */}
-        {selectedPiece && (
-          <button
-            onClick={() => onSelect(null, selectedOwner)}
-            className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            解除
-          </button>
-        )}
+    <div className="bg-white rounded-lg border border-slate-200 p-3 space-y-2">
+      {/* 1行目: 初期配置・手順設定 */}
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => onModeChange('setup')}
+          className={`text-sm font-medium transition-colors ${
+            mode === 'setup'
+              ? 'text-slate-800'
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          初期配置
+        </button>
+        <span className="text-slate-300">・</span>
+        <button
+          onClick={() => onModeChange('moves')}
+          className={`text-sm font-medium transition-colors ${
+            mode === 'moves'
+              ? 'text-slate-800'
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          手順設定
+        </button>
       </div>
 
-      {/* 駒一覧（2行） */}
-      <div className="space-y-1">
-        {/* 通常駒 */}
-        <div className="flex items-center gap-1">
-          {NORMAL_PIECES.map(renderPieceButton)}
-        </div>
-        {/* 成駒 */}
-        <div className="flex items-center gap-1">
-          {PROMOTED_PIECES.map(renderPieceButton)}
-        </div>
-      </div>
+      {/* 初期配置モード時のみ駒パレット表示 */}
+      {mode === 'setup' && (
+        <>
+          {/* 2行目: 先手・後手 */}
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => onPieceSelect(selectedPiece, 'sente')}
+              className={`text-sm font-medium transition-colors ${
+                selectedOwner === 'sente'
+                  ? 'text-slate-800'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              先手
+            </button>
+            <span className="text-slate-300">・</span>
+            <button
+              onClick={() => onPieceSelect(selectedPiece, 'gote')}
+              className={`text-sm font-medium transition-colors ${
+                selectedOwner === 'gote'
+                  ? 'text-slate-800'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              後手
+            </button>
+            {/* 選択解除 */}
+            {selectedPiece && (
+              <>
+                <span className="text-slate-300">・</span>
+                <button
+                  onClick={() => onPieceSelect(null, selectedOwner)}
+                  className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  解除
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* 3行目: 通常駒 */}
+          <div className="flex items-center justify-center gap-1">
+            {NORMAL_PIECES.map(renderPieceButton)}
+          </div>
+
+          {/* 4行目: 成駒 */}
+          <div className="flex items-center justify-center gap-1">
+            {PROMOTED_PIECES.map(renderPieceButton)}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -459,17 +455,14 @@ export function ProblemEdit() {
         {/* 中央パネル: 盤面エディタ（広め） */}
         <div className="flex-1 p-4 overflow-auto bg-slate-50">
           <div className="max-w-2xl mx-auto space-y-3">
-            {/* モード切替 + 駒パレット */}
-            <div className="flex items-start gap-4">
-              <ModeToggle mode={mode} onChange={setMode} />
-              {mode === 'setup' && (
-                <PiecePalette
-                  selectedPiece={selectedPalettePiece}
-                  selectedOwner={selectedOwner}
-                  onSelect={handlePaletteSelect}
-                />
-              )}
-            </div>
+            {/* 編集パネル（モード + 駒パレット統合） */}
+            <EditorPanel
+              mode={mode}
+              onModeChange={setMode}
+              selectedPiece={selectedPalettePiece}
+              selectedOwner={selectedOwner}
+              onPieceSelect={handlePaletteSelect}
+            />
 
             {/* 将棋盤 */}
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
