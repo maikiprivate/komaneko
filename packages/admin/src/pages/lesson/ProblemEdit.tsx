@@ -12,17 +12,101 @@ import { ShogiBoardWithStands } from '../../components/shogi/ShogiBoardWithStand
 import { parseSfen, boardStateToSfen } from '../../lib/shogi/sfen'
 import { getLessonById, type Problem } from '../../mocks/lessonData'
 import type { EditorMode } from '../../lib/lesson/types'
-import type { BoardState, PieceType, Player, Position } from '../../lib/shogi/types'
+import type { PieceType, Player, Position } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
 import { getPossibleMoves, getDropPositions, canPromote, mustPromote, makeMove, makeDrop } from '../../lib/shogi/moveGenerator'
-import type { MoveNode } from '../../lib/lesson/types'
-import { createMoveNode, positionToSfenMove, dropToSfenMove } from '../../lib/lesson/moveTreeUtils'
+import type { MoveNode, MoveTree } from '../../lib/lesson/types'
+import {
+  createMoveNode,
+  positionToSfenMove,
+  dropToSfenMove,
+  editorNodesToMoveTree,
+  type EditorMoveNode,
+} from '../../lib/lesson/moveTreeUtils'
 
-/** エディタ用のノード（盤面状態を含む） */
-interface EditorMoveNode extends MoveNode {
-  /** この手を指した後の盤面状態 */
-  boardState: BoardState
+/**
+ * MoveTreeの手順を再生してEditorMoveNode[]を作成
+ */
+function replayMoveTree(moveTree: MoveTree | undefined): EditorMoveNode[] {
+  if (!moveTree || moveTree.branches.length === 0) {
+    return []
+  }
+
+  const result: EditorMoveNode[] = []
+  let currentBoardState = parseSfen(moveTree.rootSfen)
+
+  // 最初の分岐を線形にたどる
+  let currentNode: MoveNode | undefined = moveTree.branches[0]
+
+  while (currentNode) {
+    // SFENの手を解析して盤面を更新
+    const move = currentNode.move
+    const newBoardState = applyMoveFromSfen(currentBoardState, move)
+
+    if (newBoardState) {
+      result.push({
+        id: currentNode.id,
+        move: currentNode.move,
+        isPlayerMove: currentNode.isPlayerMove,
+        children: currentNode.children,
+        boardState: newBoardState,
+      })
+      currentBoardState = newBoardState
+    }
+
+    // 最初の子のみをたどる
+    currentNode = currentNode.children[0]
+  }
+
+  return result
+}
+
+/**
+ * SFEN形式の手を盤面に適用
+ */
+function applyMoveFromSfen(boardState: import('../../lib/shogi/types').BoardState, sfenMove: string): import('../../lib/shogi/types').BoardState | null {
+  // 駒打ちの場合: "P*5e" 形式
+  if (sfenMove.includes('*')) {
+    const pieceChar = sfenMove[0]
+    const toFile = sfenMove[2]
+    const toRank = sfenMove[3]
+
+    const pieceType = sfenCharToPieceType(pieceChar)
+    const to = sfenPosToPosition(toFile, toRank)
+    const owner = boardState.turn
+
+    return makeDrop(boardState, pieceType, to, owner)
+  }
+
+  // 通常の移動: "7g7f" または "7g7f+" 形式
+  const fromFile = sfenMove[0]
+  const fromRank = sfenMove[1]
+  const toFile = sfenMove[2]
+  const toRank = sfenMove[3]
+  const promote = sfenMove[4] === '+'
+
+  const from = sfenPosToPosition(fromFile, fromRank)
+  const to = sfenPosToPosition(toFile, toRank)
+
+  return makeMove(boardState, from, to, promote)
+}
+
+function sfenPosToPosition(file: string, rank: string): Position {
+  const files = '987654321'
+  const ranks = 'abcdefghi'
+  return {
+    row: ranks.indexOf(rank),
+    col: files.indexOf(file),
+  }
+}
+
+function sfenCharToPieceType(char: string): PieceType {
+  const map: Record<string, PieceType> = {
+    P: 'fu', L: 'kyo', N: 'kei', S: 'gin',
+    G: 'kin', B: 'kaku', R: 'hi', K: 'ou',
+  }
+  return map[char.toUpperCase()] || 'fu'
 }
 
 // =============================================================================
@@ -554,16 +638,38 @@ export function ProblemEdit() {
   // モードに応じて使用する盤面を選択
   const boardState = mode === 'moves' ? moveModeBoardState : initialBoardState
 
-  // モード切り替え・問題切り替え時に手順モード状態をリセット
+  // モード切り替え時は選択状態のみリセット（手順は保持）
   useEffect(() => {
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [mode])
+
+  // 問題切り替え時に盤面と手順を復元
+  useEffect(() => {
+    // 盤面をリセット
     setMoveModeBoardState(initialBoardState)
-    setMoveTreeNodes([])
     setCurrentTurn('sente')
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
     setSelectedNodeIndex(-1)
-  }, [initialBoardState, mode])
+
+    // MoveTreeがあれば復元
+    if (selectedProblem?.moveTree) {
+      const restoredNodes = replayMoveTree(selectedProblem.moveTree)
+      setMoveTreeNodes(restoredNodes)
+      // 最後のノードの盤面状態を復元
+      if (restoredNodes.length > 0) {
+        const lastNode = restoredNodes[restoredNodes.length - 1]
+        setMoveModeBoardState(lastNode.boardState)
+        setCurrentTurn(lastNode.isPlayerMove ? 'gote' : 'sente')
+        setSelectedNodeIndex(restoredNodes.length - 1)
+      }
+    } else {
+      setMoveTreeNodes([])
+    }
+  }, [initialBoardState, selectedProblem?.moveTree])
 
   // 指示文変更
   const handleInstructionChange = useCallback((value: string) => {
@@ -572,6 +678,21 @@ export function ProblemEdit() {
     newProblems[selectedIndex] = { ...selectedProblem, instruction: value }
     setProblems(newProblems)
   }, [problems, selectedIndex, selectedProblem])
+
+  // 問題選択（選択前に現在のmoveTreeを保存）
+  const handleProblemSelect = useCallback((newIndex: number) => {
+    if (newIndex === selectedIndex) return
+
+    // 現在の問題にMoveTreeを保存
+    if (selectedSfen && moveTreeNodes.length > 0) {
+      const moveTree = editorNodesToMoveTree(moveTreeNodes, selectedSfen)
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...problems[selectedIndex], moveTree }
+      setProblems(newProblems)
+    }
+
+    setSelectedIndex(newIndex)
+  }, [selectedIndex, selectedSfen, moveTreeNodes, problems])
 
   // 問題追加
   const handleAddProblem = useCallback(() => {
@@ -617,20 +738,34 @@ export function ProblemEdit() {
   const handleSave = useCallback(async () => {
     setSaveStatus('saving')
     try {
+      // 現在の問題にMoveTreeを保存
+      const updatedProblems = problems.map((p, i) => {
+        if (i === selectedIndex && selectedSfen) {
+          // 選択中の問題は現在のmoveTreeNodesをシリアライズ
+          const moveTree = editorNodesToMoveTree(moveTreeNodes, selectedSfen)
+          return { ...p, moveTree }
+        }
+        return p
+      })
+
       // TODO: API呼び出し（モック段階では遅延をシミュレート）
       await new Promise(resolve => setTimeout(resolve, 500))
 
       // 保存データをコンソールに出力
       console.log('=== 保存データ ===')
       console.log('レッスンID:', lessonId)
-      console.log('問題数:', problems.length)
-      problems.forEach((p, i) => {
+      console.log('問題数:', updatedProblems.length)
+      updatedProblems.forEach((p, i) => {
         console.log(`問題${i + 1}:`, {
           id: p.id,
           sfen: p.sfen,
           instruction: p.instruction,
+          moveTree: p.moveTree,
         })
       })
+
+      // 更新されたproblemsを反映
+      setProblems(updatedProblems)
 
       setSaveStatus('saved')
       // 3秒後にステータスをリセット
@@ -640,7 +775,7 @@ export function ProblemEdit() {
       setSaveStatus('error')
       setTimeout(() => setSaveStatus('idle'), 3000)
     }
-  }, [lessonId, problems])
+  }, [lessonId, problems, selectedIndex, selectedSfen, moveTreeNodes])
 
   // 駒パレット選択
   const handlePaletteSelect = useCallback((piece: PieceType | null, owner: Player) => {
@@ -968,7 +1103,7 @@ export function ProblemEdit() {
           <ProblemListPanel
             problems={problems}
             selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
+            onSelect={handleProblemSelect}
             onAdd={handleAddProblem}
             onDelete={handleDeleteProblem}
             onMoveUp={handleMoveUp}

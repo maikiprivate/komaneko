@@ -4,7 +4,7 @@
  * 階層構造: Course → Section → Lesson → Problem
  */
 
-import type { CorrectMove } from '../lib/lesson/types'
+import type { CorrectMove, MoveTree } from '../lib/lesson/types'
 
 // =============================================================================
 // 型定義（管理画面用）
@@ -23,6 +23,8 @@ export interface Problem {
   sfen: string
   instruction: string
   correctMove: CorrectMove
+  /** 手順ツリー（複数手順対応） */
+  moveTree?: MoveTree
 }
 
 /** レッスン */

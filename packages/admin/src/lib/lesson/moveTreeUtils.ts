@@ -3,7 +3,15 @@
  */
 
 import type { MoveNode, MoveTree, SfenMove, EditorProblem } from './types'
-import type { Position } from '../shogi/types'
+import type { Position, BoardState } from '../shogi/types'
+
+/**
+ * エディタ用のノード（盤面状態を含む）
+ */
+export interface EditorMoveNode extends MoveNode {
+  /** この手を指した後の盤面状態 */
+  boardState: BoardState
+}
 
 /**
  * ユニークIDを生成
@@ -243,4 +251,74 @@ export function createNewProblem(order: number): EditorProblem {
     instruction: '',
     moveTree: createEmptyMoveTree(emptySfen),
   }
+}
+
+// =============================================================================
+// EditorMoveNode[] <-> MoveTree 変換
+// =============================================================================
+
+/**
+ * EditorMoveNode[] を MoveTree に変換
+ *
+ * 現在は分岐なしの線形配列のみ対応
+ * 将来的に分岐対応時は拡張が必要
+ */
+export function editorNodesToMoveTree(
+  nodes: EditorMoveNode[],
+  rootSfen: string
+): MoveTree {
+  if (nodes.length === 0) {
+    return createEmptyMoveTree(rootSfen)
+  }
+
+  // 線形配列をツリー構造に変換（最後のノードから逆順に構築）
+  let currentNode: MoveNode | null = null
+
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i]
+    const newNode: MoveNode = {
+      id: node.id,
+      move: node.move,
+      isPlayerMove: node.isPlayerMove,
+      children: currentNode ? [currentNode] : [],
+    }
+    currentNode = newNode
+  }
+
+  return {
+    rootSfen,
+    branches: currentNode ? [currentNode] : [],
+  }
+}
+
+/**
+ * MoveTree を EditorMoveNode[] に変換
+ *
+ * ツリーの最初の分岐のみを線形配列として取得
+ * 複数分岐がある場合は最初の分岐のみ使用
+ *
+ * @param tree 変換元のMoveTree
+ * @param replayMoves 盤面状態を再現するための関数
+ * @returns EditorMoveNode[] の配列
+ */
+export function moveTreeToEditorNodes(
+  tree: MoveTree,
+  replayMoves: (rootSfen: string, moves: MoveNode[]) => EditorMoveNode[]
+): EditorMoveNode[] {
+  if (tree.branches.length === 0) {
+    return []
+  }
+
+  // 最初の分岐を線形リストとして取得
+  const linearNodes: MoveNode[] = []
+  let current: MoveNode | undefined = tree.branches[0]
+
+  while (current) {
+    linearNodes.push(current)
+    // 最初の子のみをたどる（分岐は無視）
+    current = current.children[0]
+  }
+
+  // replayMoves で盤面状態を再現
+  return replayMoves(tree.rootSfen, linearNodes)
 }
