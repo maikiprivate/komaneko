@@ -12,26 +12,85 @@ import { ShogiBoardWithStands } from '../../components/shogi/ShogiBoardWithStand
 import { parseSfen, boardStateToSfen } from '../../lib/shogi/sfen'
 import { getLessonById, type Problem } from '../../mocks/lessonData'
 import type { EditorMode } from '../../lib/lesson/types'
-import type { PieceType, Player, Position } from '../../lib/shogi/types'
+import type { BoardState, PieceType, Player, Position } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
 import { getPossibleMoves, getDropPositions, canPromote, mustPromote, makeMove, makeDrop } from '../../lib/shogi/moveGenerator'
 import type { MoveNode } from '../../lib/lesson/types'
 import { createMoveNode, positionToSfenMove, dropToSfenMove } from '../../lib/lesson/moveTreeUtils'
 
+/** エディタ用のノード（盤面状態を含む） */
+interface EditorMoveNode extends MoveNode {
+  /** この手を指した後の盤面状態 */
+  boardState: BoardState
+}
+
 // =============================================================================
 // エディタヘッダー
 // =============================================================================
+
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 function EditorHeader({
   lessonTitle,
   breadcrumb,
   onSave,
+  saveStatus,
 }: {
   lessonTitle: string
   breadcrumb: string
   onSave: () => void
+  saveStatus: SaveStatus
 }) {
+  const getSaveButtonContent = () => {
+    switch (saveStatus) {
+      case 'saving':
+        return (
+          <>
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            保存中...
+          </>
+        )
+      case 'saved':
+        return (
+          <>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            保存しました
+          </>
+        )
+      case 'error':
+        return (
+          <>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            エラー
+          </>
+        )
+      default:
+        return '保存'
+    }
+  }
+
+  const getSaveButtonClass = () => {
+    const base = 'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors'
+    switch (saveStatus) {
+      case 'saving':
+        return `${base} bg-slate-400 text-white cursor-not-allowed`
+      case 'saved':
+        return `${base} bg-green-500 text-white`
+      case 'error':
+        return `${base} bg-red-500 text-white`
+      default:
+        return `${base} bg-primary text-white hover:bg-primary-dark`
+    }
+  }
+
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
       <div className="flex items-center gap-4">
@@ -56,9 +115,10 @@ function EditorHeader({
         </button>
         <button
           onClick={onSave}
-          className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors"
+          disabled={saveStatus === 'saving'}
+          className={getSaveButtonClass()}
         >
-          保存
+          {getSaveButtonContent()}
         </button>
       </div>
     </div>
@@ -222,6 +282,13 @@ function PromotionDialog({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-xs w-full mx-4">
+        <div className="flex justify-center mb-3">
+          <img
+            src={`/pieces/${pieceType}.png`}
+            alt={pieceType}
+            className="w-12 h-12"
+          />
+        </div>
         <h3 className="text-lg font-medium text-slate-800 mb-4 text-center">
           成りますか？
         </h3>
@@ -251,10 +318,14 @@ function PromotionDialog({
 function MoveTreePanel({
   nodes,
   currentTurn,
+  selectedNodeIndex,
+  onNodeClick,
   onClear,
 }: {
-  nodes: MoveNode[]
+  nodes: EditorMoveNode[]
   currentTurn: Player
+  selectedNodeIndex: number
+  onNodeClick: (index: number) => void
   onClear: () => void
 }) {
   return (
@@ -272,24 +343,44 @@ function MoveTreePanel({
           </div>
         ) : (
           <div className="space-y-1">
+            {/* 初期局面 */}
+            <button
+              onClick={() => onNodeClick(-1)}
+              className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm text-left transition-colors ${
+                selectedNodeIndex === -1
+                  ? 'bg-primary/20 ring-2 ring-primary'
+                  : 'bg-slate-50 hover:bg-slate-100'
+              }`}
+            >
+              <span className="text-slate-400 w-5">0.</span>
+              <span className="text-slate-600">初期局面</span>
+            </button>
             {nodes.map((node, index) => (
-              <div
+              <button
                 key={node.id}
-                className={`flex items-center gap-2 px-2 py-1 rounded text-sm ${
-                  node.isPlayerMove ? 'bg-blue-50' : 'bg-orange-50'
+                onClick={() => onNodeClick(index)}
+                className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm text-left transition-colors ${
+                  selectedNodeIndex === index
+                    ? 'ring-2 ring-primary ' + (node.isPlayerMove ? 'bg-blue-100' : 'bg-orange-100')
+                    : (node.isPlayerMove ? 'bg-blue-50 hover:bg-blue-100' : 'bg-orange-50 hover:bg-orange-100')
                 }`}
               >
                 <span className="text-slate-400 w-5">{index + 1}.</span>
                 <span className={node.isPlayerMove ? 'text-blue-700' : 'text-orange-700'}>
                   {node.isPlayerMove ? '▲' : '△'} {node.move}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
       <div className="px-4 py-3 border-t border-slate-100 flex justify-between">
-        <button className="flex items-center gap-2 text-xs text-primary hover:text-primary-dark font-medium transition-colors">
+        {/* TODO: 分岐機能は将来実装予定 */}
+        <button
+          disabled
+          className="flex items-center gap-2 text-xs text-slate-300 cursor-not-allowed"
+          title="分岐機能は将来実装予定です"
+        >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -426,6 +517,7 @@ export function ProblemEdit() {
   const [mode, setMode] = useState<EditorMode>('setup')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [problems, setProblems] = useState<Problem[]>(lessonData?.lesson.problems ?? [])
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   // 駒パレット状態（初期配置モード用）
   const [selectedPalettePiece, setSelectedPalettePiece] = useState<PieceType | null>(null)
@@ -441,17 +533,20 @@ export function ProblemEdit() {
     to: Position
     pieceType: PieceType
   } | null>(null)
-  const [moveTreeNodes, setMoveTreeNodes] = useState<MoveNode[]>([])
+  const [moveTreeNodes, setMoveTreeNodes] = useState<EditorMoveNode[]>([])
   const [currentTurn, setCurrentTurn] = useState<Player>('sente')
+  const [selectedNodeIndex, setSelectedNodeIndex] = useState(-1) // -1 = 初期局面
 
   // 現在選択中の問題
   const selectedProblem = problems[selectedIndex]
 
   // 初期盤面状態（問題のSFENから）
+  // 依存配列を明確にするため、sfenを先に取得
+  const selectedSfen = selectedProblem?.sfen
   const initialBoardState = useMemo(() => {
-    if (!selectedProblem) return createEmptyBoardState()
-    return parseSfen(selectedProblem.sfen)
-  }, [selectedProblem?.sfen])
+    if (!selectedSfen) return createEmptyBoardState()
+    return parseSfen(selectedSfen)
+  }, [selectedSfen])
 
   // 手順設定モード用の現在盤面
   const [moveModeBoardState, setMoveModeBoardState] = useState(initialBoardState)
@@ -467,6 +562,7 @@ export function ProblemEdit() {
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
+    setSelectedNodeIndex(-1)
   }, [initialBoardState, mode])
 
   // 指示文変更
@@ -519,15 +615,32 @@ export function ProblemEdit() {
 
   // 保存
   const handleSave = useCallback(async () => {
+    setSaveStatus('saving')
     try {
-      // TODO: API呼び出し
-      console.log('Save problems:', problems)
-      // 成功時の処理（将来的にトースト通知など）
+      // TODO: API呼び出し（モック段階では遅延をシミュレート）
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // 保存データをコンソールに出力
+      console.log('=== 保存データ ===')
+      console.log('レッスンID:', lessonId)
+      console.log('問題数:', problems.length)
+      problems.forEach((p, i) => {
+        console.log(`問題${i + 1}:`, {
+          id: p.id,
+          sfen: p.sfen,
+          instruction: p.instruction,
+        })
+      })
+
+      setSaveStatus('saved')
+      // 3秒後にステータスをリセット
+      setTimeout(() => setSaveStatus('idle'), 3000)
     } catch (error) {
       console.error('Failed to save problems:', error)
-      // エラー時の処理（将来的にトースト通知など）
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus('idle'), 3000)
     }
-  }, [problems])
+  }, [lessonId, problems])
 
   // 駒パレット選択
   const handlePaletteSelect = useCallback((piece: PieceType | null, owner: Player) => {
@@ -620,22 +733,25 @@ export function ProblemEdit() {
     setPossibleMoves([])
   }, [boardState, selectedPosition, selectedHandPiece, possibleMoves, currentTurn])
 
-  // 手を実行（盤上の移動）
-  const executeMove = useCallback((from: Position, to: Position, promote: boolean) => {
-    const sfenMove = positionToSfenMove(from, to, promote)
-    const isPlayerMove = currentTurn === 'sente' // 先手がプレイヤー想定
+  // 手をツリーに追加する共通処理
+  const addMoveToTree = useCallback((sfenMove: string, newBoardState: BoardState, isPlayerMove: boolean) => {
+    // 新しいノードを作成（盤面状態を含む）
+    const baseNode = createMoveNode(sfenMove, isPlayerMove)
+    const newNode: EditorMoveNode = {
+      ...baseNode,
+      boardState: newBoardState,
+    }
 
-    // 新しいノードを作成
-    const newNode = createMoveNode(sfenMove, isPlayerMove)
-
-    // ツリーに追加（現在はルートに追加）
-    setMoveTreeNodes(prev => [...prev, newNode])
+    // ツリーに追加（選択中のノード以降は切り捨て）
+    setMoveTreeNodes(prev => {
+      const insertIndex = selectedNodeIndex + 1
+      const newNodes = [...prev.slice(0, insertIndex), newNode]
+      setSelectedNodeIndex(newNodes.length - 1)
+      return newNodes
+    })
 
     // 盤面を更新
-    const newBoardState = makeMove(moveModeBoardState, from, to, promote)
-    if (newBoardState) {
-      setMoveModeBoardState(newBoardState)
-    }
+    setMoveModeBoardState(newBoardState)
 
     // 手番を切り替え
     setCurrentTurn(prev => prev === 'sente' ? 'gote' : 'sente')
@@ -644,33 +760,27 @@ export function ProblemEdit() {
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
-  }, [currentTurn, moveModeBoardState])
+  }, [selectedNodeIndex])
+
+  // 手を実行（盤上の移動）
+  const executeMove = useCallback((from: Position, to: Position, promote: boolean) => {
+    const newBoardState = makeMove(moveModeBoardState, from, to, promote)
+    if (!newBoardState) return
+
+    const sfenMove = positionToSfenMove(from, to, promote)
+    const isPlayerMove = currentTurn === 'sente'
+    addMoveToTree(sfenMove, newBoardState, isPlayerMove)
+  }, [currentTurn, moveModeBoardState, addMoveToTree])
 
   // 駒を打つ
   const executeDrop = useCallback((pieceType: PieceType, to: Position) => {
+    const newBoardState = makeDrop(moveModeBoardState, pieceType, to, selectedHandPieceOwner)
+    if (!newBoardState) return
+
     const sfenMove = dropToSfenMove(pieceType, to)
     const isPlayerMove = selectedHandPieceOwner === 'sente'
-
-    // 新しいノードを作成
-    const newNode = createMoveNode(sfenMove, isPlayerMove)
-
-    // ツリーに追加
-    setMoveTreeNodes(prev => [...prev, newNode])
-
-    // 盤面を更新
-    const newBoardState = makeDrop(moveModeBoardState, pieceType, to, selectedHandPieceOwner)
-    if (newBoardState) {
-      setMoveModeBoardState(newBoardState)
-    }
-
-    // 手番を切り替え
-    setCurrentTurn(prev => prev === 'sente' ? 'gote' : 'sente')
-
-    // 選択状態をリセット
-    setSelectedPosition(null)
-    setSelectedHandPiece(null)
-    setPossibleMoves([])
-  }, [selectedHandPieceOwner, moveModeBoardState])
+    addMoveToTree(sfenMove, newBoardState, isPlayerMove)
+  }, [selectedHandPieceOwner, moveModeBoardState, addMoveToTree])
 
   // 成り選択
   const handlePromotionChoice = useCallback((promote: boolean) => {
@@ -687,7 +797,29 @@ export function ProblemEdit() {
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
+    setSelectedNodeIndex(-1)
   }, [initialBoardState])
+
+  // ノードクリック（局面を復元）
+  const handleNodeClick = useCallback((index: number) => {
+    if (index === -1) {
+      // 初期局面に戻る
+      setMoveModeBoardState(initialBoardState)
+      setCurrentTurn('sente')
+    } else {
+      // 指定されたノードの局面を復元
+      const node = moveTreeNodes[index]
+      if (node) {
+        setMoveModeBoardState(node.boardState)
+        // 次の手番はこの手を指したプレイヤーの相手
+        setCurrentTurn(node.isPlayerMove ? 'gote' : 'sente')
+      }
+    }
+    setSelectedNodeIndex(index)
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [initialBoardState, moveTreeNodes])
 
   // 持ち駒クリック（手順設定モード：駒を打つために選択）
   const handleMovesHandPieceClick = useCallback((pieceType: PieceType, owner: Player) => {
@@ -826,6 +958,7 @@ export function ProblemEdit() {
         lessonTitle={lessonData.lesson.title}
         breadcrumb={`${lessonData.course.title} / ${lessonData.section.title}`}
         onSave={handleSave}
+        saveStatus={saveStatus}
       />
 
       {/* メインコンテンツ（3パネル） */}
@@ -908,6 +1041,8 @@ export function ProblemEdit() {
           <MoveTreePanel
             nodes={moveTreeNodes}
             currentTurn={currentTurn}
+            selectedNodeIndex={selectedNodeIndex}
+            onNodeClick={handleNodeClick}
             onClear={handleMoveTreeClear}
           />
         </div>
