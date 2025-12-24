@@ -9,7 +9,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShogiBoardWithStands } from '../../components/shogi/ShogiBoardWithStands'
-import { parseSfen } from '../../lib/shogi/sfen'
+import { parseSfen, boardStateToSfen } from '../../lib/shogi/sfen'
 import { getLessonById, type Problem } from '../../mocks/lessonData'
 import type { EditorMode } from '../../lib/lesson/types'
 import type { PieceType, Player } from '../../lib/shogi/types'
@@ -81,28 +81,33 @@ function EditorPanel({
   selectedPiece,
   selectedOwner,
   onPieceSelect,
+  onReset,
 }: {
   mode: EditorMode
   onModeChange: (mode: EditorMode) => void
   selectedPiece: PieceType | null
   selectedOwner: Player
   onPieceSelect: (piece: PieceType | null, owner: Player) => void
+  onReset: () => void
 }) {
-  const renderPieceButton = (piece: PieceType) => (
+  const isSelected = (piece: PieceType, owner: Player) =>
+    selectedPiece === piece && selectedOwner === owner
+
+  const renderPieceButton = (piece: PieceType, owner: Player) => (
     <button
-      key={piece}
-      onClick={() => onPieceSelect(selectedPiece === piece ? null : piece, selectedOwner)}
-      className={`w-9 h-9 rounded border-2 transition-all flex items-center justify-center ${
-        selectedPiece === piece
+      key={`${owner}-${piece}`}
+      onClick={() => onPieceSelect(isSelected(piece, owner) ? null : piece, owner)}
+      className={`w-8 h-8 rounded border-2 transition-all flex items-center justify-center ${
+        isSelected(piece, owner)
           ? 'border-primary bg-primary/10'
           : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
       }`}
-      title={piece}
+      title={`${owner === 'sente' ? '先手' : '後手'}${piece}`}
     >
       <img
         src={`/pieces/${piece}.png`}
         alt={piece}
-        className={`w-6 h-6 ${selectedOwner === 'gote' ? 'rotate-180' : ''}`}
+        className={`w-5 h-5 ${owner === 'gote' ? 'rotate-180' : ''}`}
       />
     </button>
   )
@@ -137,51 +142,47 @@ function EditorPanel({
       {/* 初期配置モード時のみ駒パレット表示 */}
       {mode === 'setup' && (
         <>
-          {/* 2行目: 先手・後手 */}
-          <div className="flex items-center justify-center gap-2">
-            <button
-              onClick={() => onPieceSelect(selectedPiece, 'sente')}
-              className={`text-sm font-medium transition-colors ${
-                selectedOwner === 'sente'
-                  ? 'text-slate-800'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              先手
-            </button>
-            <span className="text-slate-300">・</span>
-            <button
-              onClick={() => onPieceSelect(selectedPiece, 'gote')}
-              className={`text-sm font-medium transition-colors ${
-                selectedOwner === 'gote'
-                  ? 'text-slate-800'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              後手
-            </button>
-            {/* 選択解除 */}
-            {selectedPiece && (
-              <>
-                <span className="text-slate-300">・</span>
-                <button
-                  onClick={() => onPieceSelect(null, selectedOwner)}
-                  className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  解除
-                </button>
-              </>
-            )}
+          {/* 1行目: 通常駒（先手 + 後手） */}
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center gap-0.5">
+              {NORMAL_PIECES.map((piece) => renderPieceButton(piece, 'sente'))}
+            </div>
+            <div className="w-px h-6 bg-slate-200" />
+            <div className="flex items-center gap-0.5">
+              {NORMAL_PIECES.map((piece) => renderPieceButton(piece, 'gote'))}
+            </div>
           </div>
 
-          {/* 3行目: 通常駒 */}
-          <div className="flex items-center justify-center gap-1">
-            {NORMAL_PIECES.map(renderPieceButton)}
+          {/* 2行目: 成駒（先手 + 後手） */}
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center gap-0.5">
+              {PROMOTED_PIECES.map((piece) => renderPieceButton(piece, 'sente'))}
+            </div>
+            <div className="w-px h-6 bg-slate-200" />
+            <div className="flex items-center gap-0.5">
+              {PROMOTED_PIECES.map((piece) => renderPieceButton(piece, 'gote'))}
+            </div>
           </div>
 
-          {/* 4行目: 成駒 */}
-          <div className="flex items-center justify-center gap-1">
-            {PROMOTED_PIECES.map(renderPieceButton)}
+          {/* フッター: 選択解除・盤面リセット */}
+          <div className="flex items-center justify-center gap-4 pt-2 border-t border-slate-100">
+            <button
+              onClick={() => onPieceSelect(null, selectedOwner)}
+              disabled={!selectedPiece}
+              className={`text-xs transition-colors ${
+                selectedPiece
+                  ? 'text-slate-500 hover:text-slate-700'
+                  : 'text-slate-300 cursor-not-allowed'
+              }`}
+            >
+              選択解除
+            </button>
+            <button
+              onClick={onReset}
+              className="text-xs text-slate-500 hover:text-red-600 transition-colors"
+            >
+              盤面リセット
+            </button>
           </div>
         </>
       )}
@@ -414,6 +415,50 @@ export function ProblemEdit() {
     setSelectedOwner(owner)
   }, [])
 
+  // 盤面セルクリック（初期配置モード）
+  const handleCellClick = useCallback((row: number, col: number) => {
+    if (mode !== 'setup' || !selectedProblem) return
+
+    const currentBoard = parseSfen(selectedProblem.sfen)
+    const newBoard = currentBoard.board.map((r) => [...r])
+    const currentCell = newBoard[row][col]
+
+    if (selectedPalettePiece) {
+      // 駒を配置
+      newBoard[row][col] = {
+        type: selectedPalettePiece,
+        owner: selectedOwner,
+      }
+    } else if (currentCell) {
+      // 駒を削除
+      newBoard[row][col] = null
+    } else {
+      // 何もしない
+      return
+    }
+
+    // 新しいSFENを生成して問題を更新
+    const newBoardState = {
+      ...currentBoard,
+      board: newBoard,
+    }
+    const newSfen = boardStateToSfen(newBoardState)
+
+    const newProblems = [...problems]
+    newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+    setProblems(newProblems)
+  }, [mode, selectedProblem, selectedPalettePiece, selectedOwner, problems, selectedIndex])
+
+  // 盤面リセット
+  const handleBoardReset = useCallback(() => {
+    if (!selectedProblem) return
+    const emptySfen = '9/9/9/9/9/9/9/9/9 b - 1'
+    const newProblems = [...problems]
+    newProblems[selectedIndex] = { ...selectedProblem, sfen: emptySfen }
+    setProblems(newProblems)
+    setSelectedPalettePiece(null)
+  }, [selectedProblem, problems, selectedIndex])
+
   // レッスンが見つからない場合
   if (!lessonData) {
     return (
@@ -462,6 +507,7 @@ export function ProblemEdit() {
               selectedPiece={selectedPalettePiece}
               selectedOwner={selectedOwner}
               onPieceSelect={handlePaletteSelect}
+              onReset={handleBoardReset}
             />
 
             {/* 将棋盤 */}
@@ -471,6 +517,7 @@ export function ProblemEdit() {
                   boardState={boardState}
                   perspective="sente"
                   cellSize={40}
+                  onCellClick={mode === 'setup' ? handleCellClick : undefined}
                 />
               </div>
             </div>

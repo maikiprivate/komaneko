@@ -153,3 +153,101 @@ export function createEmptyBoardState(): BoardState {
 export function createInitialBoard(): BoardState {
   return parseSfen(INITIAL_SFEN)
 }
+
+// =============================================================================
+// SFEN生成（BoardState → SFEN文字列）
+// =============================================================================
+
+/** 駒種からSFEN文字を取得 */
+const PIECE_TO_SFEN: Record<PieceType, string> = {
+  fu: 'P',
+  kyo: 'L',
+  kei: 'N',
+  gin: 'S',
+  kin: 'G',
+  kaku: 'B',
+  hi: 'R',
+  ou: 'K',
+  to: '+P',
+  narikyo: '+L',
+  narikei: '+N',
+  narigin: '+S',
+  uma: '+B',
+  ryu: '+R',
+}
+
+/** 盤面をSFEN文字列に変換 */
+function boardToSfenString(board: Board): string {
+  const rows: string[] = []
+
+  for (const row of board) {
+    let rowStr = ''
+    let emptyCount = 0
+
+    for (const cell of row) {
+      if (cell === null) {
+        emptyCount++
+      } else {
+        if (emptyCount > 0) {
+          rowStr += emptyCount.toString()
+          emptyCount = 0
+        }
+        let pieceChar = PIECE_TO_SFEN[cell.type]
+        if (cell.owner === 'gote') {
+          // 後手は小文字（成駒の+は維持）
+          if (pieceChar.startsWith('+')) {
+            pieceChar = '+' + pieceChar[1].toLowerCase()
+          } else {
+            pieceChar = pieceChar.toLowerCase()
+          }
+        }
+        rowStr += pieceChar
+      }
+    }
+
+    if (emptyCount > 0) {
+      rowStr += emptyCount.toString()
+    }
+
+    rows.push(rowStr || '9')
+  }
+
+  return rows.join('/')
+}
+
+/** 持ち駒をSFEN文字列に変換 */
+function handToSfenString(capturedPieces: { sente: CapturedPieces; gote: CapturedPieces }): string {
+  const handOrder: PieceType[] = ['hi', 'kaku', 'kin', 'gin', 'kei', 'kyo', 'fu']
+  let result = ''
+
+  // 先手の持ち駒（大文字）
+  for (const pieceType of handOrder) {
+    const count = capturedPieces.sente[pieceType] ?? 0
+    if (count > 0) {
+      if (count > 1) result += count.toString()
+      result += PIECE_TO_SFEN[pieceType]
+    }
+  }
+
+  // 後手の持ち駒（小文字）
+  for (const pieceType of handOrder) {
+    const count = capturedPieces.gote[pieceType] ?? 0
+    if (count > 0) {
+      if (count > 1) result += count.toString()
+      result += PIECE_TO_SFEN[pieceType].toLowerCase()
+    }
+  }
+
+  return result || '-'
+}
+
+/**
+ * BoardStateをSFEN文字列に変換
+ */
+export function boardStateToSfen(state: BoardState): string {
+  const boardStr = boardToSfenString(state.board)
+  const turnStr = state.turn === 'sente' ? 'b' : 'w'
+  const handStr = handToSfenString(state.capturedPieces)
+
+  return `${boardStr} ${turnStr} ${handStr} 1`
+}
