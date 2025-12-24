@@ -281,7 +281,7 @@ function MoveTreePanel({
               >
                 <span className="text-slate-400 w-5">{index + 1}.</span>
                 <span className={node.isPlayerMove ? 'text-blue-700' : 'text-orange-700'}>
-                  {node.isPlayerMove ? '▶' : '△'} {node.move}
+                  {node.isPlayerMove ? '▲' : '△'} {node.move}
                 </span>
               </div>
             ))}
