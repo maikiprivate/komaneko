@@ -11,7 +11,12 @@ import {
   type Course,
   type Section,
   type Lesson,
+  type CourseStatus,
 } from '../../mocks/lessonData'
+import {
+  AddCourseDialog,
+  AddItemDialog,
+} from '../../components/lesson'
 
 /** ステータスバッジ */
 function StatusBadge({ status }: { status: Course['status'] }) {
@@ -131,10 +136,16 @@ function LessonRow({
   lesson,
   index,
   total,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
 }: {
   lesson: Lesson
   index: number
   total: number
+  onDelete: (lessonId: string) => void
+  onMoveUp: (lessonId: string) => void
+  onMoveDown: (lessonId: string) => void
 }) {
   return (
     <div className="flex items-center py-3.5 px-5 bg-white border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
@@ -154,9 +165,19 @@ function LessonRow({
         >
           <ActionButton variant="primary">問題編集</ActionButton>
         </Link>
+        <ActionButton
+          variant="danger"
+          onClick={() => {
+            if (window.confirm(`「${lesson.title}」を削除しますか？`)) {
+              onDelete(lesson.id)
+            }
+          }}
+        >
+          削除
+        </ActionButton>
         <OrderButtons
-          onMoveUp={() => console.log('move up lesson', lesson.id)}
-          onMoveDown={() => console.log('move down lesson', lesson.id)}
+          onMoveUp={() => onMoveUp(lesson.id)}
+          onMoveDown={() => onMoveDown(lesson.id)}
           canMoveUp={index > 0}
           canMoveDown={index < total - 1}
         />
@@ -170,10 +191,24 @@ function SectionRow({
   section,
   index,
   total,
+  onAddLesson,
+  onDeleteLesson,
+  onDeleteSection,
+  onMoveUp,
+  onMoveDown,
+  onMoveLessonUp,
+  onMoveLessonDown,
 }: {
   section: Section
   index: number
   total: number
+  onAddLesson: (sectionId: string, sectionName: string) => void
+  onDeleteLesson: (lessonId: string) => void
+  onDeleteSection: (sectionId: string, sectionName: string, lessonCount: number) => void
+  onMoveUp: (sectionId: string) => void
+  onMoveDown: (sectionId: string) => void
+  onMoveLessonUp: (lessonId: string) => void
+  onMoveLessonDown: (lessonId: string) => void
 }) {
   const [expanded, setExpanded] = useState(true)
   const lessonCount = section.lessons.length
@@ -207,14 +242,14 @@ function SectionRow({
             variant="danger"
             onClick={(e) => {
               e.stopPropagation()
-              console.log('delete section', section.id)
+              onDeleteSection(section.id, section.title, lessonCount)
             }}
           >
             削除
           </ActionButton>
           <OrderButtons
-            onMoveUp={() => console.log('move up section', section.id)}
-            onMoveDown={() => console.log('move down section', section.id)}
+            onMoveUp={() => onMoveUp(section.id)}
+            onMoveDown={() => onMoveDown(section.id)}
             canMoveUp={index > 0}
             canMoveDown={index < total - 1}
           />
@@ -228,6 +263,9 @@ function SectionRow({
               lesson={lesson}
               index={i}
               total={section.lessons.length}
+              onDelete={onDeleteLesson}
+              onMoveUp={onMoveLessonUp}
+              onMoveDown={onMoveLessonDown}
             />
           ))}
           {section.lessons.length === 0 && (
@@ -236,7 +274,10 @@ function SectionRow({
             </div>
           )}
           <div className="py-3 px-5 bg-slate-50 border-t border-slate-100">
-            <button className="flex items-center gap-1.5 text-xs text-primary hover:text-primary-dark font-medium transition-colors">
+            <button
+              onClick={() => onAddLesson(section.id, section.title)}
+              className="flex items-center gap-1.5 text-xs text-primary hover:text-primary-dark font-medium transition-colors"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -254,10 +295,32 @@ function CourseRow({
   course,
   index,
   total,
+  onAddSection,
+  onAddLesson,
+  onDeleteLesson,
+  onDeleteSection,
+  onDeleteCourse,
+  onMoveSectionUp,
+  onMoveSectionDown,
+  onMoveCourseUp,
+  onMoveCourseDown,
+  onMoveLessonUp,
+  onMoveLessonDown,
 }: {
   course: Course
   index: number
   total: number
+  onAddSection: (courseId: string, courseName: string) => void
+  onAddLesson: (sectionId: string, sectionName: string) => void
+  onDeleteLesson: (lessonId: string) => void
+  onDeleteSection: (sectionId: string, sectionName: string, lessonCount: number) => void
+  onDeleteCourse: (courseId: string, courseName: string, sectionCount: number, lessonCount: number) => void
+  onMoveSectionUp: (sectionId: string) => void
+  onMoveSectionDown: (sectionId: string) => void
+  onMoveCourseUp: (courseId: string) => void
+  onMoveCourseDown: (courseId: string) => void
+  onMoveLessonUp: (lessonId: string) => void
+  onMoveLessonDown: (lessonId: string) => void
 }) {
   const [expanded, setExpanded] = useState(index === 0)
   const sectionCount = course.sections.length
@@ -298,14 +361,14 @@ function CourseRow({
             variant="danger"
             onClick={(e) => {
               e.stopPropagation()
-              console.log('delete course', course.id)
+              onDeleteCourse(course.id, course.title, sectionCount, lessonCount)
             }}
           >
             削除
           </ActionButton>
           <OrderButtons
-            onMoveUp={() => console.log('move up course', course.id)}
-            onMoveDown={() => console.log('move down course', course.id)}
+            onMoveUp={() => onMoveCourseUp(course.id)}
+            onMoveDown={() => onMoveCourseDown(course.id)}
             canMoveUp={index > 0}
             canMoveDown={index < total - 1}
           />
@@ -319,6 +382,13 @@ function CourseRow({
               section={section}
               index={i}
               total={course.sections.length}
+              onAddLesson={onAddLesson}
+              onDeleteLesson={onDeleteLesson}
+              onDeleteSection={onDeleteSection}
+              onMoveUp={onMoveSectionUp}
+              onMoveDown={onMoveSectionDown}
+              onMoveLessonUp={onMoveLessonUp}
+              onMoveLessonDown={onMoveLessonDown}
             />
           ))}
           {course.sections.length === 0 && (
@@ -327,7 +397,10 @@ function CourseRow({
             </div>
           )}
           <div className="mt-4">
-            <button className="flex items-center gap-2 text-sm text-primary hover:text-primary-dark font-medium transition-colors">
+            <button
+              onClick={() => onAddSection(course.id, course.title)}
+              className="flex items-center gap-2 text-sm text-primary hover:text-primary-dark font-medium transition-colors"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -340,9 +413,176 @@ function CourseRow({
   )
 }
 
+/** ダイアログの状態 */
+type DialogState =
+  | { type: 'none' }
+  | { type: 'addCourse' }
+  | { type: 'addSection'; courseId: string; courseName: string }
+  | { type: 'addLesson'; sectionId: string; sectionName: string }
+
 /** メインコンポーネント */
 export function LessonList() {
-  const [courses] = useState(mockCourses)
+  const [courses, setCourses] = useState(mockCourses)
+  const [dialog, setDialog] = useState<DialogState>({ type: 'none' })
+
+  // コース追加
+  const handleAddCourse = (data: { title: string; description: string; status: CourseStatus }) => {
+    const newCourse: Course = {
+      id: crypto.randomUUID(),
+      order: courses.length + 1,
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      sections: [],
+    }
+    setCourses([...courses, newCourse])
+    setDialog({ type: 'none' })
+  }
+
+  // セクション追加
+  const handleAddSection = (data: { title: string }) => {
+    if (dialog.type !== 'addSection') return
+    const { courseId } = dialog
+
+    setCourses(courses.map((course) => {
+      if (course.id !== courseId) return course
+      const newSection: Section = {
+        id: crypto.randomUUID(),
+        order: course.sections.length + 1,
+        title: data.title,
+        lessons: [],
+      }
+      return {
+        ...course,
+        sections: [...course.sections, newSection],
+      }
+    }))
+    setDialog({ type: 'none' })
+  }
+
+  // レッスン追加
+  const handleAddLesson = (data: { title: string }) => {
+    if (dialog.type !== 'addLesson') return
+    const { sectionId } = dialog
+
+    setCourses(courses.map((course) => ({
+      ...course,
+      sections: course.sections.map((section) => {
+        if (section.id !== sectionId) return section
+        const newLesson: Lesson = {
+          id: crypto.randomUUID(),
+          order: section.lessons.length + 1,
+          title: data.title,
+          problems: [],
+        }
+        return {
+          ...section,
+          lessons: [...section.lessons, newLesson],
+        }
+      }),
+    })))
+    setDialog({ type: 'none' })
+  }
+
+  // レッスン削除
+  const handleDeleteLesson = (lessonId: string) => {
+    setCourses(courses.map((course) => ({
+      ...course,
+      sections: course.sections.map((section) => ({
+        ...section,
+        lessons: section.lessons.filter((lesson) => lesson.id !== lessonId),
+      })),
+    })))
+  }
+
+  // セクション削除
+  const handleDeleteSection = (sectionId: string, sectionName: string, lessonCount: number) => {
+    const message = lessonCount > 0
+      ? `「${sectionName}」を削除しますか？\n（${lessonCount}件のレッスンも削除されます）`
+      : `「${sectionName}」を削除しますか？`
+    if (!window.confirm(message)) return
+
+    setCourses(courses.map((course) => ({
+      ...course,
+      sections: course.sections.filter((section) => section.id !== sectionId),
+    })))
+  }
+
+  // コース削除
+  const handleDeleteCourse = (courseId: string, courseName: string, sectionCount: number, lessonCount: number) => {
+    let message = `「${courseName}」を削除しますか？`
+    if (sectionCount > 0 || lessonCount > 0) {
+      message += `\n（${sectionCount}件のセクション、${lessonCount}件のレッスンも削除されます）`
+    }
+    if (!window.confirm(message)) return
+
+    setCourses(courses.filter((course) => course.id !== courseId))
+  }
+
+  // セクション並び替え
+  const handleMoveSectionUp = (sectionId: string) => {
+    setCourses(courses.map((course) => {
+      const idx = course.sections.findIndex((s) => s.id === sectionId)
+      if (idx <= 0) return course
+      const newSections = [...course.sections]
+      ;[newSections[idx - 1], newSections[idx]] = [newSections[idx], newSections[idx - 1]]
+      return { ...course, sections: newSections }
+    }))
+  }
+
+  const handleMoveSectionDown = (sectionId: string) => {
+    setCourses(courses.map((course) => {
+      const idx = course.sections.findIndex((s) => s.id === sectionId)
+      if (idx === -1 || idx >= course.sections.length - 1) return course
+      const newSections = [...course.sections]
+      ;[newSections[idx], newSections[idx + 1]] = [newSections[idx + 1], newSections[idx]]
+      return { ...course, sections: newSections }
+    }))
+  }
+
+  // コース並び替え
+  const handleMoveCourseUp = (courseId: string) => {
+    const idx = courses.findIndex((c) => c.id === courseId)
+    if (idx <= 0) return
+    const newCourses = [...courses]
+    ;[newCourses[idx - 1], newCourses[idx]] = [newCourses[idx], newCourses[idx - 1]]
+    setCourses(newCourses)
+  }
+
+  const handleMoveCourseDown = (courseId: string) => {
+    const idx = courses.findIndex((c) => c.id === courseId)
+    if (idx === -1 || idx >= courses.length - 1) return
+    const newCourses = [...courses]
+    ;[newCourses[idx], newCourses[idx + 1]] = [newCourses[idx + 1], newCourses[idx]]
+    setCourses(newCourses)
+  }
+
+  // レッスン並び替え
+  const handleMoveLessonUp = (lessonId: string) => {
+    setCourses(courses.map((course) => ({
+      ...course,
+      sections: course.sections.map((section) => {
+        const idx = section.lessons.findIndex((l) => l.id === lessonId)
+        if (idx <= 0) return section
+        const newLessons = [...section.lessons]
+        ;[newLessons[idx - 1], newLessons[idx]] = [newLessons[idx], newLessons[idx - 1]]
+        return { ...section, lessons: newLessons }
+      }),
+    })))
+  }
+
+  const handleMoveLessonDown = (lessonId: string) => {
+    setCourses(courses.map((course) => ({
+      ...course,
+      sections: course.sections.map((section) => {
+        const idx = section.lessons.findIndex((l) => l.id === lessonId)
+        if (idx === -1 || idx >= section.lessons.length - 1) return section
+        const newLessons = [...section.lessons]
+        ;[newLessons[idx], newLessons[idx + 1]] = [newLessons[idx + 1], newLessons[idx]]
+        return { ...section, lessons: newLessons }
+      }),
+    })))
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -354,7 +594,10 @@ export function LessonList() {
             コース・セクション・レッスンの追加・編集・並び替え
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors shadow-sm">
+        <button
+          onClick={() => setDialog({ type: 'addCourse' })}
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors shadow-sm"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -370,6 +613,21 @@ export function LessonList() {
             course={course}
             index={i}
             total={courses.length}
+            onAddSection={(courseId, courseName) =>
+              setDialog({ type: 'addSection', courseId, courseName })
+            }
+            onAddLesson={(sectionId, sectionName) =>
+              setDialog({ type: 'addLesson', sectionId, sectionName })
+            }
+            onDeleteLesson={handleDeleteLesson}
+            onDeleteSection={handleDeleteSection}
+            onDeleteCourse={handleDeleteCourse}
+            onMoveSectionUp={handleMoveSectionUp}
+            onMoveSectionDown={handleMoveSectionDown}
+            onMoveCourseUp={handleMoveCourseUp}
+            onMoveCourseDown={handleMoveCourseDown}
+            onMoveLessonUp={handleMoveLessonUp}
+            onMoveLessonDown={handleMoveLessonDown}
           />
         ))}
         {courses.length === 0 && (
@@ -384,6 +642,34 @@ export function LessonList() {
           </div>
         )}
       </div>
+
+      {/* ダイアログ */}
+      {dialog.type === 'addCourse' && (
+        <AddCourseDialog
+          onAdd={handleAddCourse}
+          onCancel={() => setDialog({ type: 'none' })}
+        />
+      )}
+      {dialog.type === 'addSection' && (
+        <AddItemDialog
+          title="セクションを追加"
+          parentName={dialog.courseName}
+          inputLabel="セクション名"
+          placeholder="例: 歩の動かし方"
+          onAdd={handleAddSection}
+          onCancel={() => setDialog({ type: 'none' })}
+        />
+      )}
+      {dialog.type === 'addLesson' && (
+        <AddItemDialog
+          title="レッスンを追加"
+          parentName={dialog.sectionName}
+          inputLabel="レッスン名"
+          placeholder="例: 歩の動き方"
+          onAdd={handleAddLesson}
+          onCancel={() => setDialog({ type: 'none' })}
+        />
+      )}
     </div>
   )
 }
