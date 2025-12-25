@@ -42,6 +42,7 @@ describe('AuthService', () => {
         username: validInput.username,
         passwordHash: 'hashed-password',
         isAnonymous: false,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -75,6 +76,7 @@ describe('AuthService', () => {
         username: 'existinguser',
         passwordHash: 'hash',
         isAnonymous: false,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -94,6 +96,7 @@ describe('AuthService', () => {
         username: validInput.username,
         passwordHash: 'hash',
         isAnonymous: false,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -121,6 +124,7 @@ describe('AuthService', () => {
         username: 'testuser',
         passwordHash: hashedPassword,
         isAnonymous: false,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -161,6 +165,7 @@ describe('AuthService', () => {
         username: 'testuser',
         passwordHash: '$2a$12$differenthash',
         isAnonymous: false,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -180,6 +185,7 @@ describe('AuthService', () => {
         username: 'testuser',
         passwordHash: null,
         isAnonymous: true,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -254,6 +260,7 @@ describe('AuthService', () => {
         username: 'testuser',
         passwordHash: 'hashed-password',
         isAnonymous: false,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -287,6 +294,7 @@ describe('AuthService', () => {
         username: 'testuser',
         passwordHash: null,
         isAnonymous: true,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -306,6 +314,7 @@ describe('AuthService', () => {
         username: null,
         passwordHash: null,
         isAnonymous: true,
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       }

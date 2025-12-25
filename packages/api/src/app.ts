@@ -8,6 +8,7 @@ import { heartsRouter } from './modules/hearts/hearts.router.js'
 import { learningRouter } from './modules/learning/learning.router.js'
 import { lessonRouter } from './modules/lesson/lesson.router.js'
 import { tsumeshogiRouter } from './modules/tsumeshogi/tsumeshogi.router.js'
+import { adminLessonRouter } from './modules/admin/lesson/lesson.router.js'
 import { errorHandler } from './shared/errors/index.js'
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -72,6 +73,9 @@ export async function buildApp() {
 
   // 詰将棋API
   await app.register(tsumeshogiRouter, { prefix: '/api/tsumeshogi' })
+
+  // 管理者用レッスンAPI
+  await app.register(adminLessonRouter, { prefix: '/api/admin/lesson' })
 
   return app
 }

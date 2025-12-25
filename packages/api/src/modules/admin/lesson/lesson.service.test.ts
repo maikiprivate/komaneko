@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Course, Section, Lesson, LessonProblem } from '@prisma/client'
 import { LessonService } from './lesson.service.js'
-import type { LessonRepository, CourseWithNested, SectionWithNested, LessonWithNested } from './lesson.repository.js'
+import type { LessonRepository, CourseWithNested } from './lesson.repository.js'
 
 // =============================================================================
 // モックデータ
@@ -149,7 +149,7 @@ describe('LessonService', () => {
           createMockCourse({ order: 1 })
         )
 
-        await service.createCourse({ title: 'First' })
+        await service.createCourse({ title: 'First', description: '', status: 'draft' })
 
         expect(mockRepository.createCourse).toHaveBeenCalledWith(
           expect.objectContaining({ order: 1 })
@@ -218,7 +218,7 @@ describe('LessonService', () => {
           createMockSection({ order: 2 })
         )
 
-        const result = await service.createSection({
+        await service.createSection({
           title: '新規セクション',
           courseId: 'course-1',
         })
@@ -422,6 +422,8 @@ describe('LessonService', () => {
 
         await expect(service.createProblem({
           sfen: '9/9/9/9/9/9/9/9/9 b - 1',
+          playerTurn: 'black',
+          moveTree: [],
           lessonId: 'non-existent',
         })).rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
       })
