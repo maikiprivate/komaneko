@@ -4,7 +4,7 @@
 export const ErrorCodes = {
   // ========== 認証・認可 ==========
   UNAUTHORIZED: { status: 401, message: '認証が必要です' },
-  FORBIDDEN: { status: 403, message: 'アクセス権限がありません' },
+  FORBIDDEN: { status: 403, message: '管理者権限が必要です' },
   SESSION_EXPIRED: { status: 401, message: 'セッションが期限切れです' },
   INVALID_TOKEN: { status: 401, message: 'トークンが無効です' },
   TOKEN_EXPIRED: { status: 401, message: 'トークンが期限切れです' },
