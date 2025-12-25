@@ -57,16 +57,16 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* サイドバー */}
-      <aside className="w-44 bg-slate-800 text-white flex flex-col">
+    <div className="h-screen flex overflow-hidden">
+      {/* サイドバー（画面高さに固定） */}
+      <aside className="w-44 bg-slate-800 text-white flex flex-col flex-shrink-0">
         {/* ロゴ */}
         <div className="px-4 py-4 border-b border-slate-700 text-center">
           <span className="text-xl font-serif tracking-widest">駒猫</span>
         </div>
 
         {/* ナビゲーション */}
-        <nav className="flex-1 py-3 px-2">
+        <nav className="flex-1 py-3 px-2 overflow-y-auto">
           <ul className="space-y-1">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path ||
@@ -104,7 +104,7 @@ export function Layout() {
       </aside>
 
       {/* メインコンテンツ */}
-      <main className="flex-1 bg-gray-100">
+      <main className="flex-1 bg-gray-100 overflow-y-auto">
         <Outlet />
       </main>
     </div>
