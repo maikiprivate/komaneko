@@ -23,6 +23,9 @@ export const ErrorCodes = {
   USER_NOT_FOUND: { status: 404, message: 'ユーザーが見つかりません' },
   LESSON_NOT_FOUND: { status: 404, message: 'レッスンが見つかりません' },
   TSUMESHOGI_NOT_FOUND: { status: 404, message: '詰将棋が見つかりません' },
+  COURSE_NOT_FOUND: { status: 404, message: 'コースが見つかりません' },
+  SECTION_NOT_FOUND: { status: 404, message: 'セクションが見つかりません' },
+  PROBLEM_NOT_FOUND: { status: 404, message: '問題が見つかりません' },
 
   // ========== ゲーミフィケーション ==========
   NO_HEARTS_LEFT: { status: 400, message: 'ハートがありません' },
