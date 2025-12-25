@@ -136,7 +136,7 @@ model Tsumeshogi {
 
 model Course {
   id          String    @id @default(uuid())
-  order       Int       // 表示順
+  order       Int       @unique // 表示順（重複不可）
   title       String
   description String    @default("")
   status      String    @default("draft") // draft | published
@@ -160,6 +160,7 @@ model Section {
   course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons Lesson[]
 
+  @@unique([courseId, order]) // コース内で順序は重複不可
   @@index([courseId])
   @@map("sections")
 }
@@ -175,6 +176,7 @@ model Lesson {
   section  Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   problems LessonProblem[]
 
+  @@unique([sectionId, order]) // セクション内で順序は重複不可
   @@index([sectionId])
   @@map("lessons")
 }
@@ -191,6 +193,7 @@ model LessonProblem {
 
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
+  @@unique([lessonId, order]) // レッスン内で順序は重複不可
   @@index([lessonId])
   @@map("lesson_problems")
 }
