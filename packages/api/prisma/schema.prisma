@@ -131,3 +131,66 @@ model Tsumeshogi {
   @@index([moveCount, status])
   @@map("tsumeshogis")
 }
+
+// ========== レッスンコンテンツ ==========
+
+model Course {
+  id          String    @id @default(uuid())
+  order       Int       // 表示順
+  title       String
+  description String    @default("")
+  status      String    @default("draft") // draft | published
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  sections Section[]
+
+  @@index([status])
+  @@map("courses")
+}
+
+model Section {
+  id        String   @id @default(uuid())
+  order     Int      // 表示順
+  title     String
+  courseId  String   @map("course_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId])
+  @@map("sections")
+}
+
+model Lesson {
+  id        String   @id @default(uuid())
+  order     Int      // 表示順
+  title     String
+  sectionId String   @map("section_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  section  Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  problems LessonProblem[]
+
+  @@index([sectionId])
+  @@map("lessons")
+}
+
+model LessonProblem {
+  id         String   @id @default(uuid())
+  order      Int      // 表示順
+  sfen       String   // 局面（SFEN形式）
+  playerTurn String   @default("black") @map("player_turn") // black | white
+  moveTree   Json     // SfenMove[][] 形式（正解手順ツリー）
+  lessonId   String   @map("lesson_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("lesson_problems")
+}
