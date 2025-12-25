@@ -77,3 +77,33 @@ export type MovesState =
   | { type: 'idle' }
   | { type: 'piece_selected'; position: Position; validMoves: Position[] }
   | { type: 'awaiting_promotion'; from: Position; to: Position }
+
+// =============================================================================
+// 分岐機能用の型定義
+// =============================================================================
+
+/**
+ * 分岐パス
+ *
+ * ツリー内の現在位置を表す。各要素はそのノードとその親からの分岐インデックス。
+ */
+export interface BranchPath {
+  /** このノードのID */
+  nodeId: string
+  /** 何番目の分岐か (0=メインライン, 1=第2分岐, ...) */
+  branchIndex: number
+}
+
+/**
+ * 分岐情報
+ *
+ * 特定のノードの兄弟分岐に関する情報
+ */
+export interface BranchInfo {
+  /** 現在のノードID */
+  currentNodeId: string
+  /** 兄弟ノード一覧（現在のノードを含む） */
+  siblings: MoveNode[]
+  /** 現在のノードが何番目か */
+  currentIndex: number
+}

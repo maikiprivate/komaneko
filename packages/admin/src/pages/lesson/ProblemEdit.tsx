@@ -16,578 +16,25 @@ import type { PieceType, Player, Position } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
 import { getPossibleMoves, getDropPositions, canPromote, mustPromote, makeMove, makeDrop } from '../../lib/shogi/moveGenerator'
-import type { MoveNode, MoveTree } from '../../lib/lesson/types'
+import type { MoveTree, BranchPath } from '../../lib/lesson/types'
 import {
-  createMoveNode,
   positionToSfenMove,
   dropToSfenMove,
-  editorNodesToMoveTree,
-  type EditorMoveNode,
+  createEmptyMoveTree,
+  addMoveAtPath,
+  createDefaultPath,
+  truncatePathToIndex,
+  switchBranchAtPath,
+  replayMoveTreeWithPath,
 } from '../../lib/lesson/moveTreeUtils'
-
-/**
- * MoveTreeの手順を再生してEditorMoveNode[]を作成
- */
-function replayMoveTree(moveTree: MoveTree | undefined): EditorMoveNode[] {
-  if (!moveTree || moveTree.branches.length === 0) {
-    return []
-  }
-
-  const result: EditorMoveNode[] = []
-  let currentBoardState = parseSfen(moveTree.rootSfen)
-
-  // 最初の分岐を線形にたどる
-  let currentNode: MoveNode | undefined = moveTree.branches[0]
-
-  while (currentNode) {
-    // SFENの手を解析して盤面を更新
-    const move = currentNode.move
-    const newBoardState = applyMoveFromSfen(currentBoardState, move)
-
-    if (newBoardState) {
-      result.push({
-        id: currentNode.id,
-        move: currentNode.move,
-        isPlayerMove: currentNode.isPlayerMove,
-        children: currentNode.children,
-        boardState: newBoardState,
-      })
-      currentBoardState = newBoardState
-    }
-
-    // 最初の子のみをたどる
-    currentNode = currentNode.children[0]
-  }
-
-  return result
-}
-
-/**
- * SFEN形式の手を盤面に適用
- */
-function applyMoveFromSfen(boardState: import('../../lib/shogi/types').BoardState, sfenMove: string): import('../../lib/shogi/types').BoardState | null {
-  // 駒打ちの場合: "P*5e" 形式
-  if (sfenMove.includes('*')) {
-    const pieceChar = sfenMove[0]
-    const toFile = sfenMove[2]
-    const toRank = sfenMove[3]
-
-    const pieceType = sfenCharToPieceType(pieceChar)
-    const to = sfenPosToPosition(toFile, toRank)
-    const owner = boardState.turn
-
-    return makeDrop(boardState, pieceType, to, owner)
-  }
-
-  // 通常の移動: "7g7f" または "7g7f+" 形式
-  const fromFile = sfenMove[0]
-  const fromRank = sfenMove[1]
-  const toFile = sfenMove[2]
-  const toRank = sfenMove[3]
-  const promote = sfenMove[4] === '+'
-
-  const from = sfenPosToPosition(fromFile, fromRank)
-  const to = sfenPosToPosition(toFile, toRank)
-
-  return makeMove(boardState, from, to, promote)
-}
-
-function sfenPosToPosition(file: string, rank: string): Position {
-  const files = '987654321'
-  const ranks = 'abcdefghi'
-  return {
-    row: ranks.indexOf(rank),
-    col: files.indexOf(file),
-  }
-}
-
-function sfenCharToPieceType(char: string): PieceType {
-  const map: Record<string, PieceType> = {
-    P: 'fu', L: 'kyo', N: 'kei', S: 'gin',
-    G: 'kin', B: 'kaku', R: 'hi', K: 'ou',
-  }
-  return map[char.toUpperCase()] || 'fu'
-}
-
-// =============================================================================
-// エディタヘッダー
-// =============================================================================
-
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-
-function EditorHeader({
-  lessonTitle,
-  breadcrumb,
-  onSave,
-  saveStatus,
-}: {
-  lessonTitle: string
-  breadcrumb: string
-  onSave: () => void
-  saveStatus: SaveStatus
-}) {
-  const getSaveButtonContent = () => {
-    switch (saveStatus) {
-      case 'saving':
-        return (
-          <>
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            保存中...
-          </>
-        )
-      case 'saved':
-        return (
-          <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            保存しました
-          </>
-        )
-      case 'error':
-        return (
-          <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            エラー
-          </>
-        )
-      default:
-        return '保存'
-    }
-  }
-
-  const getSaveButtonClass = () => {
-    const base = 'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors'
-    switch (saveStatus) {
-      case 'saving':
-        return `${base} bg-slate-400 text-white cursor-not-allowed`
-      case 'saved':
-        return `${base} bg-green-500 text-white`
-      case 'error':
-        return `${base} bg-red-500 text-white`
-      default:
-        return `${base} bg-primary text-white hover:bg-primary-dark`
-    }
-  }
-
-  return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
-      <div className="flex items-center gap-4">
-        <Link
-          to="/lessons"
-          className="flex items-center gap-1 text-slate-500 hover:text-slate-700 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="text-sm">戻る</span>
-        </Link>
-        <div className="h-6 w-px bg-slate-200" />
-        <div>
-          <h1 className="text-lg font-semibold text-slate-800">{lessonTitle}</h1>
-          <p className="text-xs text-slate-400">{breadcrumb}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <button className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-          プレビュー
-        </button>
-        <button
-          onClick={onSave}
-          disabled={saveStatus === 'saving'}
-          className={getSaveButtonClass()}
-        >
-          {getSaveButtonContent()}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
-// 編集パネル（モード切替 + 駒パレット統合）
-// =============================================================================
-
-/** 通常駒 */
-const NORMAL_PIECES: PieceType[] = [
-  'ou', 'hi', 'kaku', 'kin', 'gin', 'kei', 'kyo', 'fu',
-]
-
-/** 成駒 */
-const PROMOTED_PIECES: PieceType[] = [
-  'ryu', 'uma', 'narigin', 'narikei', 'narikyo', 'to',
-]
-
-function EditorPanel({
-  mode,
-  onModeChange,
-  selectedPiece,
-  selectedOwner,
-  onPieceSelect,
-  onReset,
-}: {
-  mode: EditorMode
-  onModeChange: (mode: EditorMode) => void
-  selectedPiece: PieceType | null
-  selectedOwner: Player
-  onPieceSelect: (piece: PieceType | null, owner: Player) => void
-  onReset: () => void
-}) {
-  const isSelected = (piece: PieceType, owner: Player) =>
-    selectedPiece === piece && selectedOwner === owner
-
-  const renderPieceButton = (piece: PieceType, owner: Player) => (
-    <button
-      key={`${owner}-${piece}`}
-      onClick={() => onPieceSelect(isSelected(piece, owner) ? null : piece, owner)}
-      className={`w-8 h-8 rounded border-2 transition-all flex items-center justify-center ${
-        isSelected(piece, owner)
-          ? 'border-primary bg-primary/10'
-          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-      }`}
-      title={`${owner === 'sente' ? '先手' : '後手'}${piece}`}
-    >
-      <img
-        src={`/pieces/${piece}.png`}
-        alt={piece}
-        className={`w-5 h-5 ${owner === 'gote' ? 'rotate-180' : ''}`}
-      />
-    </button>
-  )
-
-  return (
-    <div className="bg-white rounded-lg border border-slate-200 p-3 space-y-3">
-      {/* モード切り替えタブ */}
-      <div className="flex items-center justify-center">
-        <div className="inline-flex rounded-lg bg-slate-100 p-1">
-          <button
-            onClick={() => onModeChange('setup')}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              mode === 'setup'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-            </svg>
-            初期配置
-          </button>
-          <button
-            onClick={() => onModeChange('moves')}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              mode === 'moves'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
-            手順設定
-          </button>
-        </div>
-      </div>
-
-      {/* 初期配置モード時のみ駒パレット表示 */}
-      {mode === 'setup' && (
-        <>
-          {/* 1行目: 通常駒（先手 + 後手） */}
-          <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center gap-0.5">
-              {NORMAL_PIECES.map((piece) => renderPieceButton(piece, 'sente'))}
-            </div>
-            <div className="w-px h-6 bg-slate-200" />
-            <div className="flex items-center gap-0.5">
-              {NORMAL_PIECES.map((piece) => renderPieceButton(piece, 'gote'))}
-            </div>
-          </div>
-
-          {/* 2行目: 成駒（先手 + 後手） */}
-          <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center gap-0.5">
-              {PROMOTED_PIECES.map((piece) => renderPieceButton(piece, 'sente'))}
-            </div>
-            <div className="w-px h-6 bg-slate-200" />
-            <div className="flex items-center gap-0.5">
-              {PROMOTED_PIECES.map((piece) => renderPieceButton(piece, 'gote'))}
-            </div>
-          </div>
-
-          {/* フッター: 選択解除・盤面リセット */}
-          <div className="flex items-center justify-center gap-4 pt-2 border-t border-slate-100">
-            <button
-              onClick={() => onPieceSelect(null, selectedOwner)}
-              disabled={!selectedPiece}
-              className={`text-xs transition-colors ${
-                selectedPiece
-                  ? 'text-slate-500 hover:text-slate-700'
-                  : 'text-slate-300 cursor-not-allowed'
-              }`}
-            >
-              選択解除
-            </button>
-            <button
-              onClick={onReset}
-              className="text-xs text-slate-500 hover:text-red-600 transition-colors"
-            >
-              盤面リセット
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* 手順設定モード時のヒント */}
-      {mode === 'moves' && (
-        <div className="text-center text-xs text-slate-400 py-1">
-          駒をクリックして手を入力
-        </div>
-      )}
-    </div>
-  )
-}
-
-// =============================================================================
-// 成り確認ダイアログ
-// =============================================================================
-
-function PromotionDialog({
-  pieceType,
-  onChoice,
-}: {
-  pieceType: PieceType
-  onChoice: (promote: boolean) => void
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-xs w-full mx-4">
-        <div className="flex justify-center mb-3">
-          <img
-            src={`/pieces/${pieceType}.png`}
-            alt={pieceType}
-            className="w-12 h-12"
-          />
-        </div>
-        <h3 className="text-lg font-medium text-slate-800 mb-4 text-center">
-          成りますか？
-        </h3>
-        <div className="flex gap-3">
-          <button
-            onClick={() => onChoice(true)}
-            className="flex-1 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            成る
-          </button>
-          <button
-            onClick={() => onChoice(false)}
-            className="flex-1 py-3 border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            不成
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
-// 手順ツリーパネル
-// =============================================================================
-
-function MoveTreePanel({
-  nodes,
-  currentTurn,
-  selectedNodeIndex,
-  onNodeClick,
-  onClear,
-}: {
-  nodes: EditorMoveNode[]
-  currentTurn: Player
-  selectedNodeIndex: number
-  onNodeClick: (index: number) => void
-  onClear: () => void
-}) {
-  return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-        <h2 className="font-medium text-slate-700">手順ツリー</h2>
-        <span className="text-xs text-slate-400">
-          {currentTurn === 'sente' ? '先手番' : '後手番'}
-        </span>
-      </div>
-      <div className="flex-1 p-4 overflow-auto">
-        {nodes.length === 0 ? (
-          <div className="text-center py-8 text-slate-400 text-sm">
-            手順設定モードで<br />盤面をクリックして手を追加
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {/* 初期局面 */}
-            <button
-              onClick={() => onNodeClick(-1)}
-              className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm text-left transition-colors ${
-                selectedNodeIndex === -1
-                  ? 'bg-primary/20 ring-2 ring-primary'
-                  : 'bg-slate-50 hover:bg-slate-100'
-              }`}
-            >
-              <span className="text-slate-400 w-5">0.</span>
-              <span className="text-slate-600">初期局面</span>
-            </button>
-            {nodes.map((node, index) => (
-              <button
-                key={node.id}
-                onClick={() => onNodeClick(index)}
-                className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm text-left transition-colors ${
-                  selectedNodeIndex === index
-                    ? 'ring-2 ring-primary ' + (node.isPlayerMove ? 'bg-blue-100' : 'bg-orange-100')
-                    : (node.isPlayerMove ? 'bg-blue-50 hover:bg-blue-100' : 'bg-orange-50 hover:bg-orange-100')
-                }`}
-              >
-                <span className="text-slate-400 w-5">{index + 1}.</span>
-                <span className={node.isPlayerMove ? 'text-blue-700' : 'text-orange-700'}>
-                  {node.isPlayerMove ? '▲' : '△'} {node.move}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="px-4 py-3 border-t border-slate-100 flex justify-between">
-        {/* TODO: 分岐機能は将来実装予定 */}
-        <button
-          disabled
-          className="flex items-center gap-2 text-xs text-slate-300 cursor-not-allowed"
-          title="分岐機能は将来実装予定です"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          分岐を追加
-        </button>
-        {nodes.length > 0 && (
-          <button
-            onClick={onClear}
-            className="text-xs text-slate-400 hover:text-red-600 transition-colors"
-          >
-            クリア
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
-// 問題リストパネル
-// =============================================================================
-
-function ProblemListPanel({
-  problems,
-  selectedIndex,
-  onSelect,
-  onAdd,
-  onDelete,
-  onMoveUp,
-  onMoveDown,
-}: {
-  problems: Problem[]
-  selectedIndex: number
-  onSelect: (index: number) => void
-  onAdd: () => void
-  onDelete: (index: number) => void
-  onMoveUp: (index: number) => void
-  onMoveDown: (index: number) => void
-}) {
-  return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-        <h2 className="text-sm font-medium text-slate-700">
-          問題
-          <span className="ml-1 text-xs text-slate-400">({problems.length})</span>
-        </h2>
-        <button
-          onClick={onAdd}
-          className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-          title="問題を追加"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      </div>
-      <div className="flex-1 overflow-auto">
-        {problems.map((problem, index) => (
-          <div
-            key={problem.id}
-            onClick={() => onSelect(index)}
-            className={`group flex items-center gap-2 py-2 px-3 cursor-pointer transition-colors ${
-              index === selectedIndex
-                ? 'bg-primary/10 border-l-2 border-primary'
-                : 'hover:bg-slate-50 border-l-2 border-transparent'
-            }`}
-          >
-            <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-medium ${
-              index === selectedIndex
-                ? 'bg-primary text-white'
-                : 'bg-slate-100 text-slate-600'
-            }`}>
-              {index + 1}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-slate-600 truncate">
-                {problem.instruction || '指示文なし'}
-              </p>
-            </div>
-            {/* ホバー時にアクションボタン表示 */}
-            <div className="hidden group-hover:flex items-center gap-0.5">
-              <button
-                onClick={(e) => { e.stopPropagation(); onMoveUp(index) }}
-                disabled={index === 0}
-                className="p-0.5 text-slate-400 hover:text-slate-600 rounded disabled:opacity-30"
-                title="上へ"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onMoveDown(index) }}
-                disabled={index === problems.length - 1}
-                className="p-0.5 text-slate-400 hover:text-slate-600 rounded disabled:opacity-30"
-                title="下へ"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(index) }}
-                disabled={problems.length <= 1}
-                className="p-0.5 text-slate-400 hover:text-red-500 rounded disabled:opacity-30"
-                title="削除"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        ))}
-        {problems.length === 0 && (
-          <div className="py-6 text-center text-xs text-slate-400">
-            問題なし
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+import {
+  EditorHeader,
+  EditorPanel,
+  MoveTreePanel,
+  ProblemListPanel,
+  PromotionDialog,
+  type SaveStatus,
+} from '../../components/lesson'
 
 // =============================================================================
 // メインコンポーネント
@@ -601,7 +48,7 @@ export function ProblemEdit() {
   const [mode, setMode] = useState<EditorMode>('setup')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [problems, setProblems] = useState<Problem[]>(lessonData?.lesson.problems ?? [])
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
 
   // 駒パレット状態（初期配置モード用）
   const [selectedPalettePiece, setSelectedPalettePiece] = useState<PieceType | null>(null)
@@ -617,7 +64,9 @@ export function ProblemEdit() {
     to: Position
     pieceType: PieceType
   } | null>(null)
-  const [moveTreeNodes, setMoveTreeNodes] = useState<EditorMoveNode[]>([])
+  // 分岐対応: ツリー全体とパスで状態管理
+  const [fullMoveTree, setFullMoveTree] = useState<MoveTree | null>(null)
+  const [currentPath, setCurrentPath] = useState<BranchPath[]>([])
   const [currentTurn, setCurrentTurn] = useState<Player>('sente')
   const [selectedNodeIndex, setSelectedNodeIndex] = useState(-1) // -1 = 初期局面
 
@@ -631,6 +80,14 @@ export function ProblemEdit() {
     if (!selectedSfen) return createEmptyBoardState()
     return parseSfen(selectedSfen)
   }, [selectedSfen])
+
+  // 現在のパス上のノード（盤面状態付き）を導出
+  const currentPathNodes = useMemo(() => {
+    if (!fullMoveTree || currentPath.length === 0) {
+      return []
+    }
+    return replayMoveTreeWithPath(fullMoveTree, currentPath)
+  }, [fullMoveTree, currentPath])
 
   // 手順設定モード用の現在盤面
   const [moveModeBoardState, setMoveModeBoardState] = useState(initialBoardState)
@@ -656,10 +113,13 @@ export function ProblemEdit() {
     setSelectedNodeIndex(-1)
 
     // MoveTreeがあれば復元
-    if (selectedProblem?.moveTree) {
-      const restoredNodes = replayMoveTree(selectedProblem.moveTree)
-      setMoveTreeNodes(restoredNodes)
-      // 最後のノードの盤面状態を復元
+    if (selectedProblem?.moveTree && selectedProblem.moveTree.branches.length > 0) {
+      setFullMoveTree(selectedProblem.moveTree)
+      const defaultPath = createDefaultPath(selectedProblem.moveTree)
+      setCurrentPath(defaultPath)
+
+      // パスに沿って手順を再生し、最後の局面を復元
+      const restoredNodes = replayMoveTreeWithPath(selectedProblem.moveTree, defaultPath)
       if (restoredNodes.length > 0) {
         const lastNode = restoredNodes[restoredNodes.length - 1]
         setMoveModeBoardState(lastNode.boardState)
@@ -667,9 +127,12 @@ export function ProblemEdit() {
         setSelectedNodeIndex(restoredNodes.length - 1)
       }
     } else {
-      setMoveTreeNodes([])
+      // 空のツリーを初期化
+      const emptyTree = selectedSfen ? createEmptyMoveTree(selectedSfen) : null
+      setFullMoveTree(emptyTree)
+      setCurrentPath([])
     }
-  }, [initialBoardState, selectedProblem?.moveTree])
+  }, [initialBoardState, selectedProblem?.moveTree, selectedSfen])
 
   // 指示文変更
   const handleInstructionChange = useCallback((value: string) => {
@@ -684,15 +147,14 @@ export function ProblemEdit() {
     if (newIndex === selectedIndex) return
 
     // 現在の問題にMoveTreeを保存
-    if (selectedSfen && moveTreeNodes.length > 0) {
-      const moveTree = editorNodesToMoveTree(moveTreeNodes, selectedSfen)
+    if (fullMoveTree && fullMoveTree.branches.length > 0) {
       const newProblems = [...problems]
-      newProblems[selectedIndex] = { ...problems[selectedIndex], moveTree }
+      newProblems[selectedIndex] = { ...problems[selectedIndex], moveTree: fullMoveTree }
       setProblems(newProblems)
     }
 
     setSelectedIndex(newIndex)
-  }, [selectedIndex, selectedSfen, moveTreeNodes, problems])
+  }, [selectedIndex, fullMoveTree, problems])
 
   // 問題追加
   const handleAddProblem = useCallback(() => {
@@ -740,10 +202,9 @@ export function ProblemEdit() {
     try {
       // 現在の問題にMoveTreeを保存
       const updatedProblems = problems.map((p, i) => {
-        if (i === selectedIndex && selectedSfen) {
-          // 選択中の問題は現在のmoveTreeNodesをシリアライズ
-          const moveTree = editorNodesToMoveTree(moveTreeNodes, selectedSfen)
-          return { ...p, moveTree }
+        if (i === selectedIndex && fullMoveTree) {
+          // 選択中の問題は現在のfullMoveTreeをそのまま使用
+          return { ...p, moveTree: fullMoveTree }
         }
         return p
       })
@@ -775,7 +236,7 @@ export function ProblemEdit() {
       setSaveStatus('error')
       setTimeout(() => setSaveStatus('idle'), 3000)
     }
-  }, [lessonId, problems, selectedIndex, selectedSfen, moveTreeNodes])
+  }, [lessonId, problems, selectedIndex, fullMoveTree])
 
   // 駒パレット選択
   const handlePaletteSelect = useCallback((piece: PieceType | null, owner: Player) => {
@@ -816,6 +277,55 @@ export function ProblemEdit() {
     newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
     setProblems(newProblems)
   }, [selectedProblem, selectedPalettePiece, selectedOwner, problems, selectedIndex])
+
+  // 手をツリーに追加する共通処理（分岐対応版）
+  const addMoveToTreeNew = useCallback((sfenMove: string, newBoardState: import('../../lib/shogi/types').BoardState, isPlayerMove: boolean) => {
+    if (!fullMoveTree || !selectedSfen) return
+
+    // 現在のパスを選択ノードまで切り詰める
+    const truncatedPath = selectedNodeIndex >= 0
+      ? truncatePathToIndex(currentPath, selectedNodeIndex)
+      : []
+
+    // 新しい手を追加
+    const { tree: newTree, path: newPath } = addMoveAtPath(
+      fullMoveTree,
+      truncatedPath,
+      sfenMove,
+      isPlayerMove
+    )
+
+    // 状態を更新
+    setFullMoveTree(newTree)
+    setCurrentPath(newPath)
+    setSelectedNodeIndex(newPath.length - 1)
+    setMoveModeBoardState(newBoardState)
+    setCurrentTurn(prev => prev === 'sente' ? 'gote' : 'sente')
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [fullMoveTree, currentPath, selectedNodeIndex, selectedSfen])
+
+  // 手を実行（盤上の移動）
+  const executeMove = useCallback((from: Position, to: Position, promote: boolean) => {
+    const newBoardState = makeMove(moveModeBoardState, from, to, promote)
+    if (!newBoardState) return
+
+    const sfenMove = positionToSfenMove(from, to, promote)
+    const isPlayerMove = currentTurn === 'sente'
+    addMoveToTreeNew(sfenMove, newBoardState, isPlayerMove)
+  }, [currentTurn, moveModeBoardState, addMoveToTreeNew])
+
+  // 駒を打つ
+  const executeDrop = useCallback((pieceType: PieceType, to: Position) => {
+    // 手番に基づいて駒を打つ（selectedHandPieceOwnerではなくcurrentTurnを使用）
+    const newBoardState = makeDrop(moveModeBoardState, pieceType, to, currentTurn)
+    if (!newBoardState) return
+
+    const sfenMove = dropToSfenMove(pieceType, to)
+    const isPlayerMove = currentTurn === 'sente'
+    addMoveToTreeNew(sfenMove, newBoardState, isPlayerMove)
+  }, [currentTurn, moveModeBoardState, addMoveToTreeNew])
 
   // 盤面セルクリック（手順設定モード）
   const handleMovesCellClick = useCallback((row: number, col: number) => {
@@ -866,56 +376,7 @@ export function ProblemEdit() {
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
-  }, [boardState, selectedPosition, selectedHandPiece, possibleMoves, currentTurn])
-
-  // 手をツリーに追加する共通処理
-  const addMoveToTree = useCallback((sfenMove: string, newBoardState: BoardState, isPlayerMove: boolean) => {
-    // 新しいノードを作成（盤面状態を含む）
-    const baseNode = createMoveNode(sfenMove, isPlayerMove)
-    const newNode: EditorMoveNode = {
-      ...baseNode,
-      boardState: newBoardState,
-    }
-
-    // ツリーに追加（選択中のノード以降は切り捨て）
-    setMoveTreeNodes(prev => {
-      const insertIndex = selectedNodeIndex + 1
-      const newNodes = [...prev.slice(0, insertIndex), newNode]
-      setSelectedNodeIndex(newNodes.length - 1)
-      return newNodes
-    })
-
-    // 盤面を更新
-    setMoveModeBoardState(newBoardState)
-
-    // 手番を切り替え
-    setCurrentTurn(prev => prev === 'sente' ? 'gote' : 'sente')
-
-    // 選択状態をリセット
-    setSelectedPosition(null)
-    setSelectedHandPiece(null)
-    setPossibleMoves([])
-  }, [selectedNodeIndex])
-
-  // 手を実行（盤上の移動）
-  const executeMove = useCallback((from: Position, to: Position, promote: boolean) => {
-    const newBoardState = makeMove(moveModeBoardState, from, to, promote)
-    if (!newBoardState) return
-
-    const sfenMove = positionToSfenMove(from, to, promote)
-    const isPlayerMove = currentTurn === 'sente'
-    addMoveToTree(sfenMove, newBoardState, isPlayerMove)
-  }, [currentTurn, moveModeBoardState, addMoveToTree])
-
-  // 駒を打つ
-  const executeDrop = useCallback((pieceType: PieceType, to: Position) => {
-    const newBoardState = makeDrop(moveModeBoardState, pieceType, to, selectedHandPieceOwner)
-    if (!newBoardState) return
-
-    const sfenMove = dropToSfenMove(pieceType, to)
-    const isPlayerMove = selectedHandPieceOwner === 'sente'
-    addMoveToTree(sfenMove, newBoardState, isPlayerMove)
-  }, [selectedHandPieceOwner, moveModeBoardState, addMoveToTree])
+  }, [boardState, selectedPosition, selectedHandPiece, possibleMoves, currentTurn, executeMove, executeDrop])
 
   // 成り選択
   const handlePromotionChoice = useCallback((promote: boolean) => {
@@ -927,13 +388,17 @@ export function ProblemEdit() {
   // 手順クリア
   const handleMoveTreeClear = useCallback(() => {
     setMoveModeBoardState(initialBoardState)
-    setMoveTreeNodes([])
+    // ツリーをリセット（空のツリーに戻す）
+    if (selectedSfen) {
+      setFullMoveTree(createEmptyMoveTree(selectedSfen))
+    }
+    setCurrentPath([])
     setCurrentTurn('sente')
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
     setSelectedNodeIndex(-1)
-  }, [initialBoardState])
+  }, [initialBoardState, selectedSfen])
 
   // ノードクリック（局面を復元）
   const handleNodeClick = useCallback((index: number) => {
@@ -943,7 +408,7 @@ export function ProblemEdit() {
       setCurrentTurn('sente')
     } else {
       // 指定されたノードの局面を復元
-      const node = moveTreeNodes[index]
+      const node = currentPathNodes[index]
       if (node) {
         setMoveModeBoardState(node.boardState)
         // 次の手番はこの手を指したプレイヤーの相手
@@ -954,7 +419,33 @@ export function ProblemEdit() {
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
-  }, [initialBoardState, moveTreeNodes])
+  }, [initialBoardState, currentPathNodes])
+
+  // 分岐切り替え
+  const handleBranchSwitch = useCallback((nodeIndex: number, newBranchIndex: number) => {
+    if (!fullMoveTree) return
+
+    // 新しいパスを生成
+    const newPath = switchBranchAtPath(fullMoveTree, currentPath, nodeIndex, newBranchIndex)
+    setCurrentPath(newPath)
+
+    // パスに沿って手順を再生し、最後の局面を復元
+    const newNodes = replayMoveTreeWithPath(fullMoveTree, newPath)
+    if (newNodes.length > 0) {
+      const lastNode = newNodes[newNodes.length - 1]
+      setMoveModeBoardState(lastNode.boardState)
+      setCurrentTurn(lastNode.isPlayerMove ? 'gote' : 'sente')
+      setSelectedNodeIndex(newNodes.length - 1)
+    } else {
+      setMoveModeBoardState(initialBoardState)
+      setCurrentTurn('sente')
+      setSelectedNodeIndex(-1)
+    }
+
+    setSelectedPosition(null)
+    setSelectedHandPiece(null)
+    setPossibleMoves([])
+  }, [fullMoveTree, currentPath, initialBoardState])
 
   // 持ち駒クリック（手順設定モード：駒を打つために選択）
   const handleMovesHandPieceClick = useCallback((pieceType: PieceType, owner: Player) => {
@@ -1174,11 +665,14 @@ export function ProblemEdit() {
         {/* 右パネル: 手順ツリー */}
         <div className="w-[260px] flex-shrink-0 bg-white border-l border-slate-200">
           <MoveTreePanel
-            nodes={moveTreeNodes}
+            nodes={currentPathNodes}
             currentTurn={currentTurn}
             selectedNodeIndex={selectedNodeIndex}
             onNodeClick={handleNodeClick}
             onClear={handleMoveTreeClear}
+            fullMoveTree={fullMoveTree}
+            currentPath={currentPath}
+            onBranchSwitch={handleBranchSwitch}
           />
         </div>
       </div>
