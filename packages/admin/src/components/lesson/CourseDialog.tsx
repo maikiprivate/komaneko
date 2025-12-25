@@ -1,19 +1,26 @@
 /**
- * コース追加ダイアログコンポーネント
+ * コース追加・編集ダイアログコンポーネント
  */
 
 import { useState, useEffect } from 'react'
 import type { CourseStatus } from '../../mocks/lessonData'
 
-interface AddCourseDialogProps {
-  onAdd: (data: { title: string; description: string; status: CourseStatus }) => void
+interface CourseDialogProps {
+  /** 編集モード時の初期値 */
+  initialValues?: {
+    title: string
+    description: string
+    status: CourseStatus
+  }
+  onSubmit: (data: { title: string; description: string; status: CourseStatus }) => void
   onCancel: () => void
 }
 
-export function AddCourseDialog({ onAdd, onCancel }: AddCourseDialogProps) {
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [status, setStatus] = useState<CourseStatus>('draft')
+export function CourseDialog({ initialValues, onSubmit, onCancel }: CourseDialogProps) {
+  const isEdit = !!initialValues
+  const [title, setTitle] = useState(initialValues?.title ?? '')
+  const [description, setDescription] = useState(initialValues?.description ?? '')
+  const [status, setStatus] = useState<CourseStatus>(initialValues?.status ?? 'draft')
   const [touched, setTouched] = useState(false)
 
   // ESCキーでダイアログを閉じる
@@ -30,10 +37,12 @@ export function AddCourseDialog({ onAdd, onCancel }: AddCourseDialogProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
-    onAdd({ title: title.trim(), description: description.trim(), status })
+    onSubmit({ title: title.trim(), description: description.trim(), status })
   }
 
   const showError = touched && !title.trim()
+
+  const dialogTitleId = 'course-dialog-title'
 
   return (
     <div
@@ -41,11 +50,16 @@ export function AddCourseDialog({ onAdd, onCancel }: AddCourseDialogProps) {
       onClick={onCancel}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={dialogTitleId}
         className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-lg font-semibold text-slate-800">コースを追加</h3>
+          <h3 id={dialogTitleId} className="text-lg font-semibold text-slate-800">
+            {isEdit ? 'コースを編集' : 'コースを追加'}
+          </h3>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
@@ -136,7 +150,7 @@ export function AddCourseDialog({ onAdd, onCancel }: AddCourseDialogProps) {
               disabled={!title.trim()}
               className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              追加
+              {isEdit ? '保存' : '追加'}
             </button>
           </div>
         </form>

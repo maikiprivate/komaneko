@@ -1,34 +1,41 @@
 /**
- * 汎用アイテム追加ダイアログコンポーネント
- * セクション追加・レッスン追加で共通利用
+ * 汎用アイテム追加・編集ダイアログコンポーネント
+ * セクション・レッスンの追加・編集で共通利用
  */
 
 import { useState, useEffect } from 'react'
 
-interface AddItemDialogProps {
-  /** ダイアログタイトル */
-  title: string
+interface ItemDialogProps {
+  /** 追加モード時のタイトル */
+  addTitle: string
+  /** 編集モード時のタイトル */
+  editTitle: string
   /** 親要素名（サブタイトルとして表示） */
   parentName: string
   /** 入力フィールドのラベル */
   inputLabel: string
   /** プレースホルダー */
   placeholder: string
-  /** 追加ボタン押下時のコールバック */
-  onAdd: (data: { title: string }) => void
+  /** 編集モード時の初期値 */
+  initialValue?: string
+  /** 送信時のコールバック */
+  onSubmit: (data: { title: string }) => void
   /** キャンセル時のコールバック */
   onCancel: () => void
 }
 
-export function AddItemDialog({
-  title,
+export function ItemDialog({
+  addTitle,
+  editTitle,
   parentName,
   inputLabel,
   placeholder,
-  onAdd,
+  initialValue,
+  onSubmit,
   onCancel,
-}: AddItemDialogProps) {
-  const [inputValue, setInputValue] = useState('')
+}: ItemDialogProps) {
+  const isEdit = initialValue !== undefined
+  const [inputValue, setInputValue] = useState(initialValue ?? '')
   const [touched, setTouched] = useState(false)
 
   // ESCキーでダイアログを閉じる
@@ -45,10 +52,11 @@ export function AddItemDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputValue.trim()) return
-    onAdd({ title: inputValue.trim() })
+    onSubmit({ title: inputValue.trim() })
   }
 
   const showError = touched && !inputValue.trim()
+  const dialogTitleId = 'item-dialog-title'
 
   return (
     <div
@@ -56,11 +64,16 @@ export function AddItemDialog({
       onClick={onCancel}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={dialogTitleId}
         className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+          <h3 id={dialogTitleId} className="text-lg font-semibold text-slate-800">
+            {isEdit ? editTitle : addTitle}
+          </h3>
           <p className="mt-1 text-sm text-slate-500">{parentName}</p>
         </div>
         <form onSubmit={handleSubmit}>
@@ -100,7 +113,7 @@ export function AddItemDialog({
               disabled={!inputValue.trim()}
               className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              追加
+              {isEdit ? '保存' : '追加'}
             </button>
           </div>
         </form>
