@@ -130,6 +130,11 @@ export function parseSfen(sfen: string): BoardState {
 export const INITIAL_SFEN = 'lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1'
 
 /**
+ * 空盤面のSFEN（駒が一つもない状態）
+ */
+export const EMPTY_BOARD_SFEN = '9/9/9/9/9/9/9/9/9 b - 1'
+
+/**
  * 空の盤面を作成
  */
 export function createEmptyBoard(): Board {

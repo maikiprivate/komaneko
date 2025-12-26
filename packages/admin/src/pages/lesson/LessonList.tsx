@@ -79,12 +79,12 @@ function toUiLesson(apiLesson: ApiLesson): UiLesson {
     id: apiLesson.id,
     order: apiLesson.order,
     title: apiLesson.title,
-    // 問題は一覧では表示しないため空配列
+    // 問題は一覧では表示しないため簡易変換
     problems: apiLesson.problems.map(p => ({
       id: p.id,
       order: p.order,
       sfen: p.sfen,
-      instruction: '',
+      instruction: p.instruction,
       correctMove: { from: { row: 0, col: 0 }, to: { row: 0, col: 0 } },
     })),
   }
@@ -110,6 +110,32 @@ function toUiCourse(apiCourse: ApiCourse): UiCourse {
     status: apiCourse.status,
     sections: apiCourse.sections.map(toUiSection),
   }
+}
+
+// =============================================================================
+// 並び替えユーティリティ
+// =============================================================================
+
+/**
+ * 配列内のアイテムを指定方向に移動
+ * @returns 新しい順序のID配列、または移動不可の場合はnull
+ */
+function swapItem<T extends { id: string }>(
+  items: T[],
+  itemId: string,
+  direction: 'up' | 'down'
+): string[] | null {
+  const idx = items.findIndex(item => item.id === itemId)
+  if (idx === -1) return null
+
+  if (direction === 'up' && idx <= 0) return null
+  if (direction === 'down' && idx >= items.length - 1) return null
+
+  const newItems = [...items]
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  ;[newItems[swapIdx], newItems[idx]] = [newItems[idx], newItems[swapIdx]]
+
+  return newItems.map(item => item.id)
 }
 
 // =============================================================================
@@ -275,37 +301,28 @@ export function LessonList() {
     }
   }
 
-  // セクション並び替え
-  const handleMoveSectionUp = async (sectionId: string) => {
-    const course = courses.find(c => c.sections.some(s => s.id === sectionId))
-    if (!course) return
+  // セクションを含むコースを検索
+  const findCourseBySection = (sectionId: string) =>
+    courses.find(c => c.sections.some(s => s.id === sectionId))
 
-    const idx = course.sections.findIndex(s => s.id === sectionId)
-    if (idx <= 0) return
-
-    const orderedIds = [...course.sections]
-    ;[orderedIds[idx - 1], orderedIds[idx]] = [orderedIds[idx], orderedIds[idx - 1]]
-
-    try {
-      await reorderSections(course.id, orderedIds.map(s => s.id))
-      await fetchCourses()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
+  // レッスンを含むセクションを検索
+  const findSectionByLesson = (lessonId: string): UiSection | undefined => {
+    for (const course of courses) {
+      for (const section of course.sections) {
+        if (section.lessons.some(l => l.id === lessonId)) {
+          return section
+        }
+      }
     }
+    return undefined
   }
 
-  const handleMoveSectionDown = async (sectionId: string) => {
-    const course = courses.find(c => c.sections.some(s => s.id === sectionId))
-    if (!course) return
-
-    const idx = course.sections.findIndex(s => s.id === sectionId)
-    if (idx === -1 || idx >= course.sections.length - 1) return
-
-    const orderedIds = [...course.sections]
-    ;[orderedIds[idx], orderedIds[idx + 1]] = [orderedIds[idx + 1], orderedIds[idx]]
-
+  // 並び替え実行（共通処理）
+  const executeReorder = async (
+    reorderFn: () => Promise<void>
+  ) => {
     try {
-      await reorderSections(course.id, orderedIds.map(s => s.id))
+      await reorderFn()
       await fetchCourses()
     } catch (e) {
       alert(e instanceof Error ? e.message : '並び替えに失敗しました')
@@ -313,87 +330,44 @@ export function LessonList() {
   }
 
   // コース並び替え
-  const handleMoveCourseUp = async (courseId: string) => {
-    const idx = courses.findIndex(c => c.id === courseId)
-    if (idx <= 0) return
-
-    const orderedIds = [...courses]
-    ;[orderedIds[idx - 1], orderedIds[idx]] = [orderedIds[idx], orderedIds[idx - 1]]
-
-    try {
-      await reorderCourses(orderedIds.map(c => c.id))
-      await fetchCourses()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
-    }
+  const handleMoveCourseUp = (courseId: string) => {
+    const orderedIds = swapItem(courses, courseId, 'up')
+    if (orderedIds) executeReorder(() => reorderCourses(orderedIds))
   }
 
-  const handleMoveCourseDown = async (courseId: string) => {
-    const idx = courses.findIndex(c => c.id === courseId)
-    if (idx === -1 || idx >= courses.length - 1) return
+  const handleMoveCourseDown = (courseId: string) => {
+    const orderedIds = swapItem(courses, courseId, 'down')
+    if (orderedIds) executeReorder(() => reorderCourses(orderedIds))
+  }
 
-    const orderedIds = [...courses]
-    ;[orderedIds[idx], orderedIds[idx + 1]] = [orderedIds[idx + 1], orderedIds[idx]]
+  // セクション並び替え
+  const handleMoveSectionUp = (sectionId: string) => {
+    const course = findCourseBySection(sectionId)
+    if (!course) return
+    const orderedIds = swapItem(course.sections, sectionId, 'up')
+    if (orderedIds) executeReorder(() => reorderSections(course.id, orderedIds))
+  }
 
-    try {
-      await reorderCourses(orderedIds.map(c => c.id))
-      await fetchCourses()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
-    }
+  const handleMoveSectionDown = (sectionId: string) => {
+    const course = findCourseBySection(sectionId)
+    if (!course) return
+    const orderedIds = swapItem(course.sections, sectionId, 'down')
+    if (orderedIds) executeReorder(() => reorderSections(course.id, orderedIds))
   }
 
   // レッスン並び替え
-  const handleMoveLessonUp = async (lessonId: string) => {
-    let targetSection: UiSection | undefined
-    for (const course of courses) {
-      for (const section of course.sections) {
-        if (section.lessons.some(l => l.id === lessonId)) {
-          targetSection = section
-          break
-        }
-      }
-    }
-    if (!targetSection) return
-
-    const idx = targetSection.lessons.findIndex(l => l.id === lessonId)
-    if (idx <= 0) return
-
-    const orderedIds = [...targetSection.lessons]
-    ;[orderedIds[idx - 1], orderedIds[idx]] = [orderedIds[idx], orderedIds[idx - 1]]
-
-    try {
-      await reorderLessons(targetSection.id, orderedIds.map(l => l.id))
-      await fetchCourses()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
-    }
+  const handleMoveLessonUp = (lessonId: string) => {
+    const section = findSectionByLesson(lessonId)
+    if (!section) return
+    const orderedIds = swapItem(section.lessons, lessonId, 'up')
+    if (orderedIds) executeReorder(() => reorderLessons(section.id, orderedIds))
   }
 
-  const handleMoveLessonDown = async (lessonId: string) => {
-    let targetSection: UiSection | undefined
-    for (const course of courses) {
-      for (const section of course.sections) {
-        if (section.lessons.some(l => l.id === lessonId)) {
-          targetSection = section
-          break
-        }
-      }
-    }
-    if (!targetSection) return
-
-    const idx = targetSection.lessons.findIndex(l => l.id === lessonId)
-    if (idx === -1 || idx >= targetSection.lessons.length - 1) return
-
-    const orderedIds = [...targetSection.lessons]
-    ;[orderedIds[idx], orderedIds[idx + 1]] = [orderedIds[idx + 1], orderedIds[idx]]
-
-    try {
-      await reorderLessons(targetSection.id, orderedIds.map(l => l.id))
-      await fetchCourses()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
-    }
+  const handleMoveLessonDown = (lessonId: string) => {
+    const section = findSectionByLesson(lessonId)
+    if (!section) return
+    const orderedIds = swapItem(section.lessons, lessonId, 'down')
+    if (orderedIds) executeReorder(() => reorderLessons(section.id, orderedIds))
   }
 
   // ローディング中

@@ -9,7 +9,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShogiBoardWithStands } from '../../components/shogi/ShogiBoardWithStands'
-import { parseSfen, boardStateToSfen } from '../../lib/shogi/sfen'
+import { parseSfen, boardStateToSfen, EMPTY_BOARD_SFEN } from '../../lib/shogi/sfen'
 import type { EditorMode, MoveTree, BranchPath } from '../../lib/lesson/types'
 import {
   getCourses,
@@ -267,7 +267,7 @@ export function ProblemEdit() {
     const newProblem: UiProblem = {
       id: `new-${Date.now()}`,
       order: problems.length + 1,
-      sfen: '9/9/9/9/9/9/9/9/9 b - 1',
+      sfen: EMPTY_BOARD_SFEN,
       playerTurn: 'black',
       instruction: '',
       isNew: true,
@@ -634,9 +634,8 @@ export function ProblemEdit() {
   // 盤面リセット
   const handleBoardReset = useCallback(() => {
     if (!selectedProblem) return
-    const emptySfen = '9/9/9/9/9/9/9/9/9 b - 1'
     const newProblems = [...problems]
-    newProblems[selectedIndex] = { ...selectedProblem, sfen: emptySfen }
+    newProblems[selectedIndex] = { ...selectedProblem, sfen: EMPTY_BOARD_SFEN }
     setProblems(newProblems)
     setSelectedPalettePiece(null)
   }, [selectedProblem, problems, selectedIndex])

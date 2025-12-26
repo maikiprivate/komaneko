@@ -4,7 +4,7 @@
 
 import type { MoveNode, MoveTree, SfenMove, EditorProblem, BranchPath, BranchInfo } from './types'
 import type { Position, BoardState, PieceType } from '../shogi/types'
-import { parseSfen } from '../shogi/sfen'
+import { parseSfen, EMPTY_BOARD_SFEN } from '../shogi/sfen'
 import { makeMove, makeDrop } from '../shogi/moveGenerator'
 
 /**
@@ -245,13 +245,12 @@ export function isTreeEmpty(tree: MoveTree): boolean {
  * 新しいEditorProblemを作成
  */
 export function createNewProblem(order: number): EditorProblem {
-  const emptySfen = '9/9/9/9/9/9/9/9/9 b - 1'
   return {
     id: generateId(),
     order,
-    sfen: emptySfen,
+    sfen: EMPTY_BOARD_SFEN,
     instruction: '',
-    moveTree: createEmptyMoveTree(emptySfen),
+    moveTree: createEmptyMoveTree(EMPTY_BOARD_SFEN),
   }
 }
 
