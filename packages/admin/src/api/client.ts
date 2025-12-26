@@ -70,6 +70,11 @@ export async function apiRequest<T>(
     headers,
   })
 
+  // 204 No Content の場合はボディがないため、そのまま返す
+  if (response.status === 204) {
+    return undefined as T
+  }
+
   const json = await response.json()
 
   if (!response.ok) {
