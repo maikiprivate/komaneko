@@ -10,13 +10,20 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShogiBoardWithStands } from '../../components/shogi/ShogiBoardWithStands'
 import { parseSfen, boardStateToSfen } from '../../lib/shogi/sfen'
-import { getLessonById, type Problem } from '../../mocks/lessonData'
-import type { EditorMode } from '../../lib/lesson/types'
+import type { EditorMode, MoveTree, BranchPath } from '../../lib/lesson/types'
+import {
+  getCourses,
+  updateProblem as apiUpdateProblem,
+  createProblem as apiCreateProblem,
+  deleteProblem as apiDeleteProblem,
+  reorderProblems as apiReorderProblems,
+  type ApiCourse,
+  type ApiProblem,
+} from '../../api/lesson'
 import type { PieceType, Player, Position } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
 import { getPossibleMoves, getDropPositions, canPromote, mustPromote, makeMove, makeDrop } from '../../lib/shogi/moveGenerator'
-import type { MoveTree, BranchPath } from '../../lib/lesson/types'
 import {
   positionToSfenMove,
   dropToSfenMove,
@@ -26,7 +33,72 @@ import {
   truncatePathToIndex,
   switchBranchAtPath,
   replayMoveTreeWithPath,
+  serializeMoveTree,
+  deserializeMoveTree,
 } from '../../lib/lesson/moveTreeUtils'
+
+// =============================================================================
+// UI用の型定義
+// =============================================================================
+
+/** UI用の問題型 */
+interface UiProblem {
+  id: string
+  order: number
+  sfen: string
+  playerTurn: 'black' | 'white'
+  instruction: string
+  moveTree?: MoveTree
+  /** 新規作成の問題かどうか（APIに未保存） */
+  isNew?: boolean
+}
+
+/** レッスンデータ（API取得結果を変換） */
+interface LessonData {
+  courseTitle: string
+  sectionTitle: string
+  lessonId: string
+  lessonTitle: string
+}
+
+/** API問題をUI問題に変換 */
+function toUiProblem(apiProblem: ApiProblem): UiProblem {
+  const moveTree = apiProblem.moveTree && apiProblem.moveTree.length > 0
+    ? deserializeMoveTree(apiProblem.moveTree, apiProblem.sfen)
+    : undefined
+  return {
+    id: apiProblem.id,
+    order: apiProblem.order,
+    sfen: apiProblem.sfen,
+    playerTurn: apiProblem.playerTurn,
+    instruction: '', // APIにはinstructionフィールドがないため空文字
+    moveTree,
+  }
+}
+
+/** 全コースからレッスンを検索 */
+function findLessonFromCourses(
+  courses: ApiCourse[],
+  lessonId: string
+): { lessonData: LessonData; problems: UiProblem[] } | undefined {
+  for (const course of courses) {
+    for (const section of course.sections) {
+      const lesson = section.lessons.find((l) => l.id === lessonId)
+      if (lesson) {
+        return {
+          lessonData: {
+            courseTitle: course.title,
+            sectionTitle: section.title,
+            lessonId: lesson.id,
+            lessonTitle: lesson.title,
+          },
+          problems: lesson.problems.map(toUiProblem),
+        }
+      }
+    }
+  }
+  return undefined
+}
 import {
   EditorHeader,
   EditorPanel,
@@ -42,13 +114,47 @@ import {
 
 export function ProblemEdit() {
   const { lessonId } = useParams<{ lessonId: string }>()
-  const lessonData = lessonId ? getLessonById(lessonId) : undefined
+
+  // データ取得状態
+  const [lessonData, setLessonData] = useState<LessonData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // 状態
   const [mode, setMode] = useState<EditorMode>('setup')
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [problems, setProblems] = useState<Problem[]>(lessonData?.lesson.problems ?? [])
+  const [problems, setProblems] = useState<UiProblem[]>([])
+  const [deletedProblemIds, setDeletedProblemIds] = useState<string[]>([])
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+
+  // 初回データ取得
+  useEffect(() => {
+    if (!lessonId) {
+      setLoading(false)
+      return
+    }
+
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const courses = await getCourses()
+        const result = findLessonFromCourses(courses, lessonId)
+        if (result) {
+          setLessonData(result.lessonData)
+          setProblems(result.problems)
+        } else {
+          setError('レッスンが見つかりません')
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'データの取得に失敗しました')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [lessonId])
 
   // 駒パレット状態（初期配置モード用）
   const [selectedPalettePiece, setSelectedPalettePiece] = useState<PieceType | null>(null)
@@ -158,12 +264,13 @@ export function ProblemEdit() {
 
   // 問題追加
   const handleAddProblem = useCallback(() => {
-    const newProblem: Problem = {
+    const newProblem: UiProblem = {
       id: `new-${Date.now()}`,
       order: problems.length + 1,
       sfen: '9/9/9/9/9/9/9/9/9 b - 1',
+      playerTurn: 'black',
       instruction: '',
-      correctMove: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } },
+      isNew: true,
     }
     setProblems([...problems, newProblem])
     setSelectedIndex(problems.length)
@@ -172,6 +279,11 @@ export function ProblemEdit() {
   // 問題削除
   const handleDeleteProblem = useCallback((index: number) => {
     if (problems.length <= 1) return
+    const problemToDelete = problems[index]
+    // 新規作成でない問題は削除対象として追跡
+    if (!problemToDelete.isNew) {
+      setDeletedProblemIds((prev) => [...prev, problemToDelete.id])
+    }
     const newProblems = problems.filter((_, i) => i !== index)
     setProblems(newProblems)
     if (selectedIndex >= newProblems.length) {
@@ -198,45 +310,73 @@ export function ProblemEdit() {
 
   // 保存
   const handleSave = useCallback(async () => {
+    if (!lessonId) return
+
     setSaveStatus('saving')
     try {
-      // 現在の問題にMoveTreeを保存
+      // 削除対象の問題をAPI経由で削除
+      for (const id of deletedProblemIds) {
+        await apiDeleteProblem(id)
+      }
+
+      // 現在の問題にMoveTreeを反映
       const updatedProblems = problems.map((p, i) => {
         if (i === selectedIndex && fullMoveTree) {
-          // 選択中の問題は現在のfullMoveTreeをそのまま使用
           return { ...p, moveTree: fullMoveTree }
         }
         return p
       })
 
-      // TODO: API呼び出し（モック段階では遅延をシミュレート）
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // 各問題をAPIで保存
+      const savedProblems: UiProblem[] = []
+      for (const problem of updatedProblems) {
+        const moveTreeData = problem.moveTree
+          ? serializeMoveTree(problem.moveTree)
+          : []
 
-      // 保存データをコンソールに出力
-      console.log('=== 保存データ ===')
-      console.log('レッスンID:', lessonId)
-      console.log('問題数:', updatedProblems.length)
-      updatedProblems.forEach((p, i) => {
-        console.log(`問題${i + 1}:`, {
-          id: p.id,
-          sfen: p.sfen,
-          instruction: p.instruction,
-          moveTree: p.moveTree,
-        })
-      })
+        if (problem.isNew) {
+          // 新規作成
+          const created = await apiCreateProblem({
+            sfen: problem.sfen,
+            playerTurn: problem.playerTurn,
+            moveTree: moveTreeData,
+            lessonId,
+          })
+          savedProblems.push({
+            ...toUiProblem(created),
+            instruction: problem.instruction,
+          })
+        } else {
+          // 更新
+          const updated = await apiUpdateProblem(problem.id, {
+            sfen: problem.sfen,
+            playerTurn: problem.playerTurn,
+            moveTree: moveTreeData,
+          })
+          savedProblems.push({
+            ...toUiProblem(updated),
+            instruction: problem.instruction,
+          })
+        }
+      }
 
-      // 更新されたproblemsを反映
-      setProblems(updatedProblems)
+      // 並び順を更新
+      const orderedIds = savedProblems.map((p) => p.id)
+      await apiReorderProblems(lessonId, orderedIds)
+
+      // 保存結果を反映
+      setProblems(savedProblems)
+      setDeletedProblemIds([]) // 削除リストをクリア
 
       setSaveStatus('saved')
-      // 3秒後にステータスをリセット
       setTimeout(() => setSaveStatus('idle'), 3000)
-    } catch (error) {
-      console.error('Failed to save problems:', error)
+    } catch (err) {
+      console.error('Failed to save problems:', err)
       setSaveStatus('error')
+      alert(`保存に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
       setTimeout(() => setSaveStatus('idle'), 3000)
     }
-  }, [lessonId, problems, selectedIndex, fullMoveTree])
+  }, [lessonId, problems, selectedIndex, fullMoveTree, deletedProblemIds])
 
   // 駒パレット選択
   const handlePaletteSelect = useCallback((piece: PieceType | null, owner: Player) => {
@@ -246,7 +386,11 @@ export function ProblemEdit() {
 
   // 盤面セルクリック（初期配置モード）
   const handleSetupCellClick = useCallback((row: number, col: number) => {
-    if (!selectedProblem) return
+    // 問題がない場合は自動で新規作成
+    if (!selectedProblem) {
+      handleAddProblem()
+      return
+    }
 
     const currentBoard = parseSfen(selectedProblem.sfen)
     const newBoard = currentBoard.board.map((r) => [...r])
@@ -276,7 +420,7 @@ export function ProblemEdit() {
     const newProblems = [...problems]
     newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
     setProblems(newProblems)
-  }, [selectedProblem, selectedPalettePiece, selectedOwner, problems, selectedIndex])
+  }, [selectedProblem, selectedPalettePiece, selectedOwner, problems, selectedIndex, handleAddProblem])
 
   // 手をツリーに追加する共通処理（分岐対応版）
   const addMoveToTreeNew = useCallback((sfenMove: string, newBoardState: import('../../lib/shogi/types').BoardState, isPlayerMove: boolean) => {
@@ -563,12 +707,24 @@ export function ProblemEdit() {
     }
   }, [mode, selectedProblem, problems, selectedIndex])
 
-  // レッスンが見つからない場合
-  if (!lessonData) {
+  // ローディング中
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <p className="text-slate-500 mb-4">レッスンが見つかりません</p>
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-slate-500">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // エラーまたはレッスンが見つからない場合
+  if (error || !lessonData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <p className="text-slate-500 mb-4">{error || 'レッスンが見つかりません'}</p>
           <Link to="/lessons" className="text-primary hover:text-primary-dark">
             レッスン一覧に戻る
           </Link>
@@ -581,8 +737,8 @@ export function ProblemEdit() {
     <div className="h-full flex flex-col bg-slate-50">
       {/* ヘッダー */}
       <EditorHeader
-        lessonTitle={lessonData.lesson.title}
-        breadcrumb={`${lessonData.course.title} / ${lessonData.section.title}`}
+        lessonTitle={lessonData.lessonTitle}
+        breadcrumb={`${lessonData.courseTitle} / ${lessonData.sectionTitle}`}
         onSave={handleSave}
         saveStatus={saveStatus}
       />

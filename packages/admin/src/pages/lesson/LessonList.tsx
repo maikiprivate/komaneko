@@ -4,24 +4,117 @@
  * コース → セクション → レッスン のネスト型テーブル
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
-  mockCourses,
-  type Course,
-  type Section,
-  type Lesson,
+  getCourses,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+  reorderCourses,
+  createSection,
+  updateSection,
+  deleteSection,
+  reorderSections,
+  createLesson,
+  updateLesson,
+  deleteLesson,
+  reorderLessons,
+  type ApiCourse,
+  type ApiSection,
+  type ApiLesson,
   type CourseStatus,
-} from '../../mocks/lessonData'
+} from '../../api/lesson'
 import {
   CourseDialog,
   ItemDialog,
   CourseRow,
 } from '../../components/lesson'
 
-/** orderフィールドを配列インデックスに基づいて再計算 */
-function reorder<T extends { order: number }>(items: T[]): T[] {
-  return items.map((item, index) => ({ ...item, order: index + 1 }))
+// =============================================================================
+// 型定義（UIコンポーネント用）
+// =============================================================================
+
+/** 問題（UI用、既存コンポーネントとの互換性のため） */
+interface UiProblem {
+  id: string
+  order: number
+  sfen: string
+  instruction: string
+  correctMove: { from: { row: number; col: number }; to: { row: number; col: number }; promote?: boolean }
 }
+
+/** レッスン（UI用） */
+interface UiLesson {
+  id: string
+  order: number
+  title: string
+  problems: UiProblem[]
+}
+
+/** セクション（UI用） */
+interface UiSection {
+  id: string
+  order: number
+  title: string
+  lessons: UiLesson[]
+}
+
+/** コース（UI用） */
+interface UiCourse {
+  id: string
+  order: number
+  title: string
+  description: string
+  status: CourseStatus
+  sections: UiSection[]
+}
+
+// =============================================================================
+// 変換関数
+// =============================================================================
+
+/** APIレッスンをUIレッスンに変換 */
+function toUiLesson(apiLesson: ApiLesson): UiLesson {
+  return {
+    id: apiLesson.id,
+    order: apiLesson.order,
+    title: apiLesson.title,
+    // 問題は一覧では表示しないため空配列
+    problems: apiLesson.problems.map(p => ({
+      id: p.id,
+      order: p.order,
+      sfen: p.sfen,
+      instruction: '',
+      correctMove: { from: { row: 0, col: 0 }, to: { row: 0, col: 0 } },
+    })),
+  }
+}
+
+/** APIセクションをUIセクションに変換 */
+function toUiSection(apiSection: ApiSection): UiSection {
+  return {
+    id: apiSection.id,
+    order: apiSection.order,
+    title: apiSection.title,
+    lessons: apiSection.lessons.map(toUiLesson),
+  }
+}
+
+/** APIコースをUIコースに変換 */
+function toUiCourse(apiCourse: ApiCourse): UiCourse {
+  return {
+    id: apiCourse.id,
+    order: apiCourse.order,
+    title: apiCourse.title,
+    description: apiCourse.description,
+    status: apiCourse.status,
+    sections: apiCourse.sections.map(toUiSection),
+  }
+}
+
+// =============================================================================
+// ダイアログ状態
+// =============================================================================
 
 /** ダイアログの状態 */
 type DialogState =
@@ -33,213 +126,302 @@ type DialogState =
   | { type: 'addLesson'; sectionId: string; sectionName: string }
   | { type: 'editLesson'; lessonId: string; title: string; sectionName: string }
 
-/** メインコンポーネント */
+// =============================================================================
+// メインコンポーネント
+// =============================================================================
+
 export function LessonList() {
-  const [courses, setCourses] = useState(mockCourses)
+  const [courses, setCourses] = useState<UiCourse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [dialog, setDialog] = useState<DialogState>({ type: 'none' })
 
-  // コース追加
-  const handleAddCourse = (data: { title: string; description: string; status: CourseStatus }) => {
-    const newCourse: Course = {
-      id: crypto.randomUUID(),
-      order: courses.length + 1,
-      title: data.title,
-      description: data.description,
-      status: data.status,
-      sections: [],
+  // データ取得
+  const fetchCourses = useCallback(async () => {
+    try {
+      setError(null)
+      const data = await getCourses()
+      setCourses(data.map(toUiCourse))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'データの取得に失敗しました')
+    } finally {
+      setLoading(false)
     }
-    setCourses([...courses, newCourse])
-    setDialog({ type: 'none' })
+  }, [])
+
+  useEffect(() => {
+    fetchCourses()
+  }, [fetchCourses])
+
+  // コース追加
+  const handleAddCourse = async (data: { title: string; description: string; status: CourseStatus }) => {
+    try {
+      await createCourse(data)
+      await fetchCourses()
+      setDialog({ type: 'none' })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'コースの追加に失敗しました')
+    }
   }
 
   // セクション追加
-  const handleAddSection = (data: { title: string }) => {
+  const handleAddSection = async (data: { title: string }) => {
     if (dialog.type !== 'addSection') return
     const { courseId } = dialog
 
-    setCourses(courses.map((course) => {
-      if (course.id !== courseId) return course
-      const newSection: Section = {
-        id: crypto.randomUUID(),
-        order: course.sections.length + 1,
-        title: data.title,
-        lessons: [],
-      }
-      return {
-        ...course,
-        sections: [...course.sections, newSection],
-      }
-    }))
-    setDialog({ type: 'none' })
+    try {
+      await createSection({ title: data.title, courseId })
+      await fetchCourses()
+      setDialog({ type: 'none' })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'セクションの追加に失敗しました')
+    }
   }
 
   // レッスン追加
-  const handleAddLesson = (data: { title: string }) => {
+  const handleAddLesson = async (data: { title: string }) => {
     if (dialog.type !== 'addLesson') return
     const { sectionId } = dialog
 
-    setCourses(courses.map((course) => ({
-      ...course,
-      sections: course.sections.map((section) => {
-        if (section.id !== sectionId) return section
-        const newLesson: Lesson = {
-          id: crypto.randomUUID(),
-          order: section.lessons.length + 1,
-          title: data.title,
-          problems: [],
-        }
-        return {
-          ...section,
-          lessons: [...section.lessons, newLesson],
-        }
-      }),
-    })))
-    setDialog({ type: 'none' })
+    try {
+      await createLesson({ title: data.title, sectionId })
+      await fetchCourses()
+      setDialog({ type: 'none' })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'レッスンの追加に失敗しました')
+    }
   }
 
   // コース編集
-  const handleEditCourse = (data: { title: string; description: string; status: CourseStatus }) => {
+  const handleEditCourse = async (data: { title: string; description: string; status: CourseStatus }) => {
     if (dialog.type !== 'editCourse') return
     const { courseId } = dialog
 
-    setCourses(courses.map((course) => {
-      if (course.id !== courseId) return course
-      return { ...course, title: data.title, description: data.description, status: data.status }
-    }))
-    setDialog({ type: 'none' })
+    try {
+      await updateCourse(courseId, data)
+      await fetchCourses()
+      setDialog({ type: 'none' })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'コースの更新に失敗しました')
+    }
   }
 
   // セクション編集
-  const handleEditSection = (data: { title: string }) => {
+  const handleEditSection = async (data: { title: string }) => {
     if (dialog.type !== 'editSection') return
     const { sectionId } = dialog
 
-    setCourses(courses.map((course) => ({
-      ...course,
-      sections: course.sections.map((section) => {
-        if (section.id !== sectionId) return section
-        return { ...section, title: data.title }
-      }),
-    })))
-    setDialog({ type: 'none' })
+    try {
+      await updateSection(sectionId, data)
+      await fetchCourses()
+      setDialog({ type: 'none' })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'セクションの更新に失敗しました')
+    }
   }
 
   // レッスン編集
-  const handleEditLesson = (data: { title: string }) => {
+  const handleEditLesson = async (data: { title: string }) => {
     if (dialog.type !== 'editLesson') return
     const { lessonId } = dialog
 
-    setCourses(courses.map((course) => ({
-      ...course,
-      sections: course.sections.map((section) => ({
-        ...section,
-        lessons: section.lessons.map((lesson) => {
-          if (lesson.id !== lessonId) return lesson
-          return { ...lesson, title: data.title }
-        }),
-      })),
-    })))
-    setDialog({ type: 'none' })
+    try {
+      await updateLesson(lessonId, data)
+      await fetchCourses()
+      setDialog({ type: 'none' })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'レッスンの更新に失敗しました')
+    }
   }
 
   // レッスン削除
-  const handleDeleteLesson = (lessonId: string) => {
-    setCourses(courses.map((course) => ({
-      ...course,
-      sections: course.sections.map((section) => ({
-        ...section,
-        lessons: reorder(section.lessons.filter((lesson) => lesson.id !== lessonId)),
-      })),
-    })))
+  const handleDeleteLesson = async (lessonId: string) => {
+    try {
+      await deleteLesson(lessonId)
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'レッスンの削除に失敗しました')
+    }
   }
 
   // セクション削除
-  const handleDeleteSection = (sectionId: string, sectionName: string, lessonCount: number) => {
+  const handleDeleteSection = async (sectionId: string, sectionName: string, lessonCount: number) => {
     const message = lessonCount > 0
       ? `「${sectionName}」を削除しますか？\n（${lessonCount}件のレッスンも削除されます）`
       : `「${sectionName}」を削除しますか？`
     if (!window.confirm(message)) return
 
-    setCourses(courses.map((course) => ({
-      ...course,
-      sections: reorder(course.sections.filter((section) => section.id !== sectionId)),
-    })))
+    try {
+      await deleteSection(sectionId)
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'セクションの削除に失敗しました')
+    }
   }
 
   // コース削除
-  const handleDeleteCourse = (courseId: string, courseName: string, sectionCount: number, lessonCount: number) => {
+  const handleDeleteCourse = async (courseId: string, courseName: string, sectionCount: number, lessonCount: number) => {
     let message = `「${courseName}」を削除しますか？`
     if (sectionCount > 0 || lessonCount > 0) {
       message += `\n（${sectionCount}件のセクション、${lessonCount}件のレッスンも削除されます）`
     }
     if (!window.confirm(message)) return
 
-    setCourses(reorder(courses.filter((course) => course.id !== courseId)))
+    try {
+      await deleteCourse(courseId)
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'コースの削除に失敗しました')
+    }
   }
 
   // セクション並び替え
-  const handleMoveSectionUp = (sectionId: string) => {
-    setCourses(courses.map((course) => {
-      const idx = course.sections.findIndex((s) => s.id === sectionId)
-      if (idx <= 0) return course
-      const newSections = [...course.sections]
-      ;[newSections[idx - 1], newSections[idx]] = [newSections[idx], newSections[idx - 1]]
-      return { ...course, sections: reorder(newSections) }
-    }))
+  const handleMoveSectionUp = async (sectionId: string) => {
+    const course = courses.find(c => c.sections.some(s => s.id === sectionId))
+    if (!course) return
+
+    const idx = course.sections.findIndex(s => s.id === sectionId)
+    if (idx <= 0) return
+
+    const orderedIds = [...course.sections]
+    ;[orderedIds[idx - 1], orderedIds[idx]] = [orderedIds[idx], orderedIds[idx - 1]]
+
+    try {
+      await reorderSections(course.id, orderedIds.map(s => s.id))
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
+    }
   }
 
-  const handleMoveSectionDown = (sectionId: string) => {
-    setCourses(courses.map((course) => {
-      const idx = course.sections.findIndex((s) => s.id === sectionId)
-      if (idx === -1 || idx >= course.sections.length - 1) return course
-      const newSections = [...course.sections]
-      ;[newSections[idx], newSections[idx + 1]] = [newSections[idx + 1], newSections[idx]]
-      return { ...course, sections: reorder(newSections) }
-    }))
+  const handleMoveSectionDown = async (sectionId: string) => {
+    const course = courses.find(c => c.sections.some(s => s.id === sectionId))
+    if (!course) return
+
+    const idx = course.sections.findIndex(s => s.id === sectionId)
+    if (idx === -1 || idx >= course.sections.length - 1) return
+
+    const orderedIds = [...course.sections]
+    ;[orderedIds[idx], orderedIds[idx + 1]] = [orderedIds[idx + 1], orderedIds[idx]]
+
+    try {
+      await reorderSections(course.id, orderedIds.map(s => s.id))
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
+    }
   }
 
   // コース並び替え
-  const handleMoveCourseUp = (courseId: string) => {
-    const idx = courses.findIndex((c) => c.id === courseId)
+  const handleMoveCourseUp = async (courseId: string) => {
+    const idx = courses.findIndex(c => c.id === courseId)
     if (idx <= 0) return
-    const newCourses = [...courses]
-    ;[newCourses[idx - 1], newCourses[idx]] = [newCourses[idx], newCourses[idx - 1]]
-    setCourses(reorder(newCourses))
+
+    const orderedIds = [...courses]
+    ;[orderedIds[idx - 1], orderedIds[idx]] = [orderedIds[idx], orderedIds[idx - 1]]
+
+    try {
+      await reorderCourses(orderedIds.map(c => c.id))
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
+    }
   }
 
-  const handleMoveCourseDown = (courseId: string) => {
-    const idx = courses.findIndex((c) => c.id === courseId)
+  const handleMoveCourseDown = async (courseId: string) => {
+    const idx = courses.findIndex(c => c.id === courseId)
     if (idx === -1 || idx >= courses.length - 1) return
-    const newCourses = [...courses]
-    ;[newCourses[idx], newCourses[idx + 1]] = [newCourses[idx + 1], newCourses[idx]]
-    setCourses(reorder(newCourses))
+
+    const orderedIds = [...courses]
+    ;[orderedIds[idx], orderedIds[idx + 1]] = [orderedIds[idx + 1], orderedIds[idx]]
+
+    try {
+      await reorderCourses(orderedIds.map(c => c.id))
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
+    }
   }
 
   // レッスン並び替え
-  const handleMoveLessonUp = (lessonId: string) => {
-    setCourses(courses.map((course) => ({
-      ...course,
-      sections: course.sections.map((section) => {
-        const idx = section.lessons.findIndex((l) => l.id === lessonId)
-        if (idx <= 0) return section
-        const newLessons = [...section.lessons]
-        ;[newLessons[idx - 1], newLessons[idx]] = [newLessons[idx], newLessons[idx - 1]]
-        return { ...section, lessons: reorder(newLessons) }
-      }),
-    })))
+  const handleMoveLessonUp = async (lessonId: string) => {
+    let targetSection: UiSection | undefined
+    for (const course of courses) {
+      for (const section of course.sections) {
+        if (section.lessons.some(l => l.id === lessonId)) {
+          targetSection = section
+          break
+        }
+      }
+    }
+    if (!targetSection) return
+
+    const idx = targetSection.lessons.findIndex(l => l.id === lessonId)
+    if (idx <= 0) return
+
+    const orderedIds = [...targetSection.lessons]
+    ;[orderedIds[idx - 1], orderedIds[idx]] = [orderedIds[idx], orderedIds[idx - 1]]
+
+    try {
+      await reorderLessons(targetSection.id, orderedIds.map(l => l.id))
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
+    }
   }
 
-  const handleMoveLessonDown = (lessonId: string) => {
-    setCourses(courses.map((course) => ({
-      ...course,
-      sections: course.sections.map((section) => {
-        const idx = section.lessons.findIndex((l) => l.id === lessonId)
-        if (idx === -1 || idx >= section.lessons.length - 1) return section
-        const newLessons = [...section.lessons]
-        ;[newLessons[idx], newLessons[idx + 1]] = [newLessons[idx + 1], newLessons[idx]]
-        return { ...section, lessons: reorder(newLessons) }
-      }),
-    })))
+  const handleMoveLessonDown = async (lessonId: string) => {
+    let targetSection: UiSection | undefined
+    for (const course of courses) {
+      for (const section of course.sections) {
+        if (section.lessons.some(l => l.id === lessonId)) {
+          targetSection = section
+          break
+        }
+      }
+    }
+    if (!targetSection) return
+
+    const idx = targetSection.lessons.findIndex(l => l.id === lessonId)
+    if (idx === -1 || idx >= targetSection.lessons.length - 1) return
+
+    const orderedIds = [...targetSection.lessons]
+    ;[orderedIds[idx], orderedIds[idx + 1]] = [orderedIds[idx + 1], orderedIds[idx]]
+
+    try {
+      await reorderLessons(targetSection.id, orderedIds.map(l => l.id))
+      await fetchCourses()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '並び替えに失敗しました')
+    }
+  }
+
+  // ローディング中
+  if (loading) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto">
+        <div className="flex items-center justify-center py-16">
+          <div className="text-slate-500">読み込み中...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // エラー時
+  if (error) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto">
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="text-red-500 mb-4">{error}</div>
+          <button
+            onClick={() => { setLoading(true); fetchCourses() }}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+          >
+            再読み込み
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
