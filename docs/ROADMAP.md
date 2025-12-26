@@ -1044,9 +1044,9 @@ packages/api/src/modules/hearts/
 |---------|------|------|------|
 | POST | /api/lesson/record | レッスン学習記録 | 必須 |
 
-### Phase 15: 管理画面（作業中）
+### Phase 15: 管理画面レッスン管理（完了）
 
-**目標**: 詰将棋・レッスンのコンテンツ管理画面を実装
+**目標**: レッスンのコンテンツ管理画面を実装
 
 詳細設計:
 - `docs/designs/admin-panel.md` - 管理画面全体設計
@@ -1054,25 +1054,73 @@ packages/api/src/modules/hearts/
 
 **技術スタック:** React + Vite + React Router + TailwindCSS
 
-**実装ステップ:**
-- [x] Step 1: User.role追加
-- [x] Step 2: 管理画面プロジェクト初期化
-- [ ] Step 2.5: レッスン管理UIモック（作業中）
-- [ ] Step 3: 管理者認証ミドルウェア
-- [ ] Step 4: 詰将棋管理API
-- [ ] Step 5: 詰将棋管理UI
-- [ ] Step 6: レッスンDBスキーマ
-- [ ] Step 7: レッスンシードデータ
-- [ ] Step 8: レッスン管理API
-- [ ] Step 9: レッスン管理UI
-- [ ] Step 10: バックアップ機能
-- [ ] Step 11: アプリ側API切り替え
+**実装内容:**
+- [x] User.role追加
+- [x] 管理画面プロジェクト初期化
+- [x] レッスン管理UIモック（将棋盤GUI + 問題編集）
+- [x] 管理者認証ミドルウェア
+- [x] レッスンDBスキーマ（Course, Section, Lesson, LessonProblem）
+- [x] レッスン管理API（CRUD + 並び替え）
+- [x] レッスン管理UI（API連携）
+- [x] コードレビュー指摘対応（MUST/SHOULD項目）
+- [x] moveTreeUtils.tsテスト追加（27件）
 
-**Step 2.5 レッスン管理UIモック:**
-- 将棋盤共通コンポーネント（ShogiBoard, Piece, PieceStand, ShogiBoardWithStands）
-- レッスン管理一覧（ネスト/アコーディオン型テーブル）
-- 問題編集ページ（将棋盤GUI + 問題リスト）
-- デザイン: 白ベース + オレンジアクセント、将棋盤はアプリと同じ木目調
+**実装済みエンドポイント（管理者用）:**
+```
+GET/POST/PUT/DELETE /api/admin/lesson/courses
+GET/POST/PUT/DELETE /api/admin/lesson/sections
+GET/POST/PUT/DELETE /api/admin/lesson/lessons
+GET/POST/PUT/DELETE /api/admin/lesson/problems
+PUT /api/admin/lesson/*/reorder（各種並び替え）
+```
+
+**ファイル構成:**
+```
+packages/api/src/modules/admin/lesson/
+├── lesson.router.ts
+├── lesson.service.ts
+├── lesson.service.test.ts（38件）
+├── lesson.repository.ts
+└── lesson.schema.ts
+
+packages/admin/src/
+├── api/lesson.ts
+├── pages/lesson/
+│   ├── LessonList.tsx
+│   └── ProblemEdit.tsx
+├── components/lesson/
+└── lib/lesson/
+    ├── moveTreeUtils.ts
+    └── moveTreeUtils.test.ts（27件）
+```
+
+### Phase 15.5: アプリ側レッスンAPI連携（作業中）
+
+**目標**: アプリのレッスン画面をモックデータからAPIに切り替え
+
+**実装ステップ:**
+- [ ] Step 1: ユーザー向けレッスン取得API作成（バックエンド）
+- [ ] Step 2: アプリ側APIクライアント関数追加
+- [ ] Step 3: コース一覧画面をAPI連携に変更
+- [ ] Step 4: セクション一覧画面をAPI連携に変更
+- [ ] Step 5: レッスンプレイ画面をAPI連携に変更
+- [ ] Step 6: モックデータ削除
+- [ ] Step 7: 動作確認・テスト
+
+**追加予定エンドポイント（ユーザー向け）:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/lesson/courses | コース一覧（公開済みのみ） | 不要 |
+| GET | /api/lesson/courses/:courseId | コース詳細（セクション・レッスン含む） | 不要 |
+| GET | /api/lesson/lessons/:lessonId | レッスン詳細（問題含む） | 不要 |
+
+**詰将棋との比較（参考）:**
+| 項目 | 詰将棋 | レッスン |
+|------|--------|---------|
+| 一覧取得 | GET /api/tsumeshogi | GET /api/lesson/courses |
+| 詳細取得 | GET /api/tsumeshogi/:id | GET /api/lesson/lessons/:id |
+| 学習記録 | POST /api/tsumeshogi/record | POST /api/lesson/record |
+| 構造 | フラット（手数別） | 階層的（コース→セクション→レッスン） |
 
 ### Phase 16: 本番リリース準備
 - [ ] シードデータ作成
