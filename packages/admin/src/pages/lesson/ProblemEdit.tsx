@@ -71,7 +71,7 @@ function toUiProblem(apiProblem: ApiProblem): UiProblem {
     order: apiProblem.order,
     sfen: apiProblem.sfen,
     playerTurn: apiProblem.playerTurn,
-    instruction: '', // APIにはinstructionフィールドがないため空文字
+    instruction: apiProblem.instruction,
     moveTree,
   }
 }
@@ -340,23 +340,19 @@ export function ProblemEdit() {
             sfen: problem.sfen,
             playerTurn: problem.playerTurn,
             moveTree: moveTreeData,
+            instruction: problem.instruction,
             lessonId,
           })
-          savedProblems.push({
-            ...toUiProblem(created),
-            instruction: problem.instruction,
-          })
+          savedProblems.push(toUiProblem(created))
         } else {
           // 更新
           const updated = await apiUpdateProblem(problem.id, {
             sfen: problem.sfen,
             playerTurn: problem.playerTurn,
             moveTree: moveTreeData,
-          })
-          savedProblems.push({
-            ...toUiProblem(updated),
             instruction: problem.instruction,
           })
+          savedProblems.push(toUiProblem(updated))
         }
       }
 

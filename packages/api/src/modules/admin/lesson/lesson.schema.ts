@@ -99,6 +99,7 @@ export const createProblemSchema = z.object({
   sfen: sfenSchema,
   playerTurn: z.enum(['black', 'white']).default('black'),
   moveTree: moveTreeSchema.default([]),
+  instruction: z.string().default(''),
   lessonId: z.string().uuid('無効なレッスンIDです'),
 })
 
@@ -108,6 +109,7 @@ export const updateProblemSchema = z.object({
   sfen: sfenSchema.optional(),
   playerTurn: z.enum(['black', 'white']).optional(),
   moveTree: moveTreeSchema.optional(),
+  instruction: z.string().optional(),
 })
 
 export type UpdateProblemInput = z.infer<typeof updateProblemSchema>

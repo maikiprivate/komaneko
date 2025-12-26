@@ -182,14 +182,15 @@ model Lesson {
 }
 
 model LessonProblem {
-  id         String   @id @default(uuid())
-  order      Int      // 表示順
-  sfen       String   // 局面（SFEN形式）
-  playerTurn String   @default("black") @map("player_turn") // black | white
-  moveTree   Json     // SfenMove[][] 形式（正解手順ツリー）
-  lessonId   String   @map("lesson_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  order       Int      // 表示順
+  sfen        String   // 局面（SFEN形式）
+  playerTurn  String   @default("black") @map("player_turn") // black | white
+  moveTree    Json     // SfenMove[][] 形式（正解手順ツリー）
+  instruction String   @default("") // 指示文（例：「歩を前に進めてにゃ！」）
+  lessonId    String   @map("lesson_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 

@@ -333,6 +333,7 @@ export function createLessonRepository(prisma: PrismaClient): LessonRepository {
           sfen: data.sfen,
           playerTurn: data.playerTurn ?? 'black',
           moveTree: data.moveTree ?? [],
+          instruction: data.instruction ?? '',
           lessonId: data.lessonId,
         },
       })
@@ -345,6 +346,7 @@ export function createLessonRepository(prisma: PrismaClient): LessonRepository {
           ...(data.sfen !== undefined && { sfen: data.sfen }),
           ...(data.playerTurn !== undefined && { playerTurn: data.playerTurn }),
           ...(data.moveTree !== undefined && { moveTree: data.moveTree }),
+          ...(data.instruction !== undefined && { instruction: data.instruction }),
         },
       })
     },
