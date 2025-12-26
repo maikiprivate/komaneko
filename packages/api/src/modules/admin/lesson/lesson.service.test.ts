@@ -475,6 +475,11 @@ describe('LessonService', () => {
   describe('Reorder', () => {
     describe('reorderCourses', () => {
       it('コースを並び替えできる', async () => {
+        vi.mocked(mockRepository.findAllCourses).mockResolvedValue([
+          { ...createMockCourse({ id: 'course-1' }), sections: [] },
+          { ...createMockCourse({ id: 'course-2', order: 2 }), sections: [] },
+          { ...createMockCourse({ id: 'course-3', order: 3 }), sections: [] },
+        ])
         vi.mocked(mockRepository.reorderCourses).mockResolvedValue()
 
         await service.reorderCourses(['course-2', 'course-1', 'course-3'])
@@ -482,6 +487,16 @@ describe('LessonService', () => {
         expect(mockRepository.reorderCourses).toHaveBeenCalledWith([
           'course-2', 'course-1', 'course-3'
         ])
+      })
+
+      it('存在しないコースIDはCOURSE_NOT_FOUNDエラー', async () => {
+        vi.mocked(mockRepository.findAllCourses).mockResolvedValue([
+          { ...createMockCourse({ id: 'course-1' }), sections: [] },
+        ])
+
+        await expect(
+          service.reorderCourses(['course-1', 'non-existent'])
+        ).rejects.toMatchObject({ code: 'COURSE_NOT_FOUND' })
       })
     })
 

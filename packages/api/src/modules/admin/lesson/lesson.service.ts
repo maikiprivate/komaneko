@@ -56,6 +56,14 @@ export class LessonService {
   }
 
   async reorderCourses(orderedIds: string[]): Promise<void> {
+    // 全コースを取得してIDの存在確認
+    const courses = await this.repository.findAllCourses()
+    const courseIds = new Set(courses.map(c => c.id))
+    for (const id of orderedIds) {
+      if (!courseIds.has(id)) {
+        throw new AppError('COURSE_NOT_FOUND')
+      }
+    }
     await this.repository.reorderCourses(orderedIds)
   }
 

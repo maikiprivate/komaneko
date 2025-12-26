@@ -73,15 +73,22 @@ export type UpdateLessonInput = z.infer<typeof updateLessonSchema>
  * SFEN形式のバリデーションパターン
  * 例: "9/9/9/9/9/9/9/9/9 b - 1"
  * 例: "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+ *
+ * 盤面: 駒（plnsgbrk/PLNSGBRK）、成り駒（+付き）、空マス（1-9）、段区切り（/）
+ * 手番: b（先手）またはw（後手）
+ * 持ち駒: - または駒種と枚数（例: 2P3p = 先手歩2枚、後手歩3枚）
+ * 手数: 正の整数
  */
-const SFEN_PATTERN = /^[pnbrgskPNBRGSK+1-9/]+\s+[bw]\s+(-|[PLNSGBRplnsgbr0-9]+)\s+\d+$/
+const SFEN_PATTERN = /^[plnsgbrkPLNSGBRK+1-9/]+\s+[bw]\s+(-|[PLNSGBRLplnsgbrl0-9]+)\s+\d+$/
 
 /**
  * SFEN形式の手のバリデーションパターン
  * - 通常の移動: "7g7f", "7g7f+" (ファイル+ランク+ファイル+ランク+成り)
- * - 駒打ち: "P*5e" (駒種+*+ファイル+ランク)
+ * - 駒打ち: "P*5e", "L*1a" (駒種+*+ファイル+ランク)
+ *   ※打てる駒: P(歩), L(香), N(桂), S(銀), G(金), B(角), R(飛)
+ *   ※K(玉)は持ち駒にならないため打てない
  */
-const SFEN_MOVE_PATTERN = /^([1-9][a-i][1-9][a-i]\+?|[PLNSGBRK]\*[1-9][a-i])$/
+const SFEN_MOVE_PATTERN = /^([1-9][a-i][1-9][a-i]\+?|[PLNSGBR]\*[1-9][a-i])$/
 
 /** SFEN形式の手（例: "7g7f", "P*5e"） */
 export const sfenMoveSchema = z.string().regex(SFEN_MOVE_PATTERN, '無効な手の形式です')
