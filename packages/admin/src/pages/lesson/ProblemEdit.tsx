@@ -71,7 +71,7 @@ function toUiProblem(apiProblem: ApiProblem): UiProblem {
     order: apiProblem.order,
     sfen: apiProblem.sfen,
     playerTurn: apiProblem.playerTurn,
-    instruction: apiProblem.instruction,
+    instruction: apiProblem.instruction ?? '',
     moveTree,
   }
 }
