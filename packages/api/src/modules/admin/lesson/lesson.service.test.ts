@@ -51,6 +51,7 @@ const createMockProblem = (overrides: Partial<LessonProblem> = {}): LessonProble
   sfen: '9/9/9/9/9/9/9/9/9 b - 1',
   playerTurn: 'black',
   moveTree: [],
+  instruction: '',
   lessonId: 'lesson-1',
   createdAt: mockDate,
   updatedAt: mockDate,
@@ -405,6 +406,7 @@ describe('LessonService', () => {
           sfen: '9/9/9/9/9/9/9/9/9 b - 1',
           playerTurn: 'black',
           moveTree: [],
+          instruction: '',
           lessonId: 'lesson-1',
         })
 
@@ -412,6 +414,7 @@ describe('LessonService', () => {
           sfen: '9/9/9/9/9/9/9/9/9 b - 1',
           playerTurn: 'black',
           moveTree: [],
+          instruction: '',
           lessonId: 'lesson-1',
           order: 3,
         })
@@ -424,6 +427,7 @@ describe('LessonService', () => {
           sfen: '9/9/9/9/9/9/9/9/9 b - 1',
           playerTurn: 'black',
           moveTree: [],
+          instruction: '',
           lessonId: 'non-existent',
         })).rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
       })
