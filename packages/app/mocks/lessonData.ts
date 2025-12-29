@@ -2,7 +2,7 @@
  * 駒塾（レッスン）モックデータ
  */
 
-import type { Position } from '@/lib/shogi/types'
+import type { PieceType, Position } from '@/lib/shogi/types'
 
 // =============================================================================
 // 型定義
@@ -14,14 +14,34 @@ export type LessonStatus = 'locked' | 'available' | 'completed'
 /** コースのステータス */
 export type CourseStatus = 'locked' | 'available' | 'completed'
 
-/** 正解の手 */
+/** 正解の手（旧形式 - 単一手のみ） */
 export interface CorrectMove {
   from: Position
   to: Position
   promote?: boolean
 }
 
-/** 問題 */
+/**
+ * シーケンス内の1手
+ * - 移動: type='move', from/to/promote
+ * - 駒打ち: type='drop', to/piece
+ *
+ * Note: lib/shogi/types.ts の Move 型（MoveAction | DropAction）と類似しているが、
+ * 以下の理由で別の型を定義している:
+ * - Move型は owner フィールドを含むが、レッスンのシーケンスでは
+ *   偶数インデックス=自分、奇数インデックス=相手 で決定されるため不要
+ * - シンプルな構造にすることでAPIレスポンス（moveTree）からの変換を容易にする
+ * - 将来的に統一する場合は、共通の基底型を定義することを検討
+ */
+export interface SequenceMove {
+  type: 'move' | 'drop'
+  from?: Position
+  to: Position
+  promote?: boolean
+  piece?: PieceType
+}
+
+/** 問題（旧形式 - 単一手のみ、モックデータ用） */
 export interface Problem {
   id: string
   sfen: string
@@ -29,12 +49,36 @@ export interface Problem {
   correctMove: CorrectMove
 }
 
-/** レッスン */
+/**
+ * 問題（新形式 - 複数手順対応）
+ *
+ * correctSequences: 複数の正解バリエーション
+ * 各バリエーションは手順配列 [自分の手, 相手の手, 自分の手, ...]
+ *
+ * 例: [["5e5d", "5c5d", "G*5c"]] - 1パターンの3手シーケンス
+ * 例: [["5e5d"], ["6e6d"]] - 2つの正解パターン（各1手）
+ */
+export interface SequenceProblem {
+  id: string
+  sfen: string
+  instruction: string
+  correctSequences: SequenceMove[][]
+}
+
+/** レッスン（旧形式 - モックデータ用） */
 export interface Lesson {
   id: string
   title: string
   status: LessonStatus
   problems: Problem[]
+}
+
+/** レッスン（新形式 - API用） */
+export interface SequenceLesson {
+  id: string
+  title: string
+  status: LessonStatus
+  problems: SequenceProblem[]
 }
 
 /** セクション */
