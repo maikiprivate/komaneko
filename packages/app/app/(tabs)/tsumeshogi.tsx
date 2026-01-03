@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
@@ -57,7 +57,11 @@ function getStatusBackgroundColor(
 interface ProblemsCache {
   problems: TsumeshogiProblem[]
   hasMore: boolean // まだ読み込めるデータがあるか
+  offset: number // 次回読み込み開始位置
 }
+
+/** 無限スクロールの追加読み込みのデバウンス間隔（ミリ秒） */
+const LOAD_MORE_DEBOUNCE_MS = 500
 
 export default function TsumeshogiScreen() {
   const { colors } = useTheme()
@@ -68,7 +72,9 @@ export default function TsumeshogiScreen() {
   // 手数ごとのキャッシュ
   const [cache, setCache] = useState<Partial<Record<MovesOption, ProblemsCache>>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const lastLoadMoreTimeRef = useRef<number>(0)
 
   // 選択中の手数のデータ
   const currentCache = cache[selectedMoves]
@@ -90,6 +96,7 @@ export default function TsumeshogiScreen() {
           [selectedMoves]: {
             problems: response.problems,
             hasMore: response.pagination.hasMore,
+            offset: response.problems.length,
           },
         }))
       })
@@ -142,11 +149,51 @@ export default function TsumeshogiScreen() {
     }, [])
   )
 
-  // TODO: Step 6で無限スクロール実装時に有効化
-  // const loadMore = useCallback(() => {
-  //   if (!currentCache?.hasMore || isLoading) return
-  //   // 追加読み込み処理
-  // }, [currentCache, isLoading])
+  // 追加読み込み（無限スクロール）
+  // 注意: ステータスフィルタ適用時は無効化（フィルタ後のデータが少ない場合に正しく動作しないため）
+  const loadMore = useCallback(() => {
+    // フィルタ適用中は追加読み込みしない
+    if (selectedStatus !== 'all') return
+
+    // 読み込み中、データなし、追加データなしの場合はスキップ
+    if (!currentCache?.hasMore || isLoading || isLoadingMore) return
+
+    // デバウンス: 連続呼び出しを防ぐ
+    const now = Date.now()
+    if (now - lastLoadMoreTimeRef.current < LOAD_MORE_DEBOUNCE_MS) return
+    lastLoadMoreTimeRef.current = now
+
+    // 開始時の手数を保持（クロージャ問題対策）
+    const targetMoves = selectedMoves
+    const targetOffset = currentCache.offset
+
+    setIsLoadingMore(true)
+
+    getTsumeshogiList({
+      moveCount: targetMoves,
+      offset: targetOffset,
+    })
+      .then((response) => {
+        setCache((prev) => {
+          const existing = prev[targetMoves]
+          if (!existing) return prev
+          return {
+            ...prev,
+            [targetMoves]: {
+              problems: [...existing.problems, ...response.problems],
+              hasMore: response.pagination.hasMore,
+              offset: existing.offset + response.problems.length,
+            },
+          }
+        })
+      })
+      .catch((err) => {
+        console.error('[loadMore] Failed:', err.message)
+      })
+      .finally(() => {
+        setIsLoadingMore(false)
+      })
+  }, [currentCache, isLoading, isLoadingMore, selectedMoves, selectedStatus])
 
   // エラー時のリトライ
   const handleRetry = useCallback(() => {
@@ -160,11 +207,17 @@ export default function TsumeshogiScreen() {
   }, [selectedMoves])
 
   // ステータスフィルタ（元のインデックスを保持）
-  const problemsWithIndex = problems.map((p, i) => ({ ...p, originalIndex: i + 1 }))
-  const filteredProblems =
-    selectedStatus === 'all'
-      ? problemsWithIndex
-      : problemsWithIndex.filter((p) => p.status === selectedStatus)
+  const problemsWithIndex = useMemo(
+    () => problems.map((p, i) => ({ ...p, originalIndex: i + 1 })),
+    [problems]
+  )
+  const filteredProblems = useMemo(
+    () =>
+      selectedStatus === 'all'
+        ? problemsWithIndex
+        : problemsWithIndex.filter((p) => p.status === selectedStatus),
+    [problemsWithIndex, selectedStatus]
+  )
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {
     // 同手数の問題データを取得（次の問題遷移用）
@@ -241,27 +294,26 @@ export default function TsumeshogiScreen() {
       </View>
 
       {/* 問題リスト */}
-      <ScrollView style={styles.listContainer} contentContainerStyle={styles.listContent}>
-        {isLoading && !currentCache ? (
-          <ActivityIndicator style={styles.loader} color={colors.button.primary} />
-        ) : error && !currentCache ? (
-          <View style={styles.errorContainer}>
-            <Text style={[styles.errorText, { color: colors.text.secondary }]}>{error}</Text>
+      {isLoading && !currentCache ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.button.primary} />
+        </View>
+      ) : error && !currentCache ? (
+        <View style={styles.centerContainer}>
+          <Text style={[styles.errorText, { color: colors.text.secondary }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.button.primary }]}
+            onPress={handleRetry}
+          >
+            <Text style={[styles.retryButtonText, { color: '#FFFFFF' }]}>再試行</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredProblems}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item: problem }) => (
             <TouchableOpacity
-              style={[styles.retryButton, { backgroundColor: colors.button.primary }]}
-              onPress={handleRetry}
-            >
-              <Text style={[styles.retryButtonText, { color: '#FFFFFF' }]}>再試行</Text>
-            </TouchableOpacity>
-          </View>
-        ) : filteredProblems.length === 0 ? (
-          <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
-            該当する問題がありません
-          </Text>
-        ) : (
-          filteredProblems.map((problem) => (
-            <TouchableOpacity
-              key={problem.id}
               style={[styles.card, { backgroundColor: colors.card.background }]}
               onPress={() => handleProblemPress(problem)}
               activeOpacity={0.7}
@@ -280,9 +332,26 @@ export default function TsumeshogiScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+          )}
+          contentContainerStyle={styles.listContent}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+              該当する問題がありません
+            </Text>
+          }
+          ListFooterComponent={
+            isLoadingMore ? (
+              <ActivityIndicator
+                style={styles.loadingMore}
+                size="small"
+                color={colors.button.primary}
+              />
+            ) : null
+          }
+        />
+      )}
     </SafeAreaView>
   )
 }
@@ -324,21 +393,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  listContainer: {
-    flex: 1,
-  },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 12,
   },
-  loader: {
-    marginTop: 24,
-  },
-  errorContainer: {
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 24,
     gap: 16,
+  },
+  loadingMore: {
+    paddingVertical: 16,
   },
   errorText: {
     textAlign: 'center',
