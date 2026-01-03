@@ -14,12 +14,22 @@ export const tsumeshogiQuerySchema = z.object({
 export type TsumeshogiQuery = z.infer<typeof tsumeshogiQuerySchema>
 
 /**
+ * 詰将棋ステータス
+ *
+ * - solved: 正解済み
+ * - in_progress: 挑戦済みだが未正解
+ * - unsolved: 未挑戦（マップに存在しない場合のデフォルト値）
+ */
+export type TsumeshogiStatus = 'solved' | 'in_progress' | 'unsolved'
+
+/**
  * 詰将棋レスポンス
  */
 export interface TsumeshogiResponse {
   id: string
   sfen: string
   moveCount: number
+  status: TsumeshogiStatus
 }
 
 /**

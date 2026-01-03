@@ -123,4 +123,55 @@ describe('TsumeshogiService', () => {
       })
     })
   })
+
+  describe('getStatusMap', () => {
+    it('正解済みの問題はsolvedステータスを返す', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2'])
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2'])
+
+      const result = await service.getStatusMap('user-1')
+
+      expect(result.get('tsume-1')).toBe('solved')
+      expect(result.get('tsume-2')).toBe('solved')
+      expect(mockRepository.findSolvedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+      expect(mockRepository.findAttemptedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+    })
+
+    it('挑戦済みだが未正解の問題はin_progressステータスを返す', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue([])
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2'])
+
+      const result = await service.getStatusMap('user-1')
+
+      expect(result.get('tsume-1')).toBe('in_progress')
+      expect(result.get('tsume-2')).toBe('in_progress')
+      expect(mockRepository.findSolvedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+      expect(mockRepository.findAttemptedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+    })
+
+    it('未挑戦の問題はマップに含まれない（unsolvedはデフォルト値として扱う）', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue([])
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue([])
+
+      const result = await service.getStatusMap('user-1')
+
+      expect(result.size).toBe(0)
+      expect(result.get('tsume-1')).toBeUndefined()
+      expect(mockRepository.findSolvedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+      expect(mockRepository.findAttemptedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+    })
+
+    it('混在するステータスを正しく判定する', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1'])
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2', 'tsume-3'])
+
+      const result = await service.getStatusMap('user-1')
+
+      expect(result.get('tsume-1')).toBe('solved')
+      expect(result.get('tsume-2')).toBe('in_progress')
+      expect(result.get('tsume-3')).toBe('in_progress')
+      expect(mockRepository.findSolvedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+      expect(mockRepository.findAttemptedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+    })
+  })
 })

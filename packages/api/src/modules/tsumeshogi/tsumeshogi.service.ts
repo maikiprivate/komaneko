@@ -6,6 +6,7 @@ import type { Tsumeshogi } from '@prisma/client'
 
 import { AppError } from '../../shared/errors/AppError.js'
 import type { TsumeshogiRepository } from './tsumeshogi.repository.js'
+import type { TsumeshogiStatus } from './tsumeshogi.schema.js'
 
 export class TsumeshogiService {
   constructor(private repository: TsumeshogiRepository) {}
@@ -23,5 +24,21 @@ export class TsumeshogiService {
     }
 
     return tsumeshogi
+  }
+
+  async getStatusMap(userId: string): Promise<Map<string, TsumeshogiStatus>> {
+    const [solvedIds, attemptedIds] = await Promise.all([
+      this.repository.findSolvedTsumeshogiIds(userId),
+      this.repository.findAttemptedTsumeshogiIds(userId),
+    ])
+
+    const solvedSet = new Set(solvedIds)
+    const statusMap = new Map<string, TsumeshogiStatus>()
+
+    for (const id of attemptedIds) {
+      statusMap.set(id, solvedSet.has(id) ? 'solved' : 'in_progress')
+    }
+
+    return statusMap
   }
 }
