@@ -8,11 +8,21 @@ import { AppError } from '../../shared/errors/AppError.js'
 import type { TsumeshogiRepository } from './tsumeshogi.repository.js'
 import type { TsumeshogiStatus } from './tsumeshogi.schema.js'
 
+export interface GetAllOptions {
+  moveCount?: number
+  limit?: number
+  offset?: number
+}
+
 export class TsumeshogiService {
   constructor(private repository: TsumeshogiRepository) {}
 
-  async getAll(filter?: { moveCount?: number }): Promise<Tsumeshogi[]> {
+  async getAll(filter?: GetAllOptions): Promise<Tsumeshogi[]> {
     return this.repository.findAll(filter ?? {})
+  }
+
+  async getCount(filter?: { moveCount?: number }): Promise<number> {
+    return this.repository.count(filter)
   }
 
   async getById(id: string): Promise<Tsumeshogi> {

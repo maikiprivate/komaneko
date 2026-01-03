@@ -78,6 +78,49 @@ describe('TsumeshogiService', () => {
 
       expect(result).toHaveLength(0)
     })
+
+    it('limit/offsetでページネーションできる', async () => {
+      const mockProblems = [
+        {
+          id: 'tsume-1',
+          sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
+          moveCount: 3,
+          status: 'published',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]
+      vi.mocked(mockRepository.findAll).mockResolvedValue(mockProblems)
+
+      const result = await service.getAll({ moveCount: 3, limit: 50, offset: 0 })
+
+      expect(result).toHaveLength(1)
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        limit: 50,
+        offset: 0,
+      })
+    })
+  })
+
+  describe('getCount', () => {
+    it('総件数を取得できる', async () => {
+      vi.mocked(mockRepository.count).mockResolvedValue(100)
+
+      const result = await service.getCount({ moveCount: 3 })
+
+      expect(result).toBe(100)
+      expect(mockRepository.count).toHaveBeenCalledWith({ moveCount: 3 })
+    })
+
+    it('フィルタなしで全件数を取得できる', async () => {
+      vi.mocked(mockRepository.count).mockResolvedValue(300)
+
+      const result = await service.getCount()
+
+      expect(result).toBe(300)
+      expect(mockRepository.count).toHaveBeenCalledWith(undefined)
+    })
   })
 
   describe('getById', () => {
