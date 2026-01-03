@@ -6,77 +6,182 @@
  */
 
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { useMemo } from 'react'
-import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ActivityIndicator,
+  SectionList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
-import { getCourseById, type Lesson } from '@/mocks/lessonData'
+import { getCourse, type CourseData, type LessonSummary } from '@/lib/api/lesson'
+
+/** レッスンの状態（将来の進捗管理で動的に設定） */
+type LessonStatus = 'available' | 'completed' | 'locked'
+
+// TODO: 進捗管理実装時にレッスン状態を動的に取得
+const getLessonStatus = (_lesson: LessonSummary, _lessonIndex: number): LessonStatus => {
+  // 現時点では全てavailableとして表示
+  return 'available'
+}
 
 export default function SectionListScreen() {
   const { colors, palette } = useTheme()
+  const router = useRouter()
   const insets = useSafeAreaInsets()
   const { courseId } = useLocalSearchParams<{ courseId: string }>()
 
-  const course = getCourseById(courseId ?? '')
+  const [course, setCourse] = useState<CourseData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const cancelledRef = useRef(false)
 
-  const handleLessonPress = (lesson: Lesson) => {
-    if (lesson.status === 'locked' || !courseId) return
-    router.push(`/lesson/${courseId}/${lesson.id}`)
-  }
+  const fetchCourse = useCallback(() => {
+    if (!courseId) {
+      setError('コースIDが指定されていません')
+      setIsLoading(false)
+      return
+    }
+
+    cancelledRef.current = false
+    setIsLoading(true)
+    setError(null)
+
+    getCourse(courseId)
+      .then((data) => {
+        if (cancelledRef.current) return
+        setCourse(data)
+      })
+      .catch((err) => {
+        if (!cancelledRef.current) setError(err.message || 'データの取得に失敗しました')
+      })
+      .finally(() => {
+        if (!cancelledRef.current) setIsLoading(false)
+      })
+  }, [courseId])
+
+  useEffect(() => {
+    fetchCourse()
+    return () => {
+      cancelledRef.current = true
+    }
+  }, [fetchCourse])
+
+  // SectionList用のデータ形式に変換（メモ化）
+  // Note: Hooksは早期リターンより前に配置する必要がある
+  const sections = useMemo(() => {
+    if (!course) return []
+    return course.sections.map((section, sectionIndex) => ({
+      ...section,
+      sectionNumber: sectionIndex + 1,
+      data: section.lessons.map((lesson, lessonIndex) => {
+        const status = getLessonStatus(lesson, lessonIndex)
+        const prevLesson = lessonIndex > 0 ? section.lessons[lessonIndex - 1] : null
+        const prevStatus = prevLesson ? getLessonStatus(prevLesson, lessonIndex - 1) : null
+        return {
+          ...lesson,
+          lessonIndex,
+          status,
+          isFirst: lessonIndex === 0,
+          isLast: lessonIndex === section.lessons.length - 1,
+          prevStatus,
+        }
+      }),
+    }))
+  }, [course])
+
+  const handleRetry = useCallback(() => {
+    fetchCourse()
+  }, [fetchCourse])
+
+  const handleLessonPress = useCallback(
+    (lesson: LessonSummary) => {
+      if (!courseId) return
+      router.push(`/lesson/${courseId}/${lesson.id}`)
+    },
+    [courseId, router]
+  )
 
   // レッスンの状態に応じたスタイル
-  const getLessonStyle = (status: Lesson['status']) => {
-    switch (status) {
-      case 'completed':
-        return {
-          nodeBg: palette.green,
-          nodeColor: palette.white,
-          textColor: colors.text.primary,
-          lineColor: palette.green,
-        }
-      case 'available':
-        return {
-          nodeBg: palette.orange,
-          nodeColor: palette.white,
-          textColor: colors.text.primary,
-          lineColor: palette.orange,
-        }
-      case 'locked':
-        return {
-          nodeBg: colors.border,
-          nodeColor: colors.text.secondary,
-          textColor: colors.text.secondary,
-          lineColor: colors.border,
-        }
-    }
-  }
+  const getLessonStyle = useCallback(
+    (status: LessonStatus) => {
+      switch (status) {
+        case 'completed':
+          return {
+            nodeBg: palette.green,
+            nodeColor: palette.white,
+            textColor: colors.text.primary,
+            lineColor: palette.green,
+          }
+        case 'available':
+          return {
+            nodeBg: palette.orange,
+            nodeColor: palette.white,
+            textColor: colors.text.primary,
+            lineColor: palette.orange,
+          }
+        case 'locked':
+          return {
+            nodeBg: colors.border,
+            nodeColor: colors.text.secondary,
+            textColor: colors.text.secondary,
+            lineColor: colors.border,
+          }
+      }
+    },
+    [colors, palette]
+  )
 
-  if (!course) {
+  // ローディング表示
+  if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
-        <Text style={{ color: colors.text.primary }}>コースが見つかりません</Text>
-      </View>
+      <>
+        <Stack.Screen options={{ title: '読み込み中...' }} />
+        <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
+          <ActivityIndicator color={colors.button.primary} />
+        </View>
+      </>
     )
   }
 
-  // SectionList用のデータ形式に変換（メモ化）
-  const sections = useMemo(
-    () =>
-      course.sections.map((section, sectionIndex) => ({
-        ...section,
-        sectionNumber: sectionIndex + 1,
-        data: section.lessons.map((lesson, lessonIndex) => ({
-          ...lesson,
-          lessonIndex,
-          isFirst: lessonIndex === 0,
-          isLast: lessonIndex === section.lessons.length - 1,
-          prevLesson: lessonIndex > 0 ? section.lessons[lessonIndex - 1] : null,
-        })),
-      })),
-    [course.sections]
-  )
+  // エラー表示
+  if (error || !course) {
+    return (
+      <>
+        <Stack.Screen options={{ title: 'エラー' }} />
+        <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
+          <Text style={[styles.errorText, { color: colors.text.secondary }]}>
+            {error || 'コースが見つかりません'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.button.primary }]}
+            onPress={handleRetry}
+          >
+            <Text style={[styles.retryButtonText, { color: '#FFFFFF' }]}>再試行</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    )
+  }
+
+  // セクションが空の場合
+  if (sections.length === 0) {
+    return (
+      <>
+        <Stack.Screen options={{ title: course.title }} />
+        <View style={[styles.container, styles.centerContent, { backgroundColor: palette.gameBackground }]}>
+          <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+            セクションがありません
+          </Text>
+        </View>
+      </>
+    )
+  }
 
   return (
     <>
@@ -103,7 +208,7 @@ export default function SectionListScreen() {
           )}
           renderItem={({ item: lesson }) => {
             const style = getLessonStyle(lesson.status)
-            const prevStyle = lesson.prevLesson ? getLessonStyle(lesson.prevLesson.status) : null
+            const prevStyle = lesson.prevStatus ? getLessonStyle(lesson.prevStatus) : null
 
             return (
               <View
@@ -187,6 +292,26 @@ export default function SectionListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   content: {
     paddingHorizontal: 16,

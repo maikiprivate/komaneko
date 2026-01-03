@@ -14,7 +14,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import { useHearts } from '@/lib/hearts/useHearts'
-import { getNextLesson } from '@/mocks/lessonData'
 
 const confettiBackground = require('@/assets/images/background/confetti.png')
 const characterImage = require('@/assets/images/character/sitting.png')
@@ -80,7 +79,9 @@ export default function LessonResultScreen() {
   }
 
   // 次のレッスンへ
-  const nextLesson = getNextLesson(params.courseId, params.lessonId)
+  // TODO: APIから次のレッスン情報を取得する機能を実装
+  // 現在は次のレッスン機能を無効化（セクション一覧から選択してもらう）
+  const nextLesson = undefined as { id: string } | undefined
 
   const handleNextLesson = () => {
     if (nextLesson) {

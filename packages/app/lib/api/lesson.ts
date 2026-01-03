@@ -4,6 +4,90 @@
 
 import { apiRequest } from './client'
 
+// =============================================================================
+// 取得系の型定義
+// =============================================================================
+
+/** レッスン一覧用（コース一覧内のネスト） */
+export interface LessonSummary {
+  id: string
+  title: string
+  problemCount: number
+}
+
+/** セクション（コース一覧内のネスト） */
+export interface SectionData {
+  id: string
+  title: string
+  lessons: LessonSummary[]
+}
+
+/** コース進捗 */
+export interface CourseProgress {
+  completedLessons: number
+  totalLessons: number
+  progressPercent: number
+}
+
+/** コース */
+export interface CourseData {
+  id: string
+  title: string
+  description: string
+  progress: CourseProgress
+  sections: SectionData[]
+}
+
+/** 問題（レッスン詳細内のネスト） */
+export interface ProblemData {
+  id: string
+  sfen: string
+  playerTurn: 'black' | 'white'
+  moveTree: unknown // SfenMove[][]
+  instruction: string
+}
+
+/** レッスン詳細 */
+export interface LessonData {
+  id: string
+  title: string
+  sectionId: string
+  problems: ProblemData[]
+}
+
+// =============================================================================
+// 取得系API
+// =============================================================================
+
+/**
+ * コース一覧を取得
+ */
+export async function getCourses(): Promise<CourseData[]> {
+  return apiRequest<CourseData[]>('/api/lesson/courses')
+}
+
+/**
+ * コース詳細を取得
+ *
+ * @param courseId コースID
+ */
+export async function getCourse(courseId: string): Promise<CourseData> {
+  return apiRequest<CourseData>(`/api/lesson/courses/${courseId}`)
+}
+
+/**
+ * レッスン詳細を取得
+ *
+ * @param lessonId レッスンID
+ */
+export async function getLesson(lessonId: string): Promise<LessonData> {
+  return apiRequest<LessonData>(`/api/lesson/lessons/${lessonId}`)
+}
+
+// =============================================================================
+// 記録系の型定義
+// =============================================================================
+
 /** 問題ごとの記録（API用） */
 export interface ProblemAttemptInput {
   problemId: string

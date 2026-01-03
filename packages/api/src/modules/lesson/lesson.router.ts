@@ -13,12 +13,16 @@ import { createHeartsRepository } from '../hearts/hearts.repository.js'
 import { HeartsService } from '../hearts/hearts.service.js'
 import { createLearningRecordRepository } from '../learning/learning-record.repository.js'
 import { LearningService } from '../learning/learning.service.js'
+import { createLessonReadRepository } from './lesson.repository.js'
 import { recordLessonSchema } from './lesson.schema.js'
+import { LessonService } from './lesson.service.js'
 
 export async function lessonRouter(app: FastifyInstance) {
   // 依存関係の初期化
   const authRepository = createAuthRepository(prisma)
   const authMiddleware = createAuthMiddleware(authRepository)
+  const lessonReadRepository = createLessonReadRepository(prisma)
+  const lessonService = new LessonService(lessonReadRepository)
 
   // LearningService
   const learningRecordRepository = createLearningRecordRepository(prisma)
@@ -30,6 +34,105 @@ export async function lessonRouter(app: FastifyInstance) {
   app.addHook('preHandler', async (request) => {
     request.user = await authMiddleware.authenticate(request.headers.authorization)
   })
+
+  /**
+   * GET /api/lesson/courses - コース一覧取得
+   */
+  app.get('/courses', async (request, reply) => {
+    const userId = getAuthenticatedUserId(request)
+
+    const [courses, progress] = await Promise.all([
+      lessonService.getAllCourses(),
+      lessonService.getCoursesProgress(userId),
+    ])
+
+    // 進捗をマップ化
+    const progressMap = new Map(progress.map((p) => [p.courseId, p]))
+
+    return reply.send({
+      data: courses.map((course) => {
+        const courseProgress = progressMap.get(course.id)
+        return {
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          progress: {
+            completedLessons: courseProgress?.completedLessons ?? 0,
+            totalLessons: courseProgress?.totalLessons ?? 0,
+            progressPercent: courseProgress?.progressPercent ?? 0,
+          },
+          sections: course.sections.map((section) => ({
+            id: section.id,
+            title: section.title,
+            lessons: section.lessons.map((lesson) => ({
+              id: lesson.id,
+              title: lesson.title,
+              problemCount: lesson.problems.length,
+            })),
+          })),
+        }
+      }),
+      meta: { timestamp: new Date().toISOString() },
+    })
+  })
+
+  /**
+   * GET /api/lesson/courses/:courseId - コース詳細取得
+   */
+  app.get<{ Params: { courseId: string } }>(
+    '/courses/:courseId',
+    async (request, reply) => {
+      getAuthenticatedUserId(request) // 認証チェック
+
+      const course = await lessonService.getCourseById(request.params.courseId)
+
+      return reply.send({
+        data: {
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          sections: course.sections.map((section) => ({
+            id: section.id,
+            title: section.title,
+            lessons: section.lessons.map((lesson) => ({
+              id: lesson.id,
+              title: lesson.title,
+              problemCount: lesson.problems.length,
+            })),
+          })),
+        },
+        meta: { timestamp: new Date().toISOString() },
+      })
+    }
+  )
+
+  /**
+   * GET /api/lesson/lessons/:lessonId - レッスン詳細取得
+   */
+  app.get<{ Params: { lessonId: string } }>(
+    '/lessons/:lessonId',
+    async (request, reply) => {
+      getAuthenticatedUserId(request) // 認証チェック
+
+      const lesson = await lessonService.getLessonById(request.params.lessonId)
+
+      return reply.send({
+        data: {
+          id: lesson.id,
+          title: lesson.title,
+          sectionId: lesson.sectionId,
+          problems: lesson.problems.map((problem) => ({
+            id: problem.id,
+            sfen: problem.sfen,
+            playerTurn: problem.playerTurn,
+            moveTree: problem.moveTree,
+            instruction: problem.instruction,
+          })),
+        },
+        meta: { timestamp: new Date().toISOString() },
+      })
+    }
+  )
 
   /**
    * POST /api/lesson/record - レッスン完了記録

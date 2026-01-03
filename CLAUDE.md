@@ -209,46 +209,75 @@ users ─────┬──── sessions（匿名対応）
 
 | 項目 | 内容 |
 |------|------|
-| フェーズ | Phase 15（作業中） |
-| 最終更新 | 2025-12-22 |
+| フェーズ | Phase 15.5（完了） |
+| 最終更新 | 2026-01-03 |
 | 開発方針 | **機能単位で「モック画面 → API → 連携」を繰り返す** |
 
-### Phase 15（作業中）- 管理画面
+### Phase 15.5（完了）- アプリ側レッスンAPI連携
 
-**目標**: 詰将棋・レッスンのコンテンツ管理画面を実装
+**目標**: アプリのレッスン画面をモックデータからAPIに切り替え
+
+**実装内容:**
+- [x] ユーザー向けレッスン取得API作成（バックエンド）
+- [x] アプリ側APIクライアント関数追加
+- [x] コース一覧画面をAPI連携に変更
+- [x] セクション一覧画面をAPI連携に変更
+- [x] レッスンプレイ画面をAPI連携に変更
+- [x] モックデータ削除（型定義のみ残す）
+- [x] 動作確認・テスト
+- [x] 駒打ち対応（P*5e形式のSFEN手）
+- [x] 複数手順対応（自分→相手→自分のシーケンス）
+- [x] ストリーク画面遷移バグ修正
+- [x] コース進捗率表示
+
+**実装済みエンドポイント（ユーザー向け）:**
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | /api/lesson/courses | コース一覧（進捗含む） | 必須 |
+| GET | /api/lesson/courses/:courseId | コース詳細 | 必須 |
+| GET | /api/lesson/lessons/:lessonId | レッスン詳細（問題含む） | 必須 |
+
+### Phase 15（完了）- 管理画面レッスン管理
+
+**目標**: レッスンのコンテンツ管理画面を実装
 
 詳細設計:
 - `docs/designs/admin-panel.md` - 管理画面全体設計
-- `docs/designs/lesson-admin-ui.md` - レッスン管理UI設計（作業中）
+- `docs/designs/lesson-admin-ui.md` - レッスン管理UI設計
 
 **技術スタック:**
 - React + Vite + React Router + TailwindCSS
 
-**実装ステップ:**
-- [x] Step 1: User.role追加
-- [x] Step 2: 管理画面プロジェクト初期化
-- [ ] Step 2.5: レッスン管理UIモック（作業中）
-- [ ] Step 3: 管理者認証ミドルウェア
-- [ ] Step 4: 詰将棋管理API
-- [ ] Step 5: 詰将棋管理UI
-- [ ] Step 6: レッスンDBスキーマ
-- [ ] Step 7: レッスンシードデータ
-- [ ] Step 8: レッスン管理API
-- [ ] Step 9: レッスン管理UI
-- [ ] Step 10: バックアップ機能
-- [ ] Step 11: アプリ側API切り替え
+**実装内容:**
+- [x] 管理画面プロジェクト初期化
+- [x] レッスン管理UIモック（将棋盤、問題編集、一覧）
+- [x] 管理者認証ミドルウェア
+- [x] レッスンDBスキーマ（Course, Section, Lesson, LessonProblem）
+- [x] レッスン管理API（CRUD + 並び替え）
+- [x] レッスン管理UI（API連携）
+- [x] コードレビュー指摘対応（MUST/SHOULD項目）
 
-**Step 2完了内容:**
-- Vite + React + TypeScript + TailwindCSS 環境構築
-- React Router によるルーティング（認証ガード付き）
-- 認証フック（useAuth）- role=admin チェック
-- APIクライアント（Bearer認証）
-- ログイン画面・ダッシュボード・レイアウト
-
-**Step 2.5 レッスン管理UIモック:**
-- 将棋盤共通コンポーネント（ShogiBoard, Piece, PieceStand）
-- レッスン管理一覧（ネスト/アコーディオン型）
-- 問題編集ページ（将棋盤GUI）
+**実装済みエンドポイント（管理者用）:**
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | /api/admin/lesson/courses | コース一覧 |
+| POST | /api/admin/lesson/courses | コース作成 |
+| PUT | /api/admin/lesson/courses/:id | コース更新 |
+| DELETE | /api/admin/lesson/courses/:id | コース削除 |
+| PUT | /api/admin/lesson/courses/reorder | コース並び替え |
+| POST | /api/admin/lesson/sections | セクション作成 |
+| PUT | /api/admin/lesson/sections/:id | セクション更新 |
+| DELETE | /api/admin/lesson/sections/:id | セクション削除 |
+| PUT | /api/admin/lesson/sections/reorder | セクション並び替え |
+| POST | /api/admin/lesson/lessons | レッスン作成 |
+| PUT | /api/admin/lesson/lessons/:id | レッスン更新 |
+| DELETE | /api/admin/lesson/lessons/:id | レッスン削除 |
+| PUT | /api/admin/lesson/lessons/reorder | レッスン並び替え |
+| GET | /api/admin/lesson/problems/:id | 問題詳細取得 |
+| POST | /api/admin/lesson/problems | 問題作成 |
+| PUT | /api/admin/lesson/problems/:id | 問題更新 |
+| DELETE | /api/admin/lesson/problems/:id | 問題削除 |
+| PUT | /api/admin/lesson/problems/reorder | 問題並び替え |
 
 ### Phase 14（完了）- 駒塾API連携
 

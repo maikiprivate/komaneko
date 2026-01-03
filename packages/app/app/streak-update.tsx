@@ -24,7 +24,17 @@ const characterImage = require('@/assets/images/character/sitting.png')
 export default function StreakUpdateScreen() {
   const { colors, palette } = useTheme()
   const insets = useSafeAreaInsets()
-  const params = useLocalSearchParams<{ count: string }>()
+  const params = useLocalSearchParams<{
+    count: string
+    isNewRecord?: string
+    // レッスン結果画面パラメータ（レッスン完了時のみ）
+    lessonResult?: string
+    correct?: string
+    total?: string
+    courseId?: string
+    lessonId?: string
+    time?: string
+  }>()
   const streakCount = Number(params.count) || 1
 
   // AsyncStorageからストリークデータを取得
@@ -102,6 +112,21 @@ export default function StreakUpdateScreen() {
   }, [fireScale, countScale, cardSlide, cardOpacity, buttonOpacity])
 
   const handleContinue = () => {
+    // レッスン完了から遷移した場合は結果画面へ
+    if (params.lessonResult === 'true' && params.courseId && params.lessonId) {
+      router.replace({
+        pathname: '/lesson/result',
+        params: {
+          correct: params.correct ?? '0',
+          total: params.total ?? '0',
+          courseId: params.courseId,
+          lessonId: params.lessonId,
+          time: params.time ?? '0:00',
+        },
+      })
+      return
+    }
+    // それ以外（詰将棋など）は前の画面に戻る
     router.back()
   }
 
