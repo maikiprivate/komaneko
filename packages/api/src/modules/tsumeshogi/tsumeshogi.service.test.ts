@@ -15,6 +15,8 @@ describe('TsumeshogiService', () => {
     mockRepository = {
       findAll: vi.fn(),
       findById: vi.fn(),
+      findSolvedTsumeshogiIds: vi.fn(),
+      findAttemptedTsumeshogiIds: vi.fn(),
     }
     service = new TsumeshogiService(mockRepository)
   })
