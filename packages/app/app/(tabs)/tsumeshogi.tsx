@@ -4,7 +4,11 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
-import { getTsumeshogiList, type TsumeshogiProblem } from '@/lib/api/tsumeshogi'
+import {
+  getTsumeshogiList,
+  type TsumeshogiProblem,
+  type TsumeshogiStatus,
+} from '@/lib/api/tsumeshogi'
 
 /** 手数のオプション */
 const MOVES_OPTIONS = [3, 5, 7] as const
@@ -17,12 +21,10 @@ const MOVES_LABELS: Record<MovesOption, string> = {
   7: '7手詰め',
 }
 
-/** ステータスの型（将来API対応時に使用） */
-type ProblemStatus = 'unsolved' | 'in_progress' | 'solved'
-type StatusFilter = ProblemStatus | 'all'
+type StatusFilter = TsumeshogiStatus | 'all'
 
 /** ステータスの表示名 */
-const STATUS_LABELS: Record<ProblemStatus, string> = {
+const STATUS_LABELS: Record<TsumeshogiStatus, string> = {
   unsolved: '未解答',
   in_progress: '挑戦中',
   solved: '解答済み',
@@ -37,7 +39,7 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
 
 /** ステータスに応じた背景色を取得 */
 function getStatusBackgroundColor(
-  status: ProblemStatus,
+  status: TsumeshogiStatus,
   colors: ReturnType<typeof useTheme>['colors'],
 ) {
   switch (status) {
@@ -121,9 +123,12 @@ export default function TsumeshogiScreen() {
     })
   }, [selectedMoves])
 
-  // TODO: ステータスフィルタはAPI対応後に実装
-  // 現在は全件表示
-  const filteredProblems = problems
+  // ステータスフィルタ（元のインデックスを保持）
+  const problemsWithIndex = problems.map((p, i) => ({ ...p, originalIndex: i + 1 }))
+  const filteredProblems =
+    selectedStatus === 'all'
+      ? problemsWithIndex
+      : problemsWithIndex.filter((p) => p.status === selectedStatus)
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {
     // 同手数の問題データを取得（次の問題遷移用）
@@ -215,31 +220,28 @@ export default function TsumeshogiScreen() {
             該当する問題がありません
           </Text>
         ) : (
-          filteredProblems.map((problem, index) => {
-            // TODO: ステータスはAPI対応後に取得。現在は全て「未解答」
-            const status: ProblemStatus = 'unsolved'
-            return (
-              <TouchableOpacity
-                key={problem.id}
-                style={[styles.card, { backgroundColor: colors.card.background }]}
-                onPress={() => handleProblemPress(problem)}
+          filteredProblems.map((problem) => (
+            <TouchableOpacity
+              key={problem.id}
+              style={[styles.card, { backgroundColor: colors.card.background }]}
+              onPress={() => handleProblemPress(problem)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
+                問題 {problem.originalIndex}
+              </Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: getStatusBackgroundColor(problem.status, colors) },
+                ]}
               >
-                <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
-                  問題 {index + 1}
+                <Text style={[styles.statusBadgeText, { color: colors.text.inverse }]}>
+                  {STATUS_LABELS[problem.status]}
                 </Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusBackgroundColor(status, colors) },
-                  ]}
-                >
-                  <Text style={[styles.statusBadgeText, { color: colors.text.inverse }]}>
-                    {STATUS_LABELS[status]}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )
-          })
+              </View>
+            </TouchableOpacity>
+          ))
         )}
       </ScrollView>
     </SafeAreaView>
