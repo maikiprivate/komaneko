@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -9,6 +9,7 @@ import {
   type TsumeshogiProblem,
   type TsumeshogiStatus,
 } from '@/lib/api/tsumeshogi'
+import { consumeStatusUpdates } from '@/lib/tsumeshogi/statusCache'
 
 /** 手数のオプション */
 const MOVES_OPTIONS = [3, 5, 7] as const
@@ -106,6 +107,42 @@ export default function TsumeshogiScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheはuseEffect内で更新するため依存配列から除外
   }, [selectedMoves])
 
+  // 画面フォーカス時にステータス更新をキャッシュに反映
+  useFocusEffect(
+    useCallback(() => {
+      const applyStatusUpdates = async () => {
+        const updates = await consumeStatusUpdates()
+        if (updates.length === 0) return
+
+        // O(1)検索のためMapに変換
+        const updateMap = new Map(updates.map((u) => [u.id, u.status]))
+
+        setCache((prev) => {
+          const newCache = { ...prev }
+          // 全ての手数のキャッシュを更新
+          for (const key of MOVES_OPTIONS) {
+            const cacheEntry = newCache[key]
+            if (!cacheEntry) continue
+
+            newCache[key] = {
+              ...cacheEntry,
+              problems: cacheEntry.problems.map((p) => {
+                const newStatus = updateMap.get(p.id)
+                // solvedからin_progressへの降格は行わない
+                if (newStatus && !(p.status === 'solved' && newStatus === 'in_progress')) {
+                  return { ...p, status: newStatus }
+                }
+                return p
+              }),
+            }
+          }
+          return newCache
+        })
+      }
+      applyStatusUpdates()
+    }, [])
+  )
+
   // TODO: 将来のページネーション用
   // const loadMore = useCallback(() => {
   //   if (!currentCache?.hasMore || isLoading) return
@@ -134,13 +171,16 @@ export default function TsumeshogiScreen() {
     // 同手数の問題データを取得（次の問題遷移用）
     const problemsData = currentCache?.problems ?? []
     router.push({
-      pathname: `/tsumeshogi/${problem.id}`,
+      pathname: '/tsumeshogi/[id]',
       params: {
+        id: problem.id,
         sfen: problem.sfen,
         moveCount: String(problem.moveCount),
-        // ID配列とSFEN配列を渡す（次の問題遷移で再利用）
+        status: problem.status,
+        // ID配列とSFEN配列とステータス配列を渡す（次の問題遷移で再利用）
         problemIds: JSON.stringify(problemsData.map((p) => p.id)),
         problemSfens: JSON.stringify(problemsData.map((p) => p.sfen)),
+        problemStatuses: JSON.stringify(problemsData.map((p) => p.status)),
       },
     })
   }
