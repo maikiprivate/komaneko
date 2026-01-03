@@ -45,7 +45,7 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
    * GET /api/tsumeshogi - 一覧取得
    */
   app.get('/', async (request, reply) => {
-    getAuthenticatedUserId(request) // 認証チェック
+    const userId = getAuthenticatedUserId(request)
 
     // クエリパラメータのバリデーション
     const parseResult = tsumeshogiQuerySchema.safeParse(request.query)
@@ -55,13 +55,17 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
       })
     }
 
-    const problems = await tsumeshogiService.getAll(parseResult.data)
+    const [problems, statusMap] = await Promise.all([
+      tsumeshogiService.getAll(parseResult.data),
+      tsumeshogiService.getStatusMap(userId),
+    ])
 
     return reply.send({
       data: problems.map((p) => ({
         id: p.id,
         sfen: p.sfen,
         moveCount: p.moveCount,
+        status: statusMap.get(p.id) ?? 'unsolved',
       })),
       meta: { timestamp: new Date().toISOString() },
     })
@@ -71,15 +75,19 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
    * GET /api/tsumeshogi/:id - 詳細取得
    */
   app.get<{ Params: { id: string } }>('/:id', async (request, reply) => {
-    getAuthenticatedUserId(request) // 認証チェック
+    const userId = getAuthenticatedUserId(request)
 
-    const problem = await tsumeshogiService.getById(request.params.id)
+    const [problem, statusMap] = await Promise.all([
+      tsumeshogiService.getById(request.params.id),
+      tsumeshogiService.getStatusMap(userId),
+    ])
 
     return reply.send({
       data: {
         id: problem.id,
         sfen: problem.sfen,
         moveCount: problem.moveCount,
+        status: statusMap.get(problem.id) ?? 'unsolved',
       },
       meta: { timestamp: new Date().toISOString() },
     })
