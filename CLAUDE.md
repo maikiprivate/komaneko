@@ -157,7 +157,7 @@ Router → Service → Repository（一方向のみ）
   }
 }
 
-// ページネーション
+// ページネーション（従来のページ指定方式）
 {
   "data": [...],
   "pagination": {
@@ -165,6 +165,17 @@ Router → Service → Repository（一方向のみ）
     "perPage": 20,
     "total": 100,
     "totalPages": 5
+  }
+}
+
+// 無限スクロール（offset/limit方式）
+{
+  "data": [...],
+  "pagination": {
+    "total": 100,
+    "limit": 50,
+    "offset": 0,
+    "hasMore": true
   }
 }
 ```

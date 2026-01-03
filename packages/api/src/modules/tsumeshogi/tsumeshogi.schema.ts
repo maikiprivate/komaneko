@@ -9,6 +9,9 @@ import { z } from 'zod'
  */
 export const tsumeshogiQuerySchema = z.object({
   moveCount: z.coerce.number().int().optional(),
+  /** 無限スクロール用。初期表示・追加読み込み共に50件 */
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
 })
 
 export type TsumeshogiQuery = z.infer<typeof tsumeshogiQuerySchema>
@@ -33,10 +36,21 @@ export interface TsumeshogiResponse {
 }
 
 /**
+ * ページネーション情報
+ */
+export interface PaginationInfo {
+  total: number
+  limit: number
+  offset: number
+  hasMore: boolean
+}
+
+/**
  * 一覧レスポンス
  */
 export interface TsumeshogiListResponse {
   data: TsumeshogiResponse[]
+  pagination: PaginationInfo
   meta: { timestamp: string }
 }
 
