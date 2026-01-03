@@ -4,11 +4,15 @@
 
 import { apiRequest } from './client'
 
+/** 詰将棋ステータス */
+export type TsumeshogiStatus = 'solved' | 'in_progress' | 'unsolved'
+
 /** 詰将棋問題 */
 export interface TsumeshogiProblem {
   id: string
   sfen: string
   moveCount: number
+  status: TsumeshogiStatus
 }
 
 /**
