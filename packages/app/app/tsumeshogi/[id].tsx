@@ -123,10 +123,11 @@ export default function TsumeshogiPlayScreen() {
         if (cancelled) return
         setProblem(data)
         // 同じ手数の問題一覧も取得（次の問題への遷移用）
-        return getTsumeshogiList(data.moveCount)
+        return getTsumeshogiList({ moveCount: data.moveCount })
       })
-      .then((list) => {
-        if (cancelled || !list) return
+      .then((response) => {
+        if (cancelled || !response) return
+        const list = response.problems
         setProblemIds(list.map((p) => p.id))
         setProblemSfens(list.map((p) => p.sfen))
         setProblemStatuses(list.map((p) => p.status))

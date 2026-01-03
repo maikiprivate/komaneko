@@ -53,11 +53,10 @@ function getStatusBackgroundColor(
   }
 }
 
-/** 手数ごとのキャッシュ構造（将来のページネーション対応） */
+/** 手数ごとのキャッシュ構造（ページネーション対応） */
 interface ProblemsCache {
   problems: TsumeshogiProblem[]
   hasMore: boolean // まだ読み込めるデータがあるか
-  // 将来追加: nextCursor?: string
 }
 
 export default function TsumeshogiScreen() {
@@ -83,14 +82,14 @@ export default function TsumeshogiScreen() {
     setIsLoading(true)
     setError(null)
 
-    getTsumeshogiList(selectedMoves)
-      .then((data) => {
+    getTsumeshogiList({ moveCount: selectedMoves })
+      .then((response) => {
         if (cancelled) return
         setCache((prev) => ({
           ...prev,
           [selectedMoves]: {
-            problems: data,
-            hasMore: false, // TODO: APIがページネーション対応したらtrue
+            problems: response.problems,
+            hasMore: response.pagination.hasMore,
           },
         }))
       })
@@ -143,7 +142,7 @@ export default function TsumeshogiScreen() {
     }, [])
   )
 
-  // TODO: 将来のページネーション用
+  // TODO: Step 6で無限スクロール実装時に有効化
   // const loadMore = useCallback(() => {
   //   if (!currentCache?.hasMore || isLoading) return
   //   // 追加読み込み処理

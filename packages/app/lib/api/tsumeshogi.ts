@@ -2,7 +2,10 @@
  * 詰将棋API関数
  */
 
+import { ApiError } from './client'
 import { apiRequest } from './client'
+import { API_BASE_URL } from './config'
+import { getToken } from '../auth/tokenStorage'
 
 /** 詰将棋ステータス */
 export type TsumeshogiStatus = 'solved' | 'in_progress' | 'unsolved'
@@ -15,14 +18,61 @@ export interface TsumeshogiProblem {
   status: TsumeshogiStatus
 }
 
+/** ページネーション情報 */
+export interface PaginationInfo {
+  total: number
+  limit: number
+  offset: number
+  hasMore: boolean
+}
+
+/** 一覧取得レスポンス */
+export interface TsumeshogiListResponse {
+  problems: TsumeshogiProblem[]
+  pagination: PaginationInfo
+}
+
+/** 一覧取得オプション */
+export interface GetTsumeshogiListOptions {
+  moveCount?: number
+  limit?: number
+  offset?: number
+}
+
 /**
- * 詰将棋一覧を取得
- *
- * @param moveCount 手数でフィルタ（省略時は全件）
+ * 詰将棋一覧を取得（ページネーション対応）
  */
-export async function getTsumeshogiList(moveCount?: number): Promise<TsumeshogiProblem[]> {
-  const query = moveCount !== undefined ? `?moveCount=${moveCount}` : ''
-  return apiRequest<TsumeshogiProblem[]>(`/api/tsumeshogi${query}`)
+export async function getTsumeshogiList(
+  options: GetTsumeshogiListOptions = {}
+): Promise<TsumeshogiListResponse> {
+  const { moveCount, limit, offset } = options
+  const params = new URLSearchParams()
+
+  if (moveCount !== undefined) params.append('moveCount', String(moveCount))
+  if (limit !== undefined) params.append('limit', String(limit))
+  if (offset !== undefined) params.append('offset', String(offset))
+
+  const query = params.toString() ? `?${params.toString()}` : ''
+  const url = `${API_BASE_URL}/api/tsumeshogi${query}`
+
+  const token = await getToken()
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+
+  if (!response.ok) {
+    const json = await response.json()
+    throw new ApiError(
+      json.error?.code || 'UNKNOWN_ERROR',
+      json.error?.message || 'エラーが発生しました'
+    )
+  }
+
+  const json = await response.json()
+  return {
+    problems: json.data,
+    pagination: json.pagination,
+  }
 }
 
 /**
