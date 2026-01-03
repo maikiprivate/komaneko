@@ -42,7 +42,7 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
   })
 
   /**
-   * GET /api/tsumeshogi - 一覧取得
+   * GET /api/tsumeshogi - 一覧取得（ページネーション対応）
    */
   app.get('/', async (request, reply) => {
     const userId = getAuthenticatedUserId(request)
@@ -55,8 +55,11 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
       })
     }
 
-    const [problems, statusMap] = await Promise.all([
-      tsumeshogiService.getAll(parseResult.data),
+    const { moveCount, limit, offset } = parseResult.data
+
+    const [problems, total, statusMap] = await Promise.all([
+      tsumeshogiService.getAll({ moveCount, limit, offset }),
+      tsumeshogiService.getCount({ moveCount }),
       tsumeshogiService.getStatusMap(userId),
     ])
 
@@ -67,6 +70,12 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
         moveCount: p.moveCount,
         status: statusMap.get(p.id) ?? 'unsolved',
       })),
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + problems.length < total,
+      },
       meta: { timestamp: new Date().toISOString() },
     })
   })
