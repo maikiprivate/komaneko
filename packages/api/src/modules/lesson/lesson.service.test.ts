@@ -111,6 +111,7 @@ describe('LessonService', () => {
       findAllPublishedCourses: vi.fn(),
       findPublishedCourseById: vi.fn(),
       findLessonById: vi.fn(),
+      findCompletedLessonIds: vi.fn(),
     }
     service = new LessonService(mockRepository)
   })

@@ -280,10 +280,15 @@ export default function LessonPlayScreen() {
    * - ストリーク更新
    *
    * 復習モードではAPIを呼ばない（ハート消費なし、記録なし）
+   *
+   * 戻り値:
+   * - true: 成功（結果画面へ遷移する）
+   * - false: 失敗
+   * - 'streak': ストリーク画面へ遷移済み（結果画面への遷移は不要）
    */
   const handleComplete = useCallback(
-    async (data: LessonCompletionData): Promise<boolean> => {
-      if (!lessonId) return false
+    async (data: LessonCompletionData): Promise<boolean | 'streak'> => {
+      if (!lessonId || !courseId) return false
 
       // 復習モードではAPI呼び出しをスキップ
       if (isReviewMode) {
@@ -312,11 +317,29 @@ export default function LessonPlayScreen() {
         const today = getTodayDateString()
         await saveStreakFromApi(result.streak, result.completedDates, today)
 
-        // ストリーク更新画面への遷移
+        // ストリーク更新画面への遷移（結果画面パラメータを含む）
         if (result.streak.updated) {
-          router.push(
-            `/streak-update?count=${result.streak.currentCount}&isNewRecord=${result.streak.isNewRecord}`
-          )
+          // 完了時間を計算（data.completionSecondsから）
+          const totalSeconds = data.completionSeconds
+          const minutes = Math.floor(totalSeconds / 60)
+          const seconds = totalSeconds % 60
+          const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`
+
+          router.push({
+            pathname: '/streak-update',
+            params: {
+              count: String(result.streak.currentCount),
+              isNewRecord: String(result.streak.isNewRecord),
+              // 結果画面パラメータ（ストリーク画面から遷移するため）
+              lessonResult: 'true',
+              correct: String(data.correctCount),
+              total: String(data.totalCount),
+              courseId,
+              lessonId,
+              time: timeString,
+            },
+          })
+          return 'streak'
         }
 
         return true
@@ -325,7 +348,7 @@ export default function LessonPlayScreen() {
         return false
       }
     },
-    [lessonId, isReviewMode, updateFromConsumeResponse]
+    [lessonId, courseId, isReviewMode, updateFromConsumeResponse]
   )
 
   /**

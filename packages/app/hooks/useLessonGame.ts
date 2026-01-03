@@ -72,8 +72,14 @@ interface UseLessonGameOptions {
   courseId: string
   lessonId: string
   lesson: SequenceLesson | undefined
-  /** レッスン完了時のコールバック（ハート消費など）。falseを返すと遷移しない */
-  onComplete?: (data: LessonCompletionData) => Promise<boolean>
+  /**
+   * レッスン完了時のコールバック（ハート消費など）
+   * 戻り値:
+   * - true: 成功（結果画面へ遷移する）
+   * - false: 失敗（遷移しない）
+   * - 'streak': ストリーク画面へ遷移済み（結果画面への遷移は不要）
+   */
+  onComplete?: (data: LessonCompletionData) => Promise<boolean | 'streak'>
 }
 
 /** フックの戻り値 */
@@ -284,17 +290,23 @@ export function useLessonGame({
 
       // onCompleteコールバック（ハート消費など）を呼び出し
       if (onComplete) {
-        const success = await onComplete({
+        const result = await onComplete({
           correctCount: finalCorrectCount,
           totalCount: totalProblems,
           problems: allAttempts,
           completionSeconds: totalSeconds,
         })
-        if (!success) {
+        if (result === false) {
+          // 失敗時は遷移しない
           return false
+        }
+        if (result === 'streak') {
+          // ストリーク画面へ遷移済み（そこから結果画面へ遷移するため、ここでは何もしない）
+          return true
         }
       }
 
+      // 結果画面へ遷移（ストリーク画面を経由しない場合）
       router.replace({
         pathname: '/lesson/result',
         params: {

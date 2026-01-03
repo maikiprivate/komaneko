@@ -39,25 +39,39 @@ export async function lessonRouter(app: FastifyInstance) {
    * GET /api/lesson/courses - コース一覧取得
    */
   app.get('/courses', async (request, reply) => {
-    getAuthenticatedUserId(request) // 認証チェック
+    const userId = getAuthenticatedUserId(request)
 
-    const courses = await lessonService.getAllCourses()
+    const [courses, progress] = await Promise.all([
+      lessonService.getAllCourses(),
+      lessonService.getCoursesProgress(userId),
+    ])
+
+    // 進捗をマップ化
+    const progressMap = new Map(progress.map((p) => [p.courseId, p]))
 
     return reply.send({
-      data: courses.map((course) => ({
-        id: course.id,
-        title: course.title,
-        description: course.description,
-        sections: course.sections.map((section) => ({
-          id: section.id,
-          title: section.title,
-          lessons: section.lessons.map((lesson) => ({
-            id: lesson.id,
-            title: lesson.title,
-            problemCount: lesson.problems.length,
+      data: courses.map((course) => {
+        const courseProgress = progressMap.get(course.id)
+        return {
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          progress: {
+            completedLessons: courseProgress?.completedLessons ?? 0,
+            totalLessons: courseProgress?.totalLessons ?? 0,
+            progressPercent: courseProgress?.progressPercent ?? 0,
+          },
+          sections: course.sections.map((section) => ({
+            id: section.id,
+            title: section.title,
+            lessons: section.lessons.map((lesson) => ({
+              id: lesson.id,
+              title: lesson.title,
+              problemCount: lesson.problems.length,
+            })),
           })),
-        })),
-      })),
+        }
+      }),
       meta: { timestamp: new Date().toISOString() },
     })
   })

@@ -112,14 +112,21 @@ export default function LessonScreen() {
                 </View>
               </View>
 
-              {/* TODO: 進捗管理実装時に動的表示に変更 */}
               <View style={styles.progressSection}>
                 <View style={[styles.progressBar, { backgroundColor: colors.background.secondary }]}>
                   <View
-                    style={[styles.progressFill, { width: '0%', backgroundColor: palette.orange }]}
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${course.progress.progressPercent}%`,
+                        backgroundColor: course.progress.progressPercent === 100 ? palette.green : palette.orange,
+                      },
+                    ]}
                   />
                 </View>
-                <Text style={[styles.progressText, { color: colors.text.secondary }]}>0%</Text>
+                <Text style={[styles.progressText, { color: colors.text.secondary }]}>
+                  {course.progress.progressPercent}%
+                </Text>
               </View>
             </TouchableOpacity>
           ))

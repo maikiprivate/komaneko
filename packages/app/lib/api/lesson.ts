@@ -22,11 +22,19 @@ export interface SectionData {
   lessons: LessonSummary[]
 }
 
+/** コース進捗 */
+export interface CourseProgress {
+  completedLessons: number
+  totalLessons: number
+  progressPercent: number
+}
+
 /** コース */
 export interface CourseData {
   id: string
   title: string
   description: string
+  progress: CourseProgress
   sections: SectionData[]
 }
 

@@ -39,6 +39,7 @@ export interface LessonReadRepository {
   findAllPublishedCourses(): Promise<CourseWithNested[]>
   findPublishedCourseById(id: string): Promise<CourseWithNested | null>
   findLessonById(id: string): Promise<LessonWithProblems | null>
+  findCompletedLessonIds(userId: string): Promise<string[]>
 }
 
 // =============================================================================
@@ -94,6 +95,21 @@ export function createLessonReadRepository(
           },
         },
       })
+    },
+
+    async findCompletedLessonIds(userId: string): Promise<string[]> {
+      const records = await prisma.lessonRecord.findMany({
+        where: {
+          learningRecord: {
+            userId,
+          },
+        },
+        select: {
+          lessonId: true,
+        },
+        distinct: ['lessonId'],
+      })
+      return records.map((r) => r.lessonId)
     },
   }
 }

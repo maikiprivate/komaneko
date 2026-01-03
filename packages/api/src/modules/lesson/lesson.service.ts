@@ -9,6 +9,14 @@ import type {
   LessonWithProblems,
 } from './lesson.repository.js'
 
+/** コース進捗情報 */
+export interface CourseProgress {
+  courseId: string
+  completedLessons: number
+  totalLessons: number
+  progressPercent: number
+}
+
 export class LessonService {
   constructor(private repository: LessonReadRepository) {}
 
@@ -17,6 +25,40 @@ export class LessonService {
    */
   async getAllCourses(): Promise<CourseWithNested[]> {
     return this.repository.findAllPublishedCourses()
+  }
+
+  /**
+   * ユーザーの全コース進捗を取得
+   */
+  async getCoursesProgress(userId: string): Promise<CourseProgress[]> {
+    const [courses, completedLessonIds] = await Promise.all([
+      this.repository.findAllPublishedCourses(),
+      this.repository.findCompletedLessonIds(userId),
+    ])
+
+    const completedSet = new Set(completedLessonIds)
+
+    return courses.map((course) => {
+      // コース内の全レッスンIDを取得
+      const lessonIds = course.sections.flatMap((s) =>
+        s.lessons.map((l) => l.id)
+      )
+      const totalLessons = lessonIds.length
+      const completedLessons = lessonIds.filter((id) =>
+        completedSet.has(id)
+      ).length
+      const progressPercent =
+        totalLessons > 0
+          ? Math.round((completedLessons / totalLessons) * 100)
+          : 0
+
+      return {
+        courseId: course.id,
+        completedLessons,
+        totalLessons,
+        progressPercent,
+      }
+    })
   }
 
   /**
