@@ -14,6 +14,7 @@ describe('TsumeshogiService', () => {
   beforeEach(() => {
     mockRepository = {
       findAll: vi.fn(),
+      count: vi.fn(),
       findById: vi.fn(),
       findSolvedTsumeshogiIds: vi.fn(),
       findAttemptedTsumeshogiIds: vi.fn(),

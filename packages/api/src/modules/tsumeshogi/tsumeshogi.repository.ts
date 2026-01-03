@@ -4,8 +4,16 @@
 
 import type { Tsumeshogi, PrismaClient } from '@prisma/client'
 
+export interface FindAllOptions {
+  moveCount?: number
+  status?: string
+  limit?: number
+  offset?: number
+}
+
 export interface TsumeshogiRepository {
-  findAll(filter?: { moveCount?: number; status?: string }): Promise<Tsumeshogi[]>
+  findAll(filter?: FindAllOptions): Promise<Tsumeshogi[]>
+  count(filter?: { moveCount?: number; status?: string }): Promise<number>
   findById(id: string): Promise<Tsumeshogi | null>
   findSolvedTsumeshogiIds(userId: string): Promise<string[]>
   findAttemptedTsumeshogiIds(userId: string): Promise<string[]>
@@ -13,7 +21,7 @@ export interface TsumeshogiRepository {
 
 export function createTsumeshogiRepository(prisma: PrismaClient): TsumeshogiRepository {
   return {
-    async findAll(filter?: { moveCount?: number; status?: string }): Promise<Tsumeshogi[]> {
+    async findAll(filter?: FindAllOptions): Promise<Tsumeshogi[]> {
       const where: { moveCount?: number; status?: string } = {}
 
       if (filter?.moveCount !== undefined) {
@@ -26,7 +34,22 @@ export function createTsumeshogiRepository(prisma: PrismaClient): TsumeshogiRepo
       return prisma.tsumeshogi.findMany({
         where,
         orderBy: { createdAt: 'asc' },
+        skip: filter?.offset,
+        take: filter?.limit,
       })
+    },
+
+    async count(filter?: { moveCount?: number; status?: string }): Promise<number> {
+      const where: { moveCount?: number; status?: string } = {}
+
+      if (filter?.moveCount !== undefined) {
+        where.moveCount = filter.moveCount
+      }
+
+      // デフォルトで公開済みのみ取得
+      where.status = filter?.status ?? 'published'
+
+      return prisma.tsumeshogi.count({ where })
     },
 
     async findById(id: string): Promise<Tsumeshogi | null> {
