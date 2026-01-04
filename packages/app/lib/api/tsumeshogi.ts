@@ -32,9 +32,13 @@ export interface TsumeshogiListResponse {
   pagination: PaginationInfo
 }
 
+/** ステータスフィルタ */
+export type StatusFilter = 'all' | 'unsolved' | 'in_progress' | 'solved'
+
 /** 一覧取得オプション */
 export interface GetTsumeshogiListOptions {
   moveCount?: number
+  statusFilter?: StatusFilter
   limit?: number
   offset?: number
 }
@@ -45,10 +49,11 @@ export interface GetTsumeshogiListOptions {
 export async function getTsumeshogiList(
   options: GetTsumeshogiListOptions = {}
 ): Promise<TsumeshogiListResponse> {
-  const { moveCount, limit, offset } = options
+  const { moveCount, statusFilter, limit, offset } = options
   const params = new URLSearchParams()
 
   if (moveCount !== undefined) params.append('moveCount', String(moveCount))
+  if (statusFilter !== undefined) params.append('statusFilter', statusFilter)
   if (limit !== undefined) params.append('limit', String(limit))
   if (offset !== undefined) params.append('offset', String(offset))
 

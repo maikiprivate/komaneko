@@ -8,6 +8,7 @@ import {
   getTsumeshogiList,
   type TsumeshogiProblem,
   type TsumeshogiStatus,
+  type StatusFilter,
 } from '@/lib/api/tsumeshogi'
 import { consumeStatusUpdates } from '@/lib/tsumeshogi/statusCache'
 
@@ -21,8 +22,6 @@ const MOVES_LABELS: Record<MovesOption, string> = {
   5: '5手詰め',
   7: '7手詰め',
 }
-
-type StatusFilter = TsumeshogiStatus | 'all'
 
 /** ステータスの表示名 */
 const STATUS_LABELS: Record<TsumeshogiStatus, string> = {
@@ -53,12 +52,16 @@ function getStatusBackgroundColor(
   }
 }
 
-/** 手数ごとのキャッシュ構造（ページネーション対応） */
+/** キャッシュ構造（ページネーション対応） */
 interface ProblemsCache {
   problems: TsumeshogiProblem[]
   hasMore: boolean // まだ読み込めるデータがあるか
   offset: number // 次回読み込み開始位置
 }
+
+/** キャッシュキー: {moveCount}-{statusFilter} */
+type CacheKey = `${MovesOption}-${StatusFilter}`
+const getCacheKey = (moves: MovesOption, status: StatusFilter): CacheKey => `${moves}-${status}`
 
 /** 無限スクロールの追加読み込みのデバウンス間隔（ミリ秒） */
 const LOAD_MORE_DEBOUNCE_MS = 500
@@ -69,31 +72,32 @@ export default function TsumeshogiScreen() {
   const [selectedMoves, setSelectedMoves] = useState<MovesOption>(3)
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('all')
 
-  // 手数ごとのキャッシュ
-  const [cache, setCache] = useState<Partial<Record<MovesOption, ProblemsCache>>>({})
+  // {moveCount}-{status}ごとのキャッシュ
+  const [cache, setCache] = useState<Partial<Record<CacheKey, ProblemsCache>>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const lastLoadMoreTimeRef = useRef<number>(0)
 
-  // 選択中の手数のデータ
-  const currentCache = cache[selectedMoves]
+  // 選択中のキャッシュキー
+  const cacheKey = getCacheKey(selectedMoves, selectedStatus)
+  const currentCache = cache[cacheKey]
   const problems = currentCache?.problems ?? []
 
   useEffect(() => {
     // キャッシュがあれば再取得しない
-    if (cache[selectedMoves]) return
+    if (cache[cacheKey]) return
 
     let cancelled = false
     setIsLoading(true)
     setError(null)
 
-    getTsumeshogiList({ moveCount: selectedMoves })
+    getTsumeshogiList({ moveCount: selectedMoves, statusFilter: selectedStatus })
       .then((response) => {
         if (cancelled) return
         setCache((prev) => ({
           ...prev,
-          [selectedMoves]: {
+          [cacheKey]: {
             problems: response.problems,
             hasMore: response.pagination.hasMore,
             offset: response.problems.length,
@@ -111,7 +115,7 @@ export default function TsumeshogiScreen() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheはuseEffect内で更新するため依存配列から除外
-  }, [selectedMoves])
+  }, [cacheKey, selectedMoves, selectedStatus])
 
   // 画面フォーカス時にステータス更新をキャッシュに反映
   useFocusEffect(
@@ -120,28 +124,33 @@ export default function TsumeshogiScreen() {
         const updates = await consumeStatusUpdates()
         if (updates.length === 0) return
 
-        // O(1)検索のためMapに変換
-        const updateMap = new Map(updates.map((u) => [u.id, u.status]))
-
+        // ステータス更新があった場合、関連するキャッシュをクリアして再取得させる
+        // （サーバーサイドフィルタなので、フィルタ間の問題移動はサーバーに任せる）
         setCache((prev) => {
           const newCache = { ...prev }
-          // 全ての手数のキャッシュを更新
-          for (const key of MOVES_OPTIONS) {
-            const cacheEntry = newCache[key]
-            if (!cacheEntry) continue
 
-            newCache[key] = {
-              ...cacheEntry,
-              problems: cacheEntry.problems.map((p) => {
-                const newStatus = updateMap.get(p.id)
-                // solvedからin_progressへの降格は行わない
-                if (newStatus && !(p.status === 'solved' && newStatus === 'in_progress')) {
-                  return { ...p, status: newStatus }
-                }
-                return p
-              }),
+          // 更新された問題のmoveCountを特定してそのキャッシュをクリア
+          const affectedMoves = new Set<MovesOption>()
+
+          // 全キャッシュから更新対象を探す
+          for (const [key, entry] of Object.entries(newCache)) {
+            if (!entry) continue
+            for (const update of updates) {
+              if (entry.problems.some((p) => p.id === update.id)) {
+                // このキーに関連する手数を抽出
+                const moves = Number(key.split('-')[0]) as MovesOption
+                affectedMoves.add(moves)
+              }
             }
           }
+
+          // 影響を受ける手数の全フィルタキャッシュをクリア
+          for (const moves of affectedMoves) {
+            for (const status of ['all', 'unsolved', 'in_progress', 'solved'] as const) {
+              delete newCache[getCacheKey(moves, status)]
+            }
+          }
+
           return newCache
         })
       }
@@ -150,11 +159,7 @@ export default function TsumeshogiScreen() {
   )
 
   // 追加読み込み（無限スクロール）
-  // 注意: ステータスフィルタ適用時は無効化（フィルタ後のデータが少ない場合に正しく動作しないため）
   const loadMore = useCallback(() => {
-    // フィルタ適用中は追加読み込みしない
-    if (selectedStatus !== 'all') return
-
     // 読み込み中、データなし、追加データなしの場合はスキップ
     if (!currentCache?.hasMore || isLoading || isLoadingMore) return
 
@@ -163,23 +168,26 @@ export default function TsumeshogiScreen() {
     if (now - lastLoadMoreTimeRef.current < LOAD_MORE_DEBOUNCE_MS) return
     lastLoadMoreTimeRef.current = now
 
-    // 開始時の手数を保持（クロージャ問題対策）
+    // 開始時のキャッシュキーを保持（クロージャ問題対策）
+    const targetCacheKey = cacheKey
     const targetMoves = selectedMoves
+    const targetStatus = selectedStatus
     const targetOffset = currentCache.offset
 
     setIsLoadingMore(true)
 
     getTsumeshogiList({
       moveCount: targetMoves,
+      statusFilter: targetStatus,
       offset: targetOffset,
     })
       .then((response) => {
         setCache((prev) => {
-          const existing = prev[targetMoves]
+          const existing = prev[targetCacheKey]
           if (!existing) return prev
           return {
             ...prev,
-            [targetMoves]: {
+            [targetCacheKey]: {
               problems: [...existing.problems, ...response.problems],
               hasMore: response.pagination.hasMore,
               offset: existing.offset + response.problems.length,
@@ -193,7 +201,7 @@ export default function TsumeshogiScreen() {
       .finally(() => {
         setIsLoadingMore(false)
       })
-  }, [currentCache, isLoading, isLoadingMore, selectedMoves, selectedStatus])
+  }, [cacheKey, currentCache, isLoading, isLoadingMore, selectedMoves, selectedStatus])
 
   // エラー時のリトライ
   const handleRetry = useCallback(() => {
@@ -201,22 +209,15 @@ export default function TsumeshogiScreen() {
     // キャッシュをクリアして再取得
     setCache((prev) => {
       const newCache = { ...prev }
-      delete newCache[selectedMoves]
+      delete newCache[cacheKey]
       return newCache
     })
-  }, [selectedMoves])
+  }, [cacheKey])
 
-  // ステータスフィルタ（元のインデックスを保持）
+  // 問題にインデックスを付与（サーバーサイドでフィルタ済みなのでクライアントフィルタは不要）
   const problemsWithIndex = useMemo(
     () => problems.map((p, i) => ({ ...p, originalIndex: i + 1 })),
     [problems]
-  )
-  const filteredProblems = useMemo(
-    () =>
-      selectedStatus === 'all'
-        ? problemsWithIndex
-        : problemsWithIndex.filter((p) => p.status === selectedStatus),
-    [problemsWithIndex, selectedStatus]
   )
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {
@@ -310,8 +311,8 @@ export default function TsumeshogiScreen() {
         </View>
       ) : (
         <FlatList
-          key={selectedMoves}
-          data={filteredProblems}
+          key={cacheKey}
+          data={problemsWithIndex}
           keyExtractor={(item) => item.id}
           renderItem={({ item: problem }) => (
             <TouchableOpacity
