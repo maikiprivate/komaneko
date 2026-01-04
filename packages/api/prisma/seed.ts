@@ -109,15 +109,26 @@ async function main() {
   }
 
   // ========== 詰将棋データ ==========
-  const existingCount = await prisma.tsumeshogi.count()
-  if (existingCount > 0) {
-    console.log(`Skipping tsumeshogi seeding (${existingCount} problems already exist)`)
-  } else {
-    const result = await prisma.tsumeshogi.createMany({
-      data: tsumeshogiProblems,
+  // SFEN照合でupsert（既存IDを保持し、学習記録との整合性を維持）
+  let created = 0
+  let skipped = 0
+
+  for (const problem of tsumeshogiProblems) {
+    const existing = await prisma.tsumeshogi.findUnique({
+      where: { sfen: problem.sfen },
     })
-    console.log(`Created ${result.count} tsumeshogi problems`)
+
+    if (existing) {
+      skipped++
+    } else {
+      await prisma.tsumeshogi.create({
+        data: problem,
+      })
+      created++
+    }
   }
+
+  console.log(`Tsumeshogi: ${created} created, ${skipped} skipped (already exist)`)
 
   // 投入結果を確認
   const counts = await prisma.tsumeshogi.groupBy({
