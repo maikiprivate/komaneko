@@ -5,10 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import {
-  getTsumeshogiList,
+  type StatusFilter,
   type TsumeshogiProblem,
   type TsumeshogiStatus,
-  type StatusFilter,
+  getTsumeshogiList,
 } from '@/lib/api/tsumeshogi'
 import { consumeStatusUpdates } from '@/lib/tsumeshogi/statusCache'
 
@@ -86,7 +86,7 @@ export default function TsumeshogiScreen() {
 
   useEffect(() => {
     // キャッシュがあれば再取得しない
-    if (cache[cacheKey]) return
+    if (currentCache) return
 
     let cancelled = false
     setIsLoading(true)
@@ -114,8 +114,7 @@ export default function TsumeshogiScreen() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheはuseEffect内で更新するため依存配列から除外
-  }, [cacheKey, selectedMoves, selectedStatus])
+  }, [cacheKey, currentCache, selectedMoves, selectedStatus])
 
   // 画面フォーカス時にステータス更新をキャッシュに反映
   useFocusEffect(
@@ -124,30 +123,30 @@ export default function TsumeshogiScreen() {
         const updates = await consumeStatusUpdates()
         if (updates.length === 0) return
 
-        // ステータス更新があった場合、関連するキャッシュをクリアして再取得させる
-        // （サーバーサイドフィルタなので、フィルタ間の問題移動はサーバーに任せる）
+        // ステータス更新をキャッシュ内の問題に直接反映
+        // （キャッシュをクリアせず、スクロール位置を維持する）
         setCache((prev) => {
           const newCache = { ...prev }
 
-          // 更新された問題のmoveCountを特定してそのキャッシュをクリア
-          const affectedMoves = new Set<MovesOption>()
-
-          // 全キャッシュから更新対象を探す
+          // 各キャッシュエントリ内の問題ステータスを更新
           for (const [key, entry] of Object.entries(newCache)) {
             if (!entry) continue
-            for (const update of updates) {
-              if (entry.problems.some((p) => p.id === update.id)) {
-                // このキーに関連する手数を抽出
-                const moves = Number(key.split('-')[0]) as MovesOption
-                affectedMoves.add(moves)
-              }
-            }
-          }
 
-          // 影響を受ける手数の全フィルタキャッシュをクリア
-          for (const moves of affectedMoves) {
-            for (const status of ['all', 'unsolved', 'in_progress', 'solved'] as const) {
-              delete newCache[getCacheKey(moves, status)]
+            let hasUpdates = false
+            const updatedProblems = entry.problems.map((problem) => {
+              const update = updates.find((u) => u.id === problem.id)
+              if (update && problem.status !== update.status) {
+                hasUpdates = true
+                return { ...problem, status: update.status }
+              }
+              return problem
+            })
+
+            if (hasUpdates) {
+              newCache[key as CacheKey] = {
+                ...entry,
+                problems: updatedProblems,
+              }
             }
           }
 
@@ -155,7 +154,7 @@ export default function TsumeshogiScreen() {
         })
       }
       applyStatusUpdates()
-    }, [])
+    }, []),
   )
 
   // 追加読み込み（無限スクロール）
@@ -217,7 +216,7 @@ export default function TsumeshogiScreen() {
   // 問題にインデックスを付与（サーバーサイドでフィルタ済みなのでクライアントフィルタは不要）
   const problemsWithIndex = useMemo(
     () => problems.map((p, i) => ({ ...p, originalIndex: i + 1 })),
-    [problems]
+    [problems],
   )
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {

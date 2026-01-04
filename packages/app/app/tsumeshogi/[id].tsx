@@ -397,8 +397,8 @@ export default function TsumeshogiPlayScreen() {
 
   // ここ以降、problemは必ず存在する
 
-  // 視点（詰将棋は常に先手視点）
-  const perspective: Perspective = 'sente'
+  // 視点をSFENの手番から決定（攻め方視点）
+  const perspective: Perspective = game.playerSide
 
   // 画面幅から余白を引いて9マスで割る
   const cellSize = Math.floor((width - 48) / 9)

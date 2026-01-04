@@ -17,7 +17,7 @@ import {
 } from '@/lib/shogi/moveGenerator'
 import { isCheck, isCheckmate } from '@/lib/shogi/rules'
 import { parseSfen } from '@/lib/shogi/sfen'
-import type { BoardState, PieceType, Position } from '@/lib/shogi/types'
+import type { BoardState, PieceType, Player, Position } from '@/lib/shogi/types'
 /** 詰将棋問題型（フック用） */
 export interface TsumeshogiProblemForGame {
   sfen: string
@@ -87,6 +87,8 @@ interface UseTsumeshogiGameReturn {
   hintHighlight: HintHighlight | null
   /** 解答再生中フラグ */
   isSolutionMode: boolean
+  /** プレイヤー側（攻め方） */
+  playerSide: Player
   /** セルタップ処理 */
   handleCellPress: (row: number, col: number) => void
   /** 持ち駒タップ処理 */
@@ -125,6 +127,10 @@ export function useTsumeshogiGame(
     () => (problem ? parseSfen(problem.sfen) : EMPTY_BOARD_STATE),
     [problem?.sfen],
   )
+
+  // プレイヤー側（攻め方）と相手側（玉方）をSFENの手番から決定
+  const playerSide: Player = initialState.turn
+  const opponentSide: Player = playerSide === 'sente' ? 'gote' : 'sente'
 
   // タイマーIDの参照（クリーンアップ用）
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -240,7 +246,7 @@ export function useTsumeshogiGame(
       }
 
       const move = solutionMoves[stepIndex]
-      const player = stepIndex % 2 === 0 ? 'sente' : 'gote'
+      const player = stepIndex % 2 === 0 ? playerSide : opponentSide
 
       // 手を適用
       if (move.piece) {
@@ -263,24 +269,35 @@ export function useTsumeshogiGame(
 
     // 最初の手を少し遅延して開始
     timerRef.current = setTimeout(playNextMove, 500)
-  }, [problem?.solutionMoves, isSolutionMode, initialState, clearTimer, clearSelection])
+  }, [
+    problem?.solutionMoves,
+    isSolutionMode,
+    initialState,
+    clearTimer,
+    clearSelection,
+    playerSide,
+    opponentSide,
+  ])
 
   // AI応手を実行する共通処理
-  const executeAIResponse = useCallback((state: BoardState, onComplete?: () => void) => {
-    const evasion = getBestEvasion(state)
-    if (evasion) {
-      const afterAI = applyMove(state, evasion)
-      setBoardState(afterAI)
-      // AI の手をハイライト
-      if (evasion.type === 'move') {
-        setLastMove({ from: evasion.from, to: evasion.to })
-      } else {
-        setLastMove({ to: evasion.to })
+  const executeAIResponse = useCallback(
+    (state: BoardState, onComplete?: () => void) => {
+      const evasion = getBestEvasion(state, opponentSide)
+      if (evasion) {
+        const afterAI = applyMove(state, evasion)
+        setBoardState(afterAI)
+        // AI の手をハイライト
+        if (evasion.type === 'move') {
+          setLastMove({ from: evasion.from, to: evasion.to })
+        } else {
+          setLastMove({ to: evasion.to })
+        }
       }
-    }
-    setIsThinking(false)
-    onComplete?.()
-  }, [])
+      setIsThinking(false)
+      onComplete?.()
+    },
+    [opponentSide],
+  )
 
   // 手を実行して結果を処理
   const executeMove = useCallback(
@@ -289,7 +306,7 @@ export function useTsumeshogiGame(
       setHintHighlight(null)
 
       // 1. 王手チェック
-      if (!isCheck(newState.board, 'gote')) {
+      if (!isCheck(newState.board, opponentSide)) {
         // 王手でない → アラートを出して手を戻す（不正解カウントはしない）
         callbacks?.onNotCheck?.()
         return
@@ -299,7 +316,7 @@ export function useTsumeshogiGame(
       setLastMove(moveHighlight)
 
       // 2. 詰みチェック
-      if (isCheckmate(newState, 'gote')) {
+      if (isCheckmate(newState, opponentSide)) {
         // 詰み → 正解！
         setBoardState(newState)
         setCurrentMoveCount((prev) => prev + 1)
@@ -307,7 +324,7 @@ export function useTsumeshogiGame(
 
         // onCorrectコールバック（ハート消費など）を呼び出し、成功時のみ完了扱い
         const handleCorrect = async () => {
-          const success = await callbacks?.onCorrect?.() ?? true
+          const success = (await callbacks?.onCorrect?.()) ?? true
           if (success) {
             setIsFinished(true)
           } else {
@@ -355,7 +372,15 @@ export function useTsumeshogiGame(
         })
       }, AI_RESPONSE_DELAY_MS)
     },
-    [callbacks, clearSelection, currentMoveCount, problem?.moves, executeAIResponse],
+    [
+      callbacks,
+      clearSelection,
+      currentMoveCount,
+      problem?.moves,
+      executeAIResponse,
+      opponentSide,
+      initialState,
+    ],
   )
 
   // 成り選択完了
@@ -384,17 +409,17 @@ export function useTsumeshogiGame(
       if (selectedCaptured) {
         // 空きマスなら打つ
         if (!piece) {
-          const dropPositions = getDropPositions(boardState.board, selectedCaptured, 'sente')
+          const dropPositions = getDropPositions(boardState.board, selectedCaptured, playerSide)
           const canDrop = dropPositions.some((p) => p.row === row && p.col === col)
 
           if (canDrop) {
-            const newState = makeDrop(boardState, selectedCaptured, targetPos, 'sente')
+            const newState = makeDrop(boardState, selectedCaptured, targetPos, playerSide)
             clearSelection()
             executeMove(newState, { to: targetPos })
           } else {
             clearSelection()
           }
-        } else if (piece.owner === 'sente') {
+        } else if (piece.owner === playerSide) {
           // 自分の駒を選択
           clearSelection()
           setSelectedPosition(targetPos)
@@ -429,7 +454,7 @@ export function useTsumeshogiGame(
             selectedPiece.type,
             selectedPosition,
             targetPos,
-            'sente',
+            playerSide,
           )
 
           if (promotions.length === 2) {
@@ -443,7 +468,7 @@ export function useTsumeshogiGame(
             const newState = makeMove(boardState, from, targetPos, promotions[0])
             executeMove(newState, { from, to: targetPos })
           }
-        } else if (piece?.owner === 'sente') {
+        } else if (piece?.owner === playerSide) {
           // 別の自分の駒を選択
           setSelectedPosition(targetPos)
           const moves = getPossibleMoves(boardState.board, targetPos, piece)
@@ -455,7 +480,7 @@ export function useTsumeshogiGame(
       }
 
       // 何も選択していない場合
-      if (piece?.owner === 'sente') {
+      if (piece?.owner === playerSide) {
         setSelectedPosition(targetPos)
         const moves = getPossibleMoves(boardState.board, targetPos, piece)
         setPossibleMoves(moves)
@@ -471,6 +496,7 @@ export function useTsumeshogiGame(
       isSolutionMode,
       clearSelection,
       executeMove,
+      playerSide,
     ],
   )
 
@@ -479,7 +505,7 @@ export function useTsumeshogiGame(
     (pieceType: PieceType) => {
       if (isThinking || isFinished || isSolutionMode) return
 
-      const hand = boardState.capturedPieces.sente
+      const hand = boardState.capturedPieces[playerSide]
       if (!hand[pieceType]) return
 
       // 同じ駒を再タップで選択解除
@@ -492,10 +518,18 @@ export function useTsumeshogiGame(
       setSelectedCaptured(pieceType)
 
       // 打ち込み可能なマスを計算
-      const drops = getDropPositions(boardState.board, pieceType, 'sente')
+      const drops = getDropPositions(boardState.board, pieceType, playerSide)
       setPossibleMoves(drops)
     },
-    [boardState, selectedCaptured, isThinking, isFinished, isSolutionMode, clearSelection],
+    [
+      boardState,
+      selectedCaptured,
+      isThinking,
+      isFinished,
+      isSolutionMode,
+      clearSelection,
+      playerSide,
+    ],
   )
 
   return {
@@ -511,6 +545,7 @@ export function useTsumeshogiGame(
     lastMove,
     hintHighlight,
     isSolutionMode,
+    playerSide,
     handleCellPress,
     handleCapturedPress,
     handlePromotionSelect,
