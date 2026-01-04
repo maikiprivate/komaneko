@@ -55,20 +55,32 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
       })
     }
 
-    const { moveCount, limit, offset } = parseResult.data
+    const { moveCount, statusFilter, limit, offset } = parseResult.data
 
+    // statusFilterがall以外の場合はサーバーサイドフィルタを使用
     const [problems, total, statusMap] = await Promise.all([
-      tsumeshogiService.getAll({ moveCount, limit, offset }),
-      tsumeshogiService.getCount({ moveCount }),
-      tsumeshogiService.getStatusMap(userId),
+      tsumeshogiService.getAll({ moveCount, statusFilter, userId, limit, offset }),
+      tsumeshogiService.getCount({ moveCount, statusFilter, userId }),
+      // statusFilter: allの場合のみstatusMapを取得（フィルタ済みの場合は不要）
+      statusFilter === 'all'
+        ? tsumeshogiService.getStatusMap(userId)
+        : Promise.resolve(new Map()),
     ])
+
+    // ステータスの決定: statusFilterがall以外の場合はフィルタ値をそのまま使用
+    const getStatus = (problemId: string) => {
+      if (statusFilter === 'all') {
+        return statusMap.get(problemId) ?? 'unsolved'
+      }
+      return statusFilter
+    }
 
     return reply.send({
       data: problems.map((p) => ({
         id: p.id,
         sfen: p.sfen,
         moveCount: p.moveCount,
-        status: statusMap.get(p.id) ?? 'unsolved',
+        status: getStatus(p.id),
       })),
       pagination: {
         total,
