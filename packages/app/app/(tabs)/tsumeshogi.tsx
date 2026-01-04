@@ -310,6 +310,7 @@ export default function TsumeshogiScreen() {
         </View>
       ) : (
         <FlatList
+          key={selectedMoves}
           data={filteredProblems}
           keyExtractor={(item) => item.id}
           renderItem={({ item: problem }) => (
