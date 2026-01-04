@@ -4,11 +4,17 @@
 
 import { z } from 'zod'
 
+/** ステータスフィルタ（クエリパラメータ用） */
+export const statusFilterValues = ['all', 'unsolved', 'in_progress', 'solved'] as const
+export type StatusFilter = (typeof statusFilterValues)[number]
+
 /**
  * 一覧取得クエリパラメータ
  */
 export const tsumeshogiQuerySchema = z.object({
   moveCount: z.coerce.number().int().optional(),
+  /** ステータスでフィルタ。デフォルトは全件 */
+  statusFilter: z.enum(statusFilterValues).default('all'),
   /** 無限スクロール用。初期表示・追加読み込み共に50件 */
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
