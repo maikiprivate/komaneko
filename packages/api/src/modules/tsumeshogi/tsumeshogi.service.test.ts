@@ -119,7 +119,7 @@ describe('TsumeshogiService', () => {
       const result = await service.getCount()
 
       expect(result).toBe(300)
-      expect(mockRepository.count).toHaveBeenCalledWith(undefined)
+      expect(mockRepository.count).toHaveBeenCalledWith({})
     })
   })
 
@@ -216,6 +216,143 @@ describe('TsumeshogiService', () => {
       expect(result.get('tsume-3')).toBe('in_progress')
       expect(mockRepository.findSolvedTsumeshogiIds).toHaveBeenCalledWith('user-1')
       expect(mockRepository.findAttemptedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+    })
+  })
+
+  describe('getAll with statusFilter', () => {
+    it('statusFilter: allの場合はフィルタなしで取得', async () => {
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3, statusFilter: 'all', userId: 'user-1' })
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+      })
+      expect(mockRepository.findSolvedTsumeshogiIds).not.toHaveBeenCalled()
+      expect(mockRepository.findAttemptedTsumeshogiIds).not.toHaveBeenCalled()
+    })
+
+    it('statusFilter: solvedの場合はsolvedのIDのみ取得', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2'])
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3, statusFilter: 'solved', userId: 'user-1' })
+
+      expect(mockRepository.findSolvedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        includeIds: ['tsume-1', 'tsume-2'],
+      })
+    })
+
+    it('statusFilter: in_progressの場合はin_progressのIDのみ取得', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1'])
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2', 'tsume-3'])
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3, statusFilter: 'in_progress', userId: 'user-1' })
+
+      expect(mockRepository.findSolvedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+      expect(mockRepository.findAttemptedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        includeIds: ['tsume-2', 'tsume-3'],
+      })
+    })
+
+    it('statusFilter: unsolvedの場合はattemptedを除外して取得', async () => {
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2'])
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3, statusFilter: 'unsolved', userId: 'user-1' })
+
+      expect(mockRepository.findAttemptedTsumeshogiIds).toHaveBeenCalledWith('user-1')
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        excludeIds: ['tsume-1', 'tsume-2'],
+      })
+    })
+
+    it('statusFilterがall以外でuserIdがない場合はフィルタなしで取得', async () => {
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3, statusFilter: 'solved' })
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith({ moveCount: 3 })
+      expect(mockRepository.findSolvedTsumeshogiIds).not.toHaveBeenCalled()
+    })
+
+    it('ページネーションとstatusFilterを組み合わせて使用できる', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2'])
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({
+        moveCount: 3,
+        statusFilter: 'solved',
+        userId: 'user-1',
+        limit: 50,
+        offset: 0,
+      })
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        includeIds: ['tsume-1', 'tsume-2'],
+        limit: 50,
+        offset: 0,
+      })
+    })
+
+    it('statusFilter: solvedで解答済みがない場合はダミーIDで0件を返す', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue([])
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3, statusFilter: 'solved', userId: 'user-1' })
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        includeIds: ['__no_match__'],
+      })
+    })
+
+    it('statusFilter: in_progressで挑戦中がない場合はダミーIDで0件を返す', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1'])
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1']) // 全て解答済み
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3, statusFilter: 'in_progress', userId: 'user-1' })
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        includeIds: ['__no_match__'],
+      })
+    })
+  })
+
+  describe('getCount with statusFilter', () => {
+    it('statusFilter: solvedの場合はsolvedのIDでカウント', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2'])
+      vi.mocked(mockRepository.count).mockResolvedValue(2)
+
+      const result = await service.getCount({ moveCount: 3, statusFilter: 'solved', userId: 'user-1' })
+
+      expect(result).toBe(2)
+      expect(mockRepository.count).toHaveBeenCalledWith({
+        moveCount: 3,
+        includeIds: ['tsume-1', 'tsume-2'],
+      })
+    })
+
+    it('statusFilter: unsolvedの場合はattemptedを除外してカウント', async () => {
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1'])
+      vi.mocked(mockRepository.count).mockResolvedValue(99)
+
+      const result = await service.getCount({ moveCount: 3, statusFilter: 'unsolved', userId: 'user-1' })
+
+      expect(result).toBe(99)
+      expect(mockRepository.count).toHaveBeenCalledWith({
+        moveCount: 3,
+        excludeIds: ['tsume-1'],
+      })
     })
   })
 })
