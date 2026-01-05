@@ -4,24 +4,27 @@
  * 詰将棋の玉方（防御側）の応手選択に使用。
  */
 
-import { makeMove, makeDrop } from './moveGenerator'
+import { makeDrop, makeMove } from './moveGenerator'
 import { getPieceValue } from './pieceValue'
 import { getAllLegalMoves, isCheckmate } from './rules'
 import type { BoardState, Move, Player } from './types'
 
 /**
- * 手を実行した後の盤面を取得
+ * 玉方（defender）の手を盤面に適用
+ *
+ * moveGenerator.tsのapplyMoveとの違い:
+ * - drop時のプレイヤーを明示的にdefenderとして指定
+ * - boardState.turnではなく引数のdefenderを使用
+ *
+ * @param boardState 現在の盤面
+ * @param move 適用する手
+ * @param defender 玉方（防御側）のプレイヤー
  */
-function applyMoveForDefender(
-  boardState: BoardState,
-  move: Move,
-  defender: Player,
-): BoardState {
+function applyMoveForDefender(boardState: BoardState, move: Move, defender: Player): BoardState {
   if (move.type === 'move') {
     return makeMove(boardState, move.from, move.to, move.promote ?? false)
-  } else {
-    return makeDrop(boardState, move.piece, move.to, defender)
   }
+  return makeDrop(boardState, move.piece, move.to, defender)
 }
 
 /**

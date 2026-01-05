@@ -17,7 +17,13 @@ export const tsumeshogiQuerySchema = z.object({
   statusFilter: z.enum(statusFilterValues).default('all'),
   /** 無限スクロール用。初期表示・追加読み込み共に50件 */
   limit: z.coerce.number().int().min(1).max(100).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
+  /**
+   * カーソル: この問題番号より後の問題を取得
+   * - 未指定時は先頭から取得
+   * - 0を指定すると先頭から取得（problemNumber > 0 で全件対象）
+   * - 例: afterNumber=50 で問題51以降を取得
+   */
+  afterNumber: z.coerce.number().int().min(0).optional(),
 })
 
 export type TsumeshogiQuery = z.infer<typeof tsumeshogiQuerySchema>
@@ -38,16 +44,16 @@ export interface TsumeshogiResponse {
   id: string
   sfen: string
   moveCount: number
+  problemNumber: number
   status: TsumeshogiStatus
 }
 
 /**
- * ページネーション情報
+ * ページネーション情報（カーソルベース）
  */
 export interface PaginationInfo {
   total: number
   limit: number
-  offset: number
   hasMore: boolean
 }
 

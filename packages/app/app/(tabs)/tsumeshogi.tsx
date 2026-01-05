@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -52,11 +52,12 @@ function getStatusBackgroundColor(
   }
 }
 
-/** キャッシュ構造（ページネーション対応） */
+/** キャッシュ構造（カーソルベースページネーション対応） */
 interface ProblemsCache {
   problems: TsumeshogiProblem[]
   hasMore: boolean // まだ読み込めるデータがあるか
-  offset: number // 次回読み込み開始位置
+  /** 読み込んだ最後の問題番号。次回読み込み時のカーソル */
+  lastProblemNumber: number
 }
 
 /** キャッシュキー: {moveCount}-{statusFilter} */
@@ -76,6 +77,7 @@ export default function TsumeshogiScreen() {
   const [cache, setCache] = useState<Partial<Record<CacheKey, ProblemsCache>>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const lastLoadMoreTimeRef = useRef<number>(0)
 
@@ -95,12 +97,15 @@ export default function TsumeshogiScreen() {
     getTsumeshogiList({ moveCount: selectedMoves, statusFilter: selectedStatus })
       .then((response) => {
         if (cancelled) return
+        const lastNum = response.problems.length > 0
+          ? response.problems[response.problems.length - 1].problemNumber
+          : 0
         setCache((prev) => ({
           ...prev,
           [cacheKey]: {
             problems: response.problems,
             hasMore: response.pagination.hasMore,
-            offset: response.problems.length,
+            lastProblemNumber: lastNum,
           },
         }))
       })
@@ -128,21 +133,79 @@ export default function TsumeshogiScreen() {
         setCache((prev) => {
           const newCache = { ...prev }
 
-          // 各キャッシュエントリ内の問題ステータスを更新
+          // まず「すべて」キャッシュから更新対象の問題データを収集
+          // （新しいフィルタキャッシュに追加するため）
+          const problemDataMap = new Map<string, TsumeshogiProblem>()
+          for (const entry of Object.values(newCache)) {
+            if (!entry) continue
+            for (const problem of entry.problems) {
+              if (!problemDataMap.has(problem.id)) {
+                problemDataMap.set(problem.id, problem)
+              }
+            }
+          }
+
+          // 各キャッシュエントリを更新
           for (const [key, entry] of Object.entries(newCache)) {
             if (!entry) continue
 
-            let hasUpdates = false
-            const updatedProblems = entry.problems.map((problem) => {
-              const update = updates.find((u) => u.id === problem.id)
-              if (update && problem.status !== update.status) {
-                hasUpdates = true
-                return { ...problem, status: update.status }
-              }
-              return problem
-            })
+            // キャッシュキーからmoveCountとステータスフィルタを抽出
+            const [moveCountStr, statusFilter] = key.split('-') as [string, StatusFilter]
+            const moveCount = Number(moveCountStr)
 
-            if (hasUpdates) {
+            let hasChanges = false
+
+            // 既存問題のステータス更新とフィルタ除外
+            let updatedProblems = entry.problems
+              .map((problem) => {
+                const update = updates.find((u) => u.id === problem.id)
+                if (update && problem.status !== update.status) {
+                  hasChanges = true
+                  return { ...problem, status: update.status }
+                }
+                return problem
+              })
+              .filter((problem) => {
+                // 「すべて」フィルタの場合は除外しない
+                if (statusFilter === 'all') return true
+                // フィルタ条件に合わなくなった問題を除外
+                const matches = problem.status === statusFilter
+                if (!matches) hasChanges = true
+                return matches
+              })
+
+            // 新しくフィルタ条件に合う問題を追加
+            // （読み込み済み範囲内の問題のみ）
+            if (statusFilter !== 'all') {
+              for (const update of updates) {
+                // このフィルタに合うステータスかチェック
+                if (update.status !== statusFilter) continue
+
+                // 問題データを取得
+                const problemData = problemDataMap.get(update.id)
+                if (!problemData) continue
+
+                // 手数が一致するかチェック
+                if (problemData.moveCount !== moveCount) continue
+
+                // 既にリストに含まれているかチェック
+                if (updatedProblems.some((p) => p.id === update.id)) continue
+
+                // 読み込み済み範囲内かチェック（lastProblemNumber以下）
+                if (problemData.problemNumber > entry.lastProblemNumber) continue
+
+                // 追加
+                hasChanges = true
+                updatedProblems.push({ ...problemData, status: update.status })
+              }
+
+              // 問題番号でソート
+              if (hasChanges) {
+                updatedProblems = updatedProblems.sort((a, b) => a.problemNumber - b.problemNumber)
+              }
+            }
+
+            if (hasChanges) {
               newCache[key as CacheKey] = {
                 ...entry,
                 problems: updatedProblems,
@@ -171,31 +234,36 @@ export default function TsumeshogiScreen() {
     const targetCacheKey = cacheKey
     const targetMoves = selectedMoves
     const targetStatus = selectedStatus
-    const targetOffset = currentCache.offset
+    const targetAfterNumber = currentCache.lastProblemNumber
 
     setIsLoadingMore(true)
+    setLoadMoreError(false)
 
     getTsumeshogiList({
       moveCount: targetMoves,
       statusFilter: targetStatus,
-      offset: targetOffset,
+      afterNumber: targetAfterNumber,
     })
       .then((response) => {
         setCache((prev) => {
           const existing = prev[targetCacheKey]
           if (!existing) return prev
+          const newLastNum = response.problems.length > 0
+            ? response.problems[response.problems.length - 1].problemNumber
+            : existing.lastProblemNumber
           return {
             ...prev,
             [targetCacheKey]: {
               problems: [...existing.problems, ...response.problems],
               hasMore: response.pagination.hasMore,
-              offset: existing.offset + response.problems.length,
+              lastProblemNumber: newLastNum,
             },
           }
         })
       })
       .catch((err) => {
         console.error('[loadMore] Failed:', err.message)
+        setLoadMoreError(true)
       })
       .finally(() => {
         setIsLoadingMore(false)
@@ -213,12 +281,6 @@ export default function TsumeshogiScreen() {
     })
   }, [cacheKey])
 
-  // 問題にインデックスを付与（サーバーサイドでフィルタ済みなのでクライアントフィルタは不要）
-  const problemsWithIndex = useMemo(
-    () => problems.map((p, i) => ({ ...p, originalIndex: i + 1 })),
-    [problems],
-  )
-
   const handleProblemPress = (problem: TsumeshogiProblem) => {
     // 同手数の問題データを取得（次の問題遷移用）
     const problemsData = currentCache?.problems ?? []
@@ -228,11 +290,13 @@ export default function TsumeshogiScreen() {
         id: problem.id,
         sfen: problem.sfen,
         moveCount: String(problem.moveCount),
+        problemNumber: String(problem.problemNumber),
         status: problem.status,
-        // ID配列とSFEN配列とステータス配列を渡す（次の問題遷移で再利用）
+        // ID配列とSFEN配列とステータス配列と問題番号を渡す（次の問題遷移で再利用）
         problemIds: JSON.stringify(problemsData.map((p) => p.id)),
         problemSfens: JSON.stringify(problemsData.map((p) => p.sfen)),
         problemStatuses: JSON.stringify(problemsData.map((p) => p.status)),
+        problemNumbers: JSON.stringify(problemsData.map((p) => p.problemNumber)),
       },
     })
   }
@@ -311,7 +375,7 @@ export default function TsumeshogiScreen() {
       ) : (
         <FlatList
           key={cacheKey}
-          data={problemsWithIndex}
+          data={problems}
           keyExtractor={(item) => item.id}
           renderItem={({ item: problem }) => (
             <TouchableOpacity
@@ -320,7 +384,7 @@ export default function TsumeshogiScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
-                問題 {problem.originalIndex}
+                問題 {problem.problemNumber}
               </Text>
               <View
                 style={[
@@ -349,6 +413,12 @@ export default function TsumeshogiScreen() {
                 size="small"
                 color={colors.button.primary}
               />
+            ) : loadMoreError ? (
+              <TouchableOpacity style={styles.loadMoreRetry} onPress={loadMore}>
+                <Text style={[styles.loadMoreRetryText, { color: colors.text.secondary }]}>
+                  読み込みに失敗しました。タップして再試行
+                </Text>
+              </TouchableOpacity>
             ) : null
           }
         />
@@ -407,6 +477,14 @@ const styles = StyleSheet.create({
   },
   loadingMore: {
     paddingVertical: 16,
+  },
+  loadMoreRetry: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  loadMoreRetryText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
   errorText: {
     textAlign: 'center',

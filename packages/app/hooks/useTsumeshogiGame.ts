@@ -123,6 +123,8 @@ export function useTsumeshogiGame(
   callbacks?: TsumeshogiCallbacks,
 ): UseTsumeshogiGameReturn & { isReady: boolean } {
   // 初期盤面をパース（メモ化）
+  // 依存配列: sfenのみに依存（movesやhintの変更では再パースしない）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sfenのみで十分
   const initialState = useMemo(
     () => (problem ? parseSfen(problem.sfen) : EMPTY_BOARD_STATE),
     [problem?.sfen],
@@ -300,6 +302,7 @@ export function useTsumeshogiGame(
   )
 
   // 手を実行して結果を処理
+  // biome-ignore lint/correctness/useExhaustiveDependencies: movesのみで十分
   const executeMove = useCallback(
     (newState: BoardState, moveHighlight: LastMoveHighlight) => {
       // ヒントをクリア

@@ -29,6 +29,7 @@ describe('TsumeshogiService', () => {
           id: 'tsume-1',
           sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
           moveCount: 3,
+          problemNumber: 1,
           status: 'published',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -37,6 +38,7 @@ describe('TsumeshogiService', () => {
           id: 'tsume-2',
           sfen: '8l/7sk/6ppp/9/9/9/9/9/9 b RG 1',
           moveCount: 5,
+          problemNumber: 1,
           status: 'published',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -58,6 +60,7 @@ describe('TsumeshogiService', () => {
           id: 'tsume-1',
           sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
           moveCount: 3,
+          problemNumber: 1,
           status: 'published',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -79,12 +82,13 @@ describe('TsumeshogiService', () => {
       expect(result).toHaveLength(0)
     })
 
-    it('limit/offsetでページネーションできる', async () => {
+    it('limit/afterNumberでページネーションできる', async () => {
       const mockProblems = [
         {
           id: 'tsume-1',
           sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
           moveCount: 3,
+          problemNumber: 1,
           status: 'published',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -92,13 +96,13 @@ describe('TsumeshogiService', () => {
       ]
       vi.mocked(mockRepository.findAll).mockResolvedValue(mockProblems)
 
-      const result = await service.getAll({ moveCount: 3, limit: 50, offset: 0 })
+      const result = await service.getAll({ moveCount: 3, limit: 50, afterNumber: 0 })
 
       expect(result).toHaveLength(1)
       expect(mockRepository.findAll).toHaveBeenCalledWith({
         moveCount: 3,
         limit: 50,
-        offset: 0,
+        afterNumber: 0,
       })
     })
   })
@@ -129,6 +133,7 @@ describe('TsumeshogiService', () => {
         id: 'tsume-1',
         sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
         moveCount: 3,
+        problemNumber: 1,
         status: 'published',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -156,6 +161,7 @@ describe('TsumeshogiService', () => {
         id: 'tsume-draft',
         sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
         moveCount: 3,
+        problemNumber: 1,
         status: 'draft',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -291,14 +297,14 @@ describe('TsumeshogiService', () => {
         statusFilter: 'solved',
         userId: 'user-1',
         limit: 50,
-        offset: 0,
+        afterNumber: 0,
       })
 
       expect(mockRepository.findAll).toHaveBeenCalledWith({
         moveCount: 3,
         includeIds: ['tsume-1', 'tsume-2'],
         limit: 50,
-        offset: 0,
+        afterNumber: 0,
       })
     })
 
@@ -352,6 +358,140 @@ describe('TsumeshogiService', () => {
       expect(mockRepository.count).toHaveBeenCalledWith({
         moveCount: 3,
         excludeIds: ['tsume-1'],
+      })
+    })
+  })
+
+  describe('getAllWithCount', () => {
+    it('問題一覧と総件数を同時に取得できる', async () => {
+      const mockProblems = [
+        {
+          id: 'tsume-1',
+          sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
+          moveCount: 3,
+          problemNumber: 1,
+          status: 'published',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]
+      vi.mocked(mockRepository.findAll).mockResolvedValue(mockProblems)
+      vi.mocked(mockRepository.count).mockResolvedValue(100)
+
+      const result = await service.getAllWithCount({ moveCount: 3, limit: 50 })
+
+      expect(result.problems).toHaveLength(1)
+      expect(result.total).toBe(100)
+      expect(mockRepository.findAll).toHaveBeenCalledWith({ moveCount: 3, limit: 50 })
+      // countにはlimitが渡されるが、リポジトリ側で無視される
+      expect(mockRepository.count).toHaveBeenCalledWith({ moveCount: 3, limit: 50 })
+    })
+
+    it('カーソル（afterNumber）がcount呼び出しには適用されない', async () => {
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+      vi.mocked(mockRepository.count).mockResolvedValue(100)
+
+      await service.getAllWithCount({ moveCount: 3, limit: 50, afterNumber: 50 })
+
+      // findAllにはafterNumberが渡される
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        limit: 50,
+        afterNumber: 50,
+      })
+      // countにはafterNumberが渡されない（全体件数を返すため）
+      expect(mockRepository.count).toHaveBeenCalledWith({
+        moveCount: 3,
+        limit: 50,
+      })
+    })
+
+    it('statusFilterとカーソルを組み合わせて使用できる', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2', 'tsume-3'])
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+      vi.mocked(mockRepository.count).mockResolvedValue(3)
+
+      const result = await service.getAllWithCount({
+        moveCount: 3,
+        statusFilter: 'solved',
+        userId: 'user-1',
+        limit: 50,
+        afterNumber: 1,
+      })
+
+      expect(result.total).toBe(3)
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        includeIds: ['tsume-1', 'tsume-2', 'tsume-3'],
+        limit: 50,
+        afterNumber: 1,
+      })
+      // countにはafterNumberが含まれない
+      expect(mockRepository.count).toHaveBeenCalledWith({
+        moveCount: 3,
+        includeIds: ['tsume-1', 'tsume-2', 'tsume-3'],
+        limit: 50,
+      })
+    })
+
+    it('IDリストは一度だけ取得される（重複クエリの削減）', async () => {
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1'])
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+      vi.mocked(mockRepository.count).mockResolvedValue(1)
+
+      await service.getAllWithCount({
+        moveCount: 3,
+        statusFilter: 'solved',
+        userId: 'user-1',
+      })
+
+      // findSolvedTsumeshogiIdsは1回だけ呼ばれる
+      expect(mockRepository.findSolvedTsumeshogiIds).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('カーソルベースページネーション', () => {
+    it('afterNumber=0で先頭から取得できる', async () => {
+      const mockProblems = [
+        {
+          id: 'tsume-1',
+          sfen: '7nl/7k1/6ppp/9/9/9/9/9/9 b GS 1',
+          moveCount: 3,
+          problemNumber: 1,
+          status: 'published',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]
+      vi.mocked(mockRepository.findAll).mockResolvedValue(mockProblems)
+
+      const result = await service.getAll({ moveCount: 3, afterNumber: 0 })
+
+      expect(result).toHaveLength(1)
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        afterNumber: 0,
+      })
+    })
+
+    it('afterNumberを指定すると指定した問題番号より後の問題を取得する', async () => {
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3, afterNumber: 50 })
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
+        afterNumber: 50,
+      })
+    })
+
+    it('afterNumber未指定でも正常に取得できる', async () => {
+      vi.mocked(mockRepository.findAll).mockResolvedValue([])
+
+      await service.getAll({ moveCount: 3 })
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith({
+        moveCount: 3,
       })
     })
   })

@@ -50,10 +50,12 @@ export default function TsumeshogiPlayScreen() {
     id: string
     sfen?: string
     moveCount?: string
+    problemNumber?: string
     status?: string
     problemIds?: string
     problemSfens?: string
     problemStatuses?: string
+    problemNumbers?: string
   }>()
   const { id } = params
   const insets = useSafeAreaInsets()
@@ -64,26 +66,34 @@ export default function TsumeshogiPlayScreen() {
     try {
       const moveCount = Number.parseInt(params.moveCount, 10)
       if (Number.isNaN(moveCount)) return null
+      const problemNumber = params.problemNumber
+        ? Number.parseInt(params.problemNumber, 10)
+        : null
       return {
         sfen: params.sfen,
         moveCount,
+        problemNumber: problemNumber && !Number.isNaN(problemNumber) ? problemNumber : null,
         problemIds: params.problemIds ? (JSON.parse(params.problemIds) as string[]) : null,
         problemSfens: params.problemSfens ? (JSON.parse(params.problemSfens) as string[]) : null,
         problemStatuses: params.problemStatuses
           ? (JSON.parse(params.problemStatuses) as string[])
+          : null,
+        problemNumbers: params.problemNumbers
+          ? (JSON.parse(params.problemNumbers) as number[])
           : null,
       }
     } catch {
       // パース失敗時はAPIから取得
       return null
     }
-  }, [params.sfen, params.moveCount, params.problemIds, params.problemSfens, params.problemStatuses])
+  }, [params.sfen, params.moveCount, params.problemNumber, params.problemIds, params.problemSfens, params.problemStatuses, params.problemNumbers])
 
   // 問題データの状態
   const [problem, setProblem] = useState<TsumeshogiProblem | null>(null)
   const [problemIds, setProblemIds] = useState<string[] | null>(null)
   const [problemSfens, setProblemSfens] = useState<string[] | null>(null)
   const [problemStatuses, setProblemStatuses] = useState<string[] | null>(null)
+  const [problemNumbers, setProblemNumbers] = useState<number[] | null>(null)
   const [isLoadingProblem, setIsLoadingProblem] = useState(true)
   const [problemError, setProblemError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -104,11 +114,13 @@ export default function TsumeshogiPlayScreen() {
         id,
         sfen: cachedData.sfen,
         moveCount: cachedData.moveCount,
+        problemNumber: cachedData.problemNumber ?? 0,
         status: (params.status as TsumeshogiProblem['status']) ?? 'unsolved',
       })
       setProblemIds(cachedData.problemIds)
       setProblemSfens(cachedData.problemSfens)
       setProblemStatuses(cachedData.problemStatuses)
+      setProblemNumbers(cachedData.problemNumbers)
       setIsLoadingProblem(false)
       return
     }
@@ -131,6 +143,7 @@ export default function TsumeshogiPlayScreen() {
         setProblemIds(list.map((p) => p.id))
         setProblemSfens(list.map((p) => p.sfen))
         setProblemStatuses(list.map((p) => p.status))
+        setProblemNumbers(list.map((p) => p.problemNumber))
       })
       .catch((err) => {
         if (cancelled) return
@@ -300,21 +313,21 @@ export default function TsumeshogiPlayScreen() {
   }, [isSolved, scaleAnim])
 
   // ヘッダータイトル用の情報（メモ化）※フックは早期リターンの前に呼ぶ
-  const { headerTitle, nextId, nextSfen, nextStatus } = useMemo(() => {
+  const { headerTitle, nextId, nextSfen, nextStatus, nextProblemNumber } = useMemo(() => {
     if (!problem || !problemIds) {
-      return { headerTitle: '', nextId: null, nextSfen: null, nextStatus: null }
+      return { headerTitle: '', nextId: null, nextSfen: null, nextStatus: null, nextProblemNumber: null }
     }
     const movesLabel = MOVES_LABELS[problem.moveCount] || `${problem.moveCount}手詰め`
     const currentIndex = problemIds.indexOf(problem.id)
-    const problemNumber = currentIndex + 1
     const nextIndex = currentIndex + 1
     return {
-      headerTitle: `${movesLabel} 問題${problemNumber}`,
+      headerTitle: `${movesLabel} 問題${problem.problemNumber}`,
       nextId: problemIds[nextIndex] ?? null,
       nextSfen: problemSfens?.[nextIndex] ?? null,
       nextStatus: problemStatuses?.[nextIndex] ?? null,
+      nextProblemNumber: problemNumbers?.[nextIndex] ?? null,
     }
-  }, [problem, problemIds, problemSfens, problemStatuses])
+  }, [problem, problemIds, problemSfens, problemStatuses, problemNumbers])
 
   // 次の問題へ遷移
   const handleNextProblem = useCallback(() => {
@@ -323,24 +336,26 @@ export default function TsumeshogiPlayScreen() {
     if (!checkHeartsAvailable(hearts, HEART_COST)) return
 
     // キャッシュデータがあればparamsで渡す（API呼び出し削減）
-    if (nextSfen && problem && problemIds && problemSfens && problemStatuses) {
+    if (nextSfen && problem && problemIds && problemSfens && problemStatuses && problemNumbers) {
       router.replace({
         pathname: '/tsumeshogi/[id]',
         params: {
           id: nextId,
           sfen: nextSfen,
           moveCount: String(problem.moveCount),
+          problemNumber: nextProblemNumber ? String(nextProblemNumber) : undefined,
           status: nextStatus ?? undefined,
           problemIds: JSON.stringify(problemIds),
           problemSfens: JSON.stringify(problemSfens),
           problemStatuses: JSON.stringify(problemStatuses),
+          problemNumbers: JSON.stringify(problemNumbers),
         },
       })
     } else {
       // キャッシュがなければIDのみで遷移（API取得になる）
       router.replace({ pathname: '/tsumeshogi/[id]', params: { id: nextId } })
     }
-  }, [nextId, nextSfen, nextStatus, problem, problemIds, problemSfens, problemStatuses, hearts])
+  }, [nextId, nextSfen, nextStatus, nextProblemNumber, problem, problemIds, problemSfens, problemStatuses, problemNumbers, hearts])
 
   // ローディング中
   if (heartsLoading || isLoadingProblem) {

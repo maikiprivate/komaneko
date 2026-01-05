@@ -15,14 +15,14 @@ export interface TsumeshogiProblem {
   id: string
   sfen: string
   moveCount: number
+  problemNumber: number
   status: TsumeshogiStatus
 }
 
-/** ページネーション情報 */
+/** ページネーション情報（カーソルベース） */
 export interface PaginationInfo {
   total: number
   limit: number
-  offset: number
   hasMore: boolean
 }
 
@@ -40,22 +40,23 @@ export interface GetTsumeshogiListOptions {
   moveCount?: number
   statusFilter?: StatusFilter
   limit?: number
-  offset?: number
+  /** カーソル: この問題番号より後の問題を取得 */
+  afterNumber?: number
 }
 
 /**
- * 詰将棋一覧を取得（ページネーション対応）
+ * 詰将棋一覧を取得（カーソルベースページネーション）
  */
 export async function getTsumeshogiList(
   options: GetTsumeshogiListOptions = {}
 ): Promise<TsumeshogiListResponse> {
-  const { moveCount, statusFilter, limit, offset } = options
+  const { moveCount, statusFilter, limit, afterNumber } = options
   const params = new URLSearchParams()
 
   if (moveCount !== undefined) params.append('moveCount', String(moveCount))
   if (statusFilter !== undefined) params.append('statusFilter', statusFilter)
   if (limit !== undefined) params.append('limit', String(limit))
-  if (offset !== undefined) params.append('offset', String(offset))
+  if (afterNumber !== undefined) params.append('afterNumber', String(afterNumber))
 
   const query = params.toString() ? `?${params.toString()}` : ''
   const url = `${API_BASE_URL}/api/tsumeshogi${query}`

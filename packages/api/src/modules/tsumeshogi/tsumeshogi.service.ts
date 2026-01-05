@@ -5,13 +5,13 @@
 import type { Tsumeshogi } from '@prisma/client'
 
 import { AppError } from '../../shared/errors/AppError.js'
-import type { TsumeshogiRepository, FindAllOptions, CountOptions } from './tsumeshogi.repository.js'
+import type { TsumeshogiRepository, FindAllOptions } from './tsumeshogi.repository.js'
 import type { TsumeshogiStatus, StatusFilter } from './tsumeshogi.schema.js'
 
 export interface GetAllOptions {
   moveCount?: number
   limit?: number
-  offset?: number
+  afterNumber?: number
   statusFilter?: StatusFilter
   userId?: string
 }
@@ -33,6 +33,29 @@ export class TsumeshogiService {
   async getCount(filter?: GetCountOptions): Promise<number> {
     const repoFilter = await this.buildRepoFilter(filter)
     return this.repository.count(repoFilter)
+  }
+
+  /**
+   * 問題一覧と件数を同時に取得（IDリストを一度だけ取得して重複クエリを削減）
+   *
+   * statusFilterがall以外の場合、findSolvedTsumeshogiIds等が
+   * getAll/getCount両方で呼ばれるのを防ぐ
+   */
+  async getAllWithCount(
+    filter?: GetAllOptions,
+  ): Promise<{ problems: Tsumeshogi[]; total: number }> {
+    const repoFilter = await this.buildRepoFilter(filter)
+
+    // countには afterNumber を適用しない（全体件数を返す）
+    const countFilter = { ...repoFilter }
+    delete countFilter.afterNumber
+
+    const [problems, total] = await Promise.all([
+      this.repository.findAll(repoFilter),
+      this.repository.count(countFilter),
+    ])
+
+    return { problems, total }
   }
 
   /**

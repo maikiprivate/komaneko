@@ -8,7 +8,11 @@ export interface FindAllOptions {
   moveCount?: number
   status?: string
   limit?: number
-  offset?: number
+  /**
+   * この問題番号より後の問題を取得（カーソルベースページネーション）
+   * 未指定の場合は先頭から取得
+   */
+  afterNumber?: number
   /**
    * 指定IDのみ取得（solved/in_progress用）
    * 注意: excludeIdsと同時指定の場合、includeIdsが優先される
@@ -21,8 +25,8 @@ export interface FindAllOptions {
   excludeIds?: string[]
 }
 
-/** countメソッドのオプション（FindAllOptionsからlimit/offsetを除いたもの） */
-export type CountOptions = Omit<FindAllOptions, 'limit' | 'offset'>
+/** countメソッドのオプション（FindAllOptionsからlimit/afterNumberを除いたもの） */
+export type CountOptions = Omit<FindAllOptions, 'limit' | 'afterNumber'>
 
 export interface TsumeshogiRepository {
   findAll(filter?: FindAllOptions): Promise<Tsumeshogi[]>
@@ -33,11 +37,12 @@ export interface TsumeshogiRepository {
 }
 
 /** where句を構築するヘルパー */
-function buildWhereClause(filter?: CountOptions) {
+function buildWhereClause(filter?: CountOptions, afterNumber?: number) {
   const where: {
     moveCount?: number
     status?: string
     id?: { in?: string[]; notIn?: string[] }
+    problemNumber?: { gt: number }
   } = {}
 
   if (filter?.moveCount !== undefined) {
@@ -54,6 +59,11 @@ function buildWhereClause(filter?: CountOptions) {
     where.id = { notIn: filter.excludeIds }
   }
 
+  // カーソルベースページネーション（afterNumberより後を取得）
+  if (afterNumber !== undefined) {
+    where.problemNumber = { gt: afterNumber }
+  }
+
   return where
 }
 
@@ -61,9 +71,8 @@ export function createTsumeshogiRepository(prisma: PrismaClient): TsumeshogiRepo
   return {
     async findAll(filter?: FindAllOptions): Promise<Tsumeshogi[]> {
       return prisma.tsumeshogi.findMany({
-        where: buildWhereClause(filter),
-        orderBy: { createdAt: 'asc' },
-        skip: filter?.offset,
+        where: buildWhereClause(filter, filter?.afterNumber),
+        orderBy: { problemNumber: 'asc' },
         take: filter?.limit,
       })
     },
