@@ -18,7 +18,6 @@ export interface StatusUpdate {
 /** キャッシュエントリの型 */
 export interface CacheEntry {
   problems: TsumeshogiProblem[]
-  total: number
   hasMore: boolean
   lastProblemNumber: number
 }
