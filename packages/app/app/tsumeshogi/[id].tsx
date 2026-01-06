@@ -27,16 +27,16 @@ import {
   recordTsumeshogi,
 } from '@/lib/api/tsumeshogi'
 import { checkHeartsAvailable } from '@/lib/hearts/checkHeartsAvailable'
-import {
-  getProblemsListCache,
-  getProblemFromCache,
-  setProblemsListCache,
-  updateProblemStatusInCache,
-} from '@/lib/tsumeshogi/problemsCache'
 import { useHearts } from '@/lib/hearts/useHearts'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
 import type { Perspective } from '@/lib/shogi/types'
 import { getTodayDateString, saveStreakFromApi } from '@/lib/streak/streakStorage'
+import {
+  getProblemFromCache,
+  getProblemsListCache,
+  setProblemsListCache,
+  updateProblemStatusInCache,
+} from '@/lib/tsumeshogi/problemsCache'
 import { saveStatusUpdate } from '@/lib/tsumeshogi/statusCache'
 
 /** 手数の表示名 */
@@ -70,6 +70,7 @@ export default function TsumeshogiPlayScreen() {
   }, [])
 
   // 問題を取得（グローバルキャッシュまたはAPIから）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retryCountはリトライボタン押下時の再取得トリガー
   useEffect(() => {
     if (!id) return
 
@@ -455,7 +456,11 @@ export default function TsumeshogiPlayScreen() {
         <View style={styles.footerArea}>
           {isSolved ? (
             // 正解後: 次の問題へボタン
-            <TouchableOpacity onPress={handleNextProblem} disabled={!nextProblem} activeOpacity={0.8}>
+            <TouchableOpacity
+              onPress={handleNextProblem}
+              disabled={!nextProblem}
+              activeOpacity={0.8}
+            >
               <Animated.View
                 style={[
                   styles.footerButton,

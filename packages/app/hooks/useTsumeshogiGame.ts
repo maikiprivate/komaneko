@@ -7,12 +7,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { getDropPositions, getPossibleMoves, getPromotionOptions, makeDrop, makeMove } from '@/lib/shogi/moveGenerator'
+import {
+  getDropPositions,
+  getPossibleMoves,
+  getPromotionOptions,
+  makeDrop,
+  makeMove,
+} from '@/lib/shogi/moveGenerator'
 import { parseSfen } from '@/lib/shogi/sfen'
 import type { BoardState, PieceType, Player, Position } from '@/lib/shogi/types'
 
 import { useGameExecution } from './useGameExecution'
-import { useSolutionPlayer, type SolutionMove } from './useSolutionPlayer'
+import { type SolutionMove, useSolutionPlayer } from './useSolutionPlayer'
 
 /** 詰将棋問題型（フック用） */
 export interface TsumeshogiProblemForGame {
@@ -88,9 +94,9 @@ export function useTsumeshogiGame(
   callbacks?: TsumeshogiCallbacks,
 ): UseTsumeshogiGameReturn & { isReady: boolean } {
   // 初期盤面をパース（メモ化）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sfenのみで十分（movesやhintの変更では再パースしない）
   const initialState = useMemo(
     () => (problem ? parseSfen(problem.sfen) : EMPTY_BOARD_STATE),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [problem?.sfen],
   )
 
@@ -103,7 +109,9 @@ export function useTsumeshogiGame(
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [selectedCaptured, setSelectedCaptured] = useState<PieceType | null>(null)
   const [possibleMoves, setPossibleMoves] = useState<Position[]>([])
-  const [pendingPromotion, setPendingPromotion] = useState<{ from: Position; to: Position } | null>(null)
+  const [pendingPromotion, setPendingPromotion] = useState<{ from: Position; to: Position } | null>(
+    null,
+  )
   const [currentMoveCount, setCurrentMoveCount] = useState(1)
   const [isThinking, setIsThinking] = useState(false)
   const [isFinished, setIsFinished] = useState(false)
@@ -124,7 +132,12 @@ export function useTsumeshogiGame(
   }, [])
 
   // ===== ゲーム実行フック =====
-  const { executeMove, handlePromotionSelect: execHandlePromotion, timerRef: execTimerRef, clearTimer } = useGameExecution({
+  const {
+    executeMove,
+    handlePromotionSelect: execHandlePromotion,
+    timerRef: execTimerRef,
+    clearTimer,
+  } = useGameExecution({
     opponentSide,
     initialState,
     currentMoveCount,
@@ -258,7 +271,12 @@ export function useTsumeshogiGame(
             return
           }
 
-          const promotions = getPromotionOptions(selectedPiece.type, selectedPosition, targetPos, playerSide)
+          const promotions = getPromotionOptions(
+            selectedPiece.type,
+            selectedPosition,
+            targetPos,
+            playerSide,
+          )
 
           if (promotions.length === 2) {
             setPendingPromotion({ from: selectedPosition, to: targetPos })
@@ -286,7 +304,18 @@ export function useTsumeshogiGame(
         setPossibleMoves(moves)
       }
     },
-    [boardState, selectedPosition, selectedCaptured, possibleMoves, isThinking, isFinished, isSolutionMode, clearSelection, executeMove, playerSide],
+    [
+      boardState,
+      selectedPosition,
+      selectedCaptured,
+      possibleMoves,
+      isThinking,
+      isFinished,
+      isSolutionMode,
+      clearSelection,
+      executeMove,
+      playerSide,
+    ],
   )
 
   // 持ち駒タップ処理
@@ -307,7 +336,15 @@ export function useTsumeshogiGame(
       const drops = getDropPositions(boardState.board, pieceType, playerSide)
       setPossibleMoves(drops)
     },
-    [boardState, selectedCaptured, isThinking, isFinished, isSolutionMode, clearSelection, playerSide],
+    [
+      boardState,
+      selectedCaptured,
+      isThinking,
+      isFinished,
+      isSolutionMode,
+      clearSelection,
+      playerSide,
+    ],
   )
 
   return {

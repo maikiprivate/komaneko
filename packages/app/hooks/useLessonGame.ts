@@ -8,20 +8,20 @@
  * - 盤面状態管理
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { router } from 'expo-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { type MoveHighlight, useSolutionPlayback } from '@/hooks/useSolutionPlayback'
 import {
-  getPossibleMoves,
   getDropPositions,
-  makeMove,
-  makeDrop,
+  getPossibleMoves,
   getPromotionOptions,
+  makeDrop,
+  makeMove,
 } from '@/lib/shogi/moveGenerator'
 import { parseSfen } from '@/lib/shogi/sfen'
 import type { BoardState, PieceType, Position } from '@/lib/shogi/types'
-import { useSolutionPlayback, type MoveHighlight } from '@/hooks/useSolutionPlayback'
-import type { SequenceLesson, SequenceProblem, SequenceMove } from '@/mocks/lessonData'
+import type { SequenceLesson, SequenceMove, SequenceProblem } from '@/mocks/lessonData'
 
 /** 相手の応手までの遅延時間（ミリ秒） */
 const OPPONENT_DELAY_MS = 800
@@ -144,7 +144,9 @@ interface UseLessonGameReturn {
 
 /** 空の盤面状態 */
 const EMPTY_BOARD_STATE: BoardState = {
-  board: Array(9).fill(null).map(() => Array(9).fill(null)),
+  board: Array(9)
+    .fill(null)
+    .map(() => Array(9).fill(null)),
   capturedPieces: {
     sente: {},
     gote: {},
@@ -174,9 +176,10 @@ export function useLessonGame({
   const startTimeRef = useRef(Date.now())
 
   // 初期盤面をパース（メモ化）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sfenのみで十分（他のプロパティ変更では再パースしない）
   const initialState = useMemo(
-    () => currentProblem ? parseSfen(currentProblem.sfen) : EMPTY_BOARD_STATE,
-    [currentProblem?.sfen]
+    () => (currentProblem ? parseSfen(currentProblem.sfen) : EMPTY_BOARD_STATE),
+    [currentProblem?.sfen],
   )
 
   // 盤面の状態
@@ -212,9 +215,7 @@ export function useLessonGame({
   const [usedSolution, setUsedSolution] = useState(false)
 
   // 全問題の記録（API送信用）
-  const [problemAttempts, setProblemAttempts] = useState<ProblemAttemptState[]>(
-    []
-  )
+  const [problemAttempts, setProblemAttempts] = useState<ProblemAttemptState[]>([])
 
   // シーケンス管理（複数手順対応）
   // 現在のシーケンス内での位置（0 = 最初の手、1 = 相手の応手、2 = 次の自分の手...）
@@ -231,9 +232,7 @@ export function useLessonGame({
     if (currentProblem) {
       setSequenceIndex(0)
       // 全バリエーションをアクティブにする
-      setActiveVariationIndices(
-        currentProblem.correctSequences.map((_, i) => i)
-      )
+      setActiveVariationIndices(currentProblem.correctSequences.map((_, i) => i))
     }
   }, [currentProblem])
 
@@ -277,10 +276,7 @@ export function useLessonGame({
 
   // レッスン完了処理
   const handleLessonComplete = useCallback(
-    async (
-      finalCorrectCount: number,
-      allAttempts: ProblemAttemptState[]
-    ): Promise<boolean> => {
+    async (finalCorrectCount: number, allAttempts: ProblemAttemptState[]): Promise<boolean> => {
       // 完了時間を計算
       const elapsedMs = Date.now() - startTimeRef.current
       const totalSeconds = Math.floor(elapsedMs / 1000)
@@ -319,7 +315,7 @@ export function useLessonGame({
       })
       return true
     },
-    [onComplete, totalProblems, courseId, lessonId]
+    [onComplete, totalProblems, courseId, lessonId],
   )
 
   // フィードバック完了時の処理
@@ -327,9 +323,7 @@ export function useLessonGame({
     if (pendingAction === 'advance') {
       // 完全正解判定: 初回正解 && ヒント未使用 && 解答未使用
       const isPerfectCorrect = !hasAttemptedWrong && !usedHint && !usedSolution
-      const newCorrectCount = isPerfectCorrect
-        ? correctCount + 1
-        : correctCount
+      const newCorrectCount = isPerfectCorrect ? correctCount + 1 : correctCount
       if (isPerfectCorrect) {
         setCorrectCount(newCorrectCount)
       }
@@ -408,7 +402,12 @@ export function useLessonGame({
         if (opponentMove.type === 'drop' && opponentMove.piece) {
           newState = makeDrop(updatedBoardState, opponentMove.piece, opponentMove.to, 'gote')
         } else if (opponentMove.type === 'move' && opponentMove.from) {
-          newState = makeMove(updatedBoardState, opponentMove.from, opponentMove.to, opponentMove.promote ?? false)
+          newState = makeMove(
+            updatedBoardState,
+            opponentMove.from,
+            opponentMove.to,
+            opponentMove.promote ?? false,
+          )
         } else {
           // 不正な手 - エラーログを出力してリセット
           console.warn('[useLessonGame] Invalid opponent move:', opponentMove)
@@ -421,7 +420,7 @@ export function useLessonGame({
         setIsOpponentThinking(false)
       }, OPPONENT_DELAY_MS)
     },
-    [currentProblem]
+    [currentProblem],
   )
 
   /**
@@ -502,7 +501,7 @@ export function useLessonGame({
       activeVariationIndices,
       clearSelection,
       executeOpponentMove,
-    ]
+    ],
   )
 
   // セルタップ処理
@@ -564,7 +563,7 @@ export function useLessonGame({
             selectedPiece.type,
             selectedPosition,
             targetPos,
-            'sente'
+            'sente',
           )
 
           if (promotions.length === 2) {
@@ -608,7 +607,7 @@ export function useLessonGame({
       checkAnswer,
       solutionPlayback.isPlaying,
       isOpponentThinking,
-    ]
+    ],
   )
 
   // 持ち駒タップ処理
@@ -633,7 +632,7 @@ export function useLessonGame({
       const drops = getDropPositions(boardState.board, pieceType, 'sente')
       setPossibleMoves(drops)
     },
-    [boardState, selectedCaptured, clearSelection, solutionPlayback.isPlaying, isOpponentThinking]
+    [boardState, selectedCaptured, clearSelection, solutionPlayback.isPlaying, isOpponentThinking],
   )
 
   // 成り選択処理
@@ -650,7 +649,7 @@ export function useLessonGame({
         setPendingPromotion(null)
       }
     },
-    [pendingPromotion, checkAnswer]
+    [pendingPromotion, checkAnswer],
   )
 
   // やり直し
@@ -759,7 +758,7 @@ export function useLessonGame({
         onBoardReset: (sfen) => {
           setBoardState(parseSfen(sfen))
         },
-      }
+      },
     )
   }, [currentProblem, clearSelection, solutionPlayback])
 

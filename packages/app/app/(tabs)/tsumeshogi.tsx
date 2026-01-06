@@ -99,9 +99,10 @@ export default function TsumeshogiScreen() {
     getTsumeshogiList({ moveCount: selectedMoves, statusFilter: selectedStatus })
       .then((response) => {
         if (cancelled) return
-        const lastNum = response.problems.length > 0
-          ? response.problems[response.problems.length - 1].problemNumber
-          : 0
+        const lastNum =
+          response.problems.length > 0
+            ? response.problems[response.problems.length - 1].problemNumber
+            : 0
         setCache((prev) => ({
           ...prev,
           [cacheKey]: {
@@ -165,9 +166,10 @@ export default function TsumeshogiScreen() {
         setCache((prev) => {
           const existing = prev[targetCacheKey]
           if (!existing) return prev
-          const newLastNum = response.problems.length > 0
-            ? response.problems[response.problems.length - 1].problemNumber
-            : existing.lastProblemNumber
+          const newLastNum =
+            response.problems.length > 0
+              ? response.problems[response.problems.length - 1].problemNumber
+              : existing.lastProblemNumber
           return {
             ...prev,
             [targetCacheKey]: {
