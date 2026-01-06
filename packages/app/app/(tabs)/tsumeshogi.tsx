@@ -10,6 +10,7 @@ import {
   type TsumeshogiStatus,
   getTsumeshogiList,
 } from '@/lib/api/tsumeshogi'
+import { applyStatusUpdatesToCache } from '@/lib/tsumeshogi/cacheUpdater'
 import { setProblemsListCache } from '@/lib/tsumeshogi/problemsCache'
 import { consumeStatusUpdates } from '@/lib/tsumeshogi/statusCache'
 
@@ -129,93 +130,8 @@ export default function TsumeshogiScreen() {
         const updates = await consumeStatusUpdates()
         if (updates.length === 0) return
 
-        // ステータス更新をキャッシュ内の問題に直接反映
-        // （キャッシュをクリアせず、スクロール位置を維持する）
-        setCache((prev) => {
-          const newCache = { ...prev }
-
-          // まず「すべて」キャッシュから更新対象の問題データを収集
-          // （新しいフィルタキャッシュに追加するため）
-          const problemDataMap = new Map<string, TsumeshogiProblem>()
-          for (const entry of Object.values(newCache)) {
-            if (!entry) continue
-            for (const problem of entry.problems) {
-              if (!problemDataMap.has(problem.id)) {
-                problemDataMap.set(problem.id, problem)
-              }
-            }
-          }
-
-          // 各キャッシュエントリを更新
-          for (const [key, entry] of Object.entries(newCache)) {
-            if (!entry) continue
-
-            // キャッシュキーからmoveCountとステータスフィルタを抽出
-            const [moveCountStr, statusFilter] = key.split('-') as [string, StatusFilter]
-            const moveCount = Number(moveCountStr)
-
-            let hasChanges = false
-
-            // 既存問題のステータス更新とフィルタ除外
-            let updatedProblems = entry.problems
-              .map((problem) => {
-                const update = updates.find((u) => u.id === problem.id)
-                if (update && problem.status !== update.status) {
-                  hasChanges = true
-                  return { ...problem, status: update.status }
-                }
-                return problem
-              })
-              .filter((problem) => {
-                // 「すべて」フィルタの場合は除外しない
-                if (statusFilter === 'all') return true
-                // フィルタ条件に合わなくなった問題を除外
-                const matches = problem.status === statusFilter
-                if (!matches) hasChanges = true
-                return matches
-              })
-
-            // 新しくフィルタ条件に合う問題を追加
-            // （読み込み済み範囲内の問題のみ）
-            if (statusFilter !== 'all') {
-              for (const update of updates) {
-                // このフィルタに合うステータスかチェック
-                if (update.status !== statusFilter) continue
-
-                // 問題データを取得
-                const problemData = problemDataMap.get(update.id)
-                if (!problemData) continue
-
-                // 手数が一致するかチェック
-                if (problemData.moveCount !== moveCount) continue
-
-                // 既にリストに含まれているかチェック
-                if (updatedProblems.some((p) => p.id === update.id)) continue
-
-                // 読み込み済み範囲内かチェック（lastProblemNumber以下）
-                if (problemData.problemNumber > entry.lastProblemNumber) continue
-
-                // 追加
-                hasChanges = true
-                updatedProblems.push({ ...problemData, status: update.status })
-              }
-
-              // 問題番号でソート
-              if (hasChanges) {
-                updatedProblems = updatedProblems.sort((a, b) => a.problemNumber - b.problemNumber)
-              }
-            }
-
-            if (hasChanges) {
-              newCache[key as CacheKey] = {
-                ...entry,
-                problems: updatedProblems,
-              }
-            }
-          }
-
-          return newCache
-        })
+        // ステータス更新をキャッシュに反映（スクロール位置を維持）
+        setCache((prev) => applyStatusUpdatesToCache(prev, updates))
       }
       applyStatusUpdates()
     }, []),
