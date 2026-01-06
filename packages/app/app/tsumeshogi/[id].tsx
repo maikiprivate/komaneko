@@ -203,6 +203,8 @@ export default function TsumeshogiPlayScreen() {
       return true
     } catch (error) {
       console.error('[Tsumeshogi] recordTsumeshogi failed:', error)
+      // API失敗時はfeedbackをリセット（correctのまま残さない）
+      setFeedback('none')
       if (error instanceof ApiError) {
         if (error.code === 'NO_HEARTS_LEFT') {
           Alert.alert('ハートが足りません', 'ハートが回復するまでお待ちください。')
