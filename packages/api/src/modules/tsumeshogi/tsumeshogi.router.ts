@@ -42,7 +42,7 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
   })
 
   /**
-   * GET /api/tsumeshogi - 一覧取得
+   * GET /api/tsumeshogi - 一覧取得（カーソルベースページネーション）
    */
   app.get('/', async (request, reply) => {
     const userId = getAuthenticatedUserId(request)
@@ -55,18 +55,42 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
       })
     }
 
-    const [problems, statusMap] = await Promise.all([
-      tsumeshogiService.getAll(parseResult.data),
-      tsumeshogiService.getStatusMap(userId),
+    const { moveCount, statusFilter, limit, afterNumber } = parseResult.data
+
+    // getAllWithCountで問題一覧と件数を一度に取得（IDリスト取得の重複を削減）
+    // statusFilter: allの場合のみstatusMapを取得（フィルタ済みの場合は不要）
+    const [{ problems, total }, statusMap] = await Promise.all([
+      tsumeshogiService.getAllWithCount({ moveCount, statusFilter, userId, limit, afterNumber }),
+      statusFilter === 'all'
+        ? tsumeshogiService.getStatusMap(userId)
+        : Promise.resolve(new Map()),
     ])
+
+    // ステータスの決定: statusFilterがall以外の場合はフィルタ値をそのまま使用
+    const getStatus = (problemId: string) => {
+      if (statusFilter === 'all') {
+        return statusMap.get(problemId) ?? 'unsolved'
+      }
+      return statusFilter
+    }
+
+    // hasMore: 取得件数がlimitと同じなら追加データの可能性あり
+    // （最後のページがちょうどlimit件の場合でも、次回は空配列が返るだけなので問題なし）
+    const hasMore = problems.length === limit
 
     return reply.send({
       data: problems.map((p) => ({
         id: p.id,
         sfen: p.sfen,
         moveCount: p.moveCount,
-        status: statusMap.get(p.id) ?? 'unsolved',
+        problemNumber: p.problemNumber,
+        status: getStatus(p.id),
       })),
+      pagination: {
+        total,
+        limit,
+        hasMore,
+      },
       meta: { timestamp: new Date().toISOString() },
     })
   })
@@ -87,6 +111,7 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
         id: problem.id,
         sfen: problem.sfen,
         moveCount: problem.moveCount,
+        problemNumber: problem.problemNumber,
         status: statusMap.get(problem.id) ?? 'unsolved',
       },
       meta: { timestamp: new Date().toISOString() },
