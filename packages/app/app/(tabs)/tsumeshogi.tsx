@@ -10,6 +10,7 @@ import {
   type TsumeshogiStatus,
   getTsumeshogiList,
 } from '@/lib/api/tsumeshogi'
+import { setProblemsListCache } from '@/lib/tsumeshogi/problemsCache'
 import { consumeStatusUpdates } from '@/lib/tsumeshogi/statusCache'
 
 /** 手数のオプション */
@@ -282,22 +283,16 @@ export default function TsumeshogiScreen() {
   }, [cacheKey])
 
   const handleProblemPress = (problem: TsumeshogiProblem) => {
-    // 同手数の問題データを取得（次の問題遷移用）
+    // 問題リストをグローバルキャッシュに保存（URLパラメータ経由のJSON受け渡しを回避）
     const problemsData = currentCache?.problems ?? []
+    if (problemsData.length > 0) {
+      setProblemsListCache(problem.moveCount, problemsData)
+    }
+
+    // IDのみをパラメータとして渡す
     router.push({
       pathname: '/tsumeshogi/[id]',
-      params: {
-        id: problem.id,
-        sfen: problem.sfen,
-        moveCount: String(problem.moveCount),
-        problemNumber: String(problem.problemNumber),
-        status: problem.status,
-        // ID配列とSFEN配列とステータス配列と問題番号を渡す（次の問題遷移で再利用）
-        problemIds: JSON.stringify(problemsData.map((p) => p.id)),
-        problemSfens: JSON.stringify(problemsData.map((p) => p.sfen)),
-        problemStatuses: JSON.stringify(problemsData.map((p) => p.status)),
-        problemNumbers: JSON.stringify(problemsData.map((p) => p.problemNumber)),
-      },
+      params: { id: problem.id },
     })
   }
 

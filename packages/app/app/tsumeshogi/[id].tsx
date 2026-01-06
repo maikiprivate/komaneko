@@ -26,7 +26,13 @@ import {
   getTsumeshogiList,
   recordTsumeshogi,
 } from '@/lib/api/tsumeshogi'
-import { checkHeartsAvailable, hasEnoughHearts } from '@/lib/hearts/checkHeartsAvailable'
+import { checkHeartsAvailable } from '@/lib/hearts/checkHeartsAvailable'
+import {
+  getProblemsListCache,
+  getProblemFromCache,
+  setProblemsListCache,
+  updateProblemStatusInCache,
+} from '@/lib/tsumeshogi/problemsCache'
 import { useHearts } from '@/lib/hearts/useHearts'
 import { getPieceStandOrder } from '@/lib/shogi/perspective'
 import type { Perspective } from '@/lib/shogi/types'
@@ -46,54 +52,13 @@ const HEART_COST = 1
 export default function TsumeshogiPlayScreen() {
   const { colors, palette } = useTheme()
   const { width } = useWindowDimensions()
-  const params = useLocalSearchParams<{
-    id: string
-    sfen?: string
-    moveCount?: string
-    problemNumber?: string
-    status?: string
-    problemIds?: string
-    problemSfens?: string
-    problemStatuses?: string
-    problemNumbers?: string
-  }>()
+  const params = useLocalSearchParams<{ id: string }>()
   const { id } = params
   const insets = useSafeAreaInsets()
 
-  // 一覧画面から渡されたキャッシュデータをパース
-  const cachedData = useMemo(() => {
-    if (!params.sfen || !params.moveCount) return null
-    try {
-      const moveCount = Number.parseInt(params.moveCount, 10)
-      if (Number.isNaN(moveCount)) return null
-      const problemNumber = params.problemNumber
-        ? Number.parseInt(params.problemNumber, 10)
-        : null
-      return {
-        sfen: params.sfen,
-        moveCount,
-        problemNumber: problemNumber && !Number.isNaN(problemNumber) ? problemNumber : null,
-        problemIds: params.problemIds ? (JSON.parse(params.problemIds) as string[]) : null,
-        problemSfens: params.problemSfens ? (JSON.parse(params.problemSfens) as string[]) : null,
-        problemStatuses: params.problemStatuses
-          ? (JSON.parse(params.problemStatuses) as string[])
-          : null,
-        problemNumbers: params.problemNumbers
-          ? (JSON.parse(params.problemNumbers) as number[])
-          : null,
-      }
-    } catch {
-      // パース失敗時はAPIから取得
-      return null
-    }
-  }, [params.sfen, params.moveCount, params.problemNumber, params.problemIds, params.problemSfens, params.problemStatuses, params.problemNumbers])
-
   // 問題データの状態
   const [problem, setProblem] = useState<TsumeshogiProblem | null>(null)
-  const [problemIds, setProblemIds] = useState<string[] | null>(null)
-  const [problemSfens, setProblemSfens] = useState<string[] | null>(null)
-  const [problemStatuses, setProblemStatuses] = useState<string[] | null>(null)
-  const [problemNumbers, setProblemNumbers] = useState<number[] | null>(null)
+  const [problemsList, setProblemsList] = useState<TsumeshogiProblem[] | null>(null)
   const [isLoadingProblem, setIsLoadingProblem] = useState(true)
   const [problemError, setProblemError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -104,32 +69,26 @@ export default function TsumeshogiPlayScreen() {
     setRetryCount((prev) => prev + 1)
   }, [])
 
-  // 問題を取得（キャッシュがあればスキップ）
+  // 問題を取得（グローバルキャッシュまたはAPIから）
   useEffect(() => {
     if (!id) return
 
-    // キャッシュデータがあればAPI呼び出しをスキップ
-    if (cachedData) {
-      setProblem({
-        id,
-        sfen: cachedData.sfen,
-        moveCount: cachedData.moveCount,
-        problemNumber: cachedData.problemNumber ?? 0,
-        status: (params.status as TsumeshogiProblem['status']) ?? 'unsolved',
-      })
-      setProblemIds(cachedData.problemIds)
-      setProblemSfens(cachedData.problemSfens)
-      setProblemStatuses(cachedData.problemStatuses)
-      setProblemNumbers(cachedData.problemNumbers)
-      setIsLoadingProblem(false)
-      return
-    }
-
-    // キャッシュがなければAPIから取得（直接アクセス時）
     let cancelled = false
     setIsLoadingProblem(true)
     setProblemError(null)
 
+    // まずグローバルキャッシュから問題を探す
+    const cachedProblem = getProblemFromCache(id)
+    if (cachedProblem) {
+      setProblem(cachedProblem)
+      // キャッシュから同じ手数の問題リストを取得
+      const cachedList = getProblemsListCache(cachedProblem.moveCount)
+      setProblemsList(cachedList)
+      setIsLoadingProblem(false)
+      return
+    }
+
+    // キャッシュになければAPIから取得
     getTsumeshogi(id)
       .then((data) => {
         if (cancelled) return
@@ -140,10 +99,11 @@ export default function TsumeshogiPlayScreen() {
       .then((response) => {
         if (cancelled || !response) return
         const list = response.problems
-        setProblemIds(list.map((p) => p.id))
-        setProblemSfens(list.map((p) => p.sfen))
-        setProblemStatuses(list.map((p) => p.status))
-        setProblemNumbers(list.map((p) => p.problemNumber))
+        setProblemsList(list)
+        // キャッシュに保存（次の問題への遷移で再利用）
+        if (list.length > 0) {
+          setProblemsListCache(list[0].moveCount, list)
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -156,7 +116,7 @@ export default function TsumeshogiPlayScreen() {
     return () => {
       cancelled = true
     }
-  }, [id, cachedData, retryCount])
+  }, [id, retryCount])
 
   // ゲーム用の問題データに変換
   const problemForGame: TsumeshogiProblemForGame | undefined = problem
@@ -171,20 +131,15 @@ export default function TsumeshogiPlayScreen() {
     updateFromConsumeResponse,
   } = useHearts()
 
-  // 初回チェック済みフラグ（アラート・自動戻りは一度だけ）
-  const hasCheckedHeartsRef = useRef(false)
+  // ハート不足状態（ローディング完了後にチェック）
+  const [hasInsufficientHearts, setHasInsufficientHearts] = useState(false)
 
-  // 初回ロード完了時にハートチェック
+  // ローディング完了時にハートチェック
   useEffect(() => {
-    if (heartsLoading || hasCheckedHeartsRef.current) return
-    hasCheckedHeartsRef.current = true
-
-    if (heartsError) return
-
-    // ハートが足りない場合はアラート表示して戻る
-    if (!hasEnoughHearts(hearts, HEART_COST)) {
-      checkHeartsAvailable(hearts, HEART_COST)
-      router.back()
+    if (heartsLoading || heartsError) return
+    // ハートが足りない場合は不足状態をセット
+    if (!checkHeartsAvailable(hearts, HEART_COST)) {
+      setHasInsufficientHearts(true)
     }
   }, [heartsLoading, heartsError, hearts])
 
@@ -235,6 +190,8 @@ export default function TsumeshogiPlayScreen() {
 
       // 一覧画面のキャッシュ更新用にステータスを保存
       await saveStatusUpdate({ id: problem.id, status: 'solved' })
+      // グローバルキャッシュも更新
+      updateProblemStatusInCache(problem.id, 'solved')
 
       // ストリーク更新画面への遷移
       if (result.streak.updated) {
@@ -270,10 +227,12 @@ export default function TsumeshogiPlayScreen() {
 
     // 一覧画面のキャッシュ更新用にステータスを保存（APIの成功を待たない）
     // 既にsolvedの場合はin_progressに降格させない
-    if (params.status !== 'solved') {
+    if (problem.status !== 'solved') {
       saveStatusUpdate({ id: problem.id, status: 'in_progress' }).catch((e) => {
         console.warn('[Tsumeshogi] saveStatusUpdate failed:', e)
       })
+      // グローバルキャッシュも更新
+      updateProblemStatusInCache(problem.id, 'in_progress')
     }
 
     // バックグラウンドでAPI呼び出し（結果は待たない）
@@ -283,7 +242,7 @@ export default function TsumeshogiPlayScreen() {
     }).catch((error) => {
       console.error('[Tsumeshogi] recordTsumeshogi (incorrect) failed:', error)
     })
-  }, [problem, params.status])
+  }, [problem])
 
   // ゲームフックを使用（Hooks呼び出しは条件分岐の前に行う）
   const game = useTsumeshogiGame(problemForGame, {
@@ -312,50 +271,37 @@ export default function TsumeshogiPlayScreen() {
     }
   }, [isSolved, scaleAnim])
 
-  // ヘッダータイトル用の情報（メモ化）※フックは早期リターンの前に呼ぶ
-  const { headerTitle, nextId, nextSfen, nextStatus, nextProblemNumber } = useMemo(() => {
-    if (!problem || !problemIds) {
-      return { headerTitle: '', nextId: null, nextSfen: null, nextStatus: null, nextProblemNumber: null }
+  // ヘッダータイトルと次の問題の情報（メモ化）※フックは早期リターンの前に呼ぶ
+  const { headerTitle, nextProblem } = useMemo(() => {
+    if (!problem) {
+      return { headerTitle: '', nextProblem: null }
     }
     const movesLabel = MOVES_LABELS[problem.moveCount] || `${problem.moveCount}手詰め`
-    const currentIndex = problemIds.indexOf(problem.id)
-    const nextIndex = currentIndex + 1
+
+    // 次の問題を探す
+    let next: TsumeshogiProblem | null = null
+    if (problemsList) {
+      const currentIndex = problemsList.findIndex((p) => p.id === problem.id)
+      if (currentIndex >= 0 && currentIndex < problemsList.length - 1) {
+        next = problemsList[currentIndex + 1]
+      }
+    }
+
     return {
       headerTitle: `${movesLabel} 問題${problem.problemNumber}`,
-      nextId: problemIds[nextIndex] ?? null,
-      nextSfen: problemSfens?.[nextIndex] ?? null,
-      nextStatus: problemStatuses?.[nextIndex] ?? null,
-      nextProblemNumber: problemNumbers?.[nextIndex] ?? null,
+      nextProblem: next,
     }
-  }, [problem, problemIds, problemSfens, problemStatuses, problemNumbers])
+  }, [problem, problemsList])
 
   // 次の問題へ遷移
   const handleNextProblem = useCallback(() => {
-    if (!nextId) return
+    if (!nextProblem) return
     // 次の問題に遷移する前にハートをチェック（手動遷移のため事前確認が必要）
     if (!checkHeartsAvailable(hearts, HEART_COST)) return
 
-    // キャッシュデータがあればparamsで渡す（API呼び出し削減）
-    if (nextSfen && problem && problemIds && problemSfens && problemStatuses && problemNumbers) {
-      router.replace({
-        pathname: '/tsumeshogi/[id]',
-        params: {
-          id: nextId,
-          sfen: nextSfen,
-          moveCount: String(problem.moveCount),
-          problemNumber: nextProblemNumber ? String(nextProblemNumber) : undefined,
-          status: nextStatus ?? undefined,
-          problemIds: JSON.stringify(problemIds),
-          problemSfens: JSON.stringify(problemSfens),
-          problemStatuses: JSON.stringify(problemStatuses),
-          problemNumbers: JSON.stringify(problemNumbers),
-        },
-      })
-    } else {
-      // キャッシュがなければIDのみで遷移（API取得になる）
-      router.replace({ pathname: '/tsumeshogi/[id]', params: { id: nextId } })
-    }
-  }, [nextId, nextSfen, nextStatus, nextProblemNumber, problem, problemIds, problemSfens, problemStatuses, problemNumbers, hearts])
+    // グローバルキャッシュがあるのでIDのみで遷移（キャッシュからデータ取得）
+    router.replace({ pathname: '/tsumeshogi/[id]', params: { id: nextProblem.id } })
+  }, [nextProblem, hearts])
 
   // ローディング中
   if (heartsLoading || isLoadingProblem) {
@@ -401,6 +347,33 @@ export default function TsumeshogiPlayScreen() {
             <Text style={[styles.backButtonText, { color: palette.orange }]}>戻る</Text>
           </TouchableOpacity>
         </View>
+      </View>
+    )
+  }
+
+  // ハート不足の場合
+  if (hasInsufficientHearts) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: palette.gameBackground },
+        ]}
+      >
+        <FontAwesome name="heart-o" size={48} color={colors.gamification.heart} />
+        <Text style={[styles.insufficientTitle, { color: colors.text.primary }]}>
+          ハートが足りません
+        </Text>
+        <Text style={[styles.insufficientMessage, { color: colors.text.secondary }]}>
+          ハートが回復するまでお待ちください
+        </Text>
+        <TouchableOpacity
+          style={[styles.backButton, { borderColor: palette.orange }]}
+          onPress={() => router.back()}
+        >
+          <Text style={[styles.backButtonText, { color: palette.orange }]}>戻る</Text>
+        </TouchableOpacity>
       </View>
     )
   }
@@ -480,7 +453,7 @@ export default function TsumeshogiPlayScreen() {
         <View style={styles.footerArea}>
           {isSolved ? (
             // 正解後: 次の問題へボタン
-            <TouchableOpacity onPress={handleNextProblem} disabled={!nextId} activeOpacity={0.8}>
+            <TouchableOpacity onPress={handleNextProblem} disabled={!nextProblem} activeOpacity={0.8}>
               <Animated.View
                 style={[
                   styles.footerButton,
@@ -601,5 +574,15 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  insufficientTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  insufficientMessage: {
+    fontSize: 14,
+    marginBottom: 24,
   },
 })
