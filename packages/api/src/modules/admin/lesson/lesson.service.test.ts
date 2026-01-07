@@ -4,9 +4,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Course, Section, Lesson, LessonProblem } from '@prisma/client'
+import type { Course, Lesson, LessonProblem, Section } from '@prisma/client'
+import type { CourseWithNested, LessonRepository } from './lesson.repository.js'
 import { LessonService } from './lesson.service.js'
-import type { LessonRepository, CourseWithNested } from './lesson.repository.js'
 
 // =============================================================================
 // モックデータ
@@ -52,6 +52,7 @@ const createMockProblem = (overrides: Partial<LessonProblem> = {}): LessonProble
   playerTurn: 'black',
   moveTree: [],
   instruction: '',
+  explanation: '',
   lessonId: 'lesson-1',
   createdAt: mockDate,
   updatedAt: mockDate,
@@ -125,7 +126,7 @@ describe('LessonService', () => {
       it('新しいコースを作成できる', async () => {
         vi.mocked(mockRepository.getMaxCourseOrder).mockResolvedValue(2)
         vi.mocked(mockRepository.createCourse).mockResolvedValue(
-          createMockCourse({ id: 'new-course', order: 3, title: '新規コース' })
+          createMockCourse({ id: 'new-course', order: 3, title: '新規コース' }),
         )
 
         const result = await service.createCourse({
@@ -146,14 +147,12 @@ describe('LessonService', () => {
 
       it('最初のコースの場合order=1になる', async () => {
         vi.mocked(mockRepository.getMaxCourseOrder).mockResolvedValue(0)
-        vi.mocked(mockRepository.createCourse).mockResolvedValue(
-          createMockCourse({ order: 1 })
-        )
+        vi.mocked(mockRepository.createCourse).mockResolvedValue(createMockCourse({ order: 1 }))
 
         await service.createCourse({ title: 'First', description: '', status: 'draft' })
 
         expect(mockRepository.createCourse).toHaveBeenCalledWith(
-          expect.objectContaining({ order: 1 })
+          expect.objectContaining({ order: 1 }),
         )
       })
     })
@@ -165,7 +164,7 @@ describe('LessonService', () => {
           sections: [],
         })
         vi.mocked(mockRepository.updateCourse).mockResolvedValue(
-          createMockCourse({ title: '更新後' })
+          createMockCourse({ title: '更新後' }),
         )
 
         const result = await service.updateCourse('course-1', { title: '更新後' })
@@ -176,8 +175,9 @@ describe('LessonService', () => {
       it('存在しないコースはCOURSE_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findCourseById).mockResolvedValue(null)
 
-        await expect(service.updateCourse('non-existent', { title: 'x' }))
-          .rejects.toMatchObject({ code: 'COURSE_NOT_FOUND' })
+        await expect(service.updateCourse('non-existent', { title: 'x' })).rejects.toMatchObject({
+          code: 'COURSE_NOT_FOUND',
+        })
       })
     })
 
@@ -197,8 +197,9 @@ describe('LessonService', () => {
       it('存在しないコースはCOURSE_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findCourseById).mockResolvedValue(null)
 
-        await expect(service.deleteCourse('non-existent'))
-          .rejects.toMatchObject({ code: 'COURSE_NOT_FOUND' })
+        await expect(service.deleteCourse('non-existent')).rejects.toMatchObject({
+          code: 'COURSE_NOT_FOUND',
+        })
       })
     })
   })
@@ -215,9 +216,7 @@ describe('LessonService', () => {
           sections: [],
         })
         vi.mocked(mockRepository.getMaxSectionOrder).mockResolvedValue(1)
-        vi.mocked(mockRepository.createSection).mockResolvedValue(
-          createMockSection({ order: 2 })
-        )
+        vi.mocked(mockRepository.createSection).mockResolvedValue(createMockSection({ order: 2 }))
 
         await service.createSection({
           title: '新規セクション',
@@ -234,10 +233,12 @@ describe('LessonService', () => {
       it('存在しないコースにはCOURSE_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findCourseById).mockResolvedValue(null)
 
-        await expect(service.createSection({
-          title: 'x',
-          courseId: 'non-existent',
-        })).rejects.toMatchObject({ code: 'COURSE_NOT_FOUND' })
+        await expect(
+          service.createSection({
+            title: 'x',
+            courseId: 'non-existent',
+          }),
+        ).rejects.toMatchObject({ code: 'COURSE_NOT_FOUND' })
       })
     })
 
@@ -248,7 +249,7 @@ describe('LessonService', () => {
           lessons: [],
         })
         vi.mocked(mockRepository.updateSection).mockResolvedValue(
-          createMockSection({ title: '更新後' })
+          createMockSection({ title: '更新後' }),
         )
 
         const result = await service.updateSection('section-1', { title: '更新後' })
@@ -259,8 +260,9 @@ describe('LessonService', () => {
       it('存在しないセクションはSECTION_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findSectionById).mockResolvedValue(null)
 
-        await expect(service.updateSection('non-existent', { title: 'x' }))
-          .rejects.toMatchObject({ code: 'SECTION_NOT_FOUND' })
+        await expect(service.updateSection('non-existent', { title: 'x' })).rejects.toMatchObject({
+          code: 'SECTION_NOT_FOUND',
+        })
       })
     })
 
@@ -280,8 +282,9 @@ describe('LessonService', () => {
       it('存在しないセクションはSECTION_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findSectionById).mockResolvedValue(null)
 
-        await expect(service.deleteSection('non-existent'))
-          .rejects.toMatchObject({ code: 'SECTION_NOT_FOUND' })
+        await expect(service.deleteSection('non-existent')).rejects.toMatchObject({
+          code: 'SECTION_NOT_FOUND',
+        })
       })
     })
   })
@@ -298,9 +301,7 @@ describe('LessonService', () => {
           lessons: [],
         })
         vi.mocked(mockRepository.getMaxLessonOrder).mockResolvedValue(0)
-        vi.mocked(mockRepository.createLesson).mockResolvedValue(
-          createMockLesson({ order: 1 })
-        )
+        vi.mocked(mockRepository.createLesson).mockResolvedValue(createMockLesson({ order: 1 }))
 
         await service.createLesson({
           title: '新規レッスン',
@@ -317,10 +318,12 @@ describe('LessonService', () => {
       it('存在しないセクションにはSECTION_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findSectionById).mockResolvedValue(null)
 
-        await expect(service.createLesson({
-          title: 'x',
-          sectionId: 'non-existent',
-        })).rejects.toMatchObject({ code: 'SECTION_NOT_FOUND' })
+        await expect(
+          service.createLesson({
+            title: 'x',
+            sectionId: 'non-existent',
+          }),
+        ).rejects.toMatchObject({ code: 'SECTION_NOT_FOUND' })
       })
     })
 
@@ -331,7 +334,7 @@ describe('LessonService', () => {
           problems: [],
         })
         vi.mocked(mockRepository.updateLesson).mockResolvedValue(
-          createMockLesson({ title: '更新後' })
+          createMockLesson({ title: '更新後' }),
         )
 
         const result = await service.updateLesson('lesson-1', { title: '更新後' })
@@ -342,8 +345,9 @@ describe('LessonService', () => {
       it('存在しないレッスンはLESSON_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findLessonById).mockResolvedValue(null)
 
-        await expect(service.updateLesson('non-existent', { title: 'x' }))
-          .rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
+        await expect(service.updateLesson('non-existent', { title: 'x' })).rejects.toMatchObject({
+          code: 'LESSON_NOT_FOUND',
+        })
       })
     })
 
@@ -363,8 +367,9 @@ describe('LessonService', () => {
       it('存在しないレッスンはLESSON_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findLessonById).mockResolvedValue(null)
 
-        await expect(service.deleteLesson('non-existent'))
-          .rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
+        await expect(service.deleteLesson('non-existent')).rejects.toMatchObject({
+          code: 'LESSON_NOT_FOUND',
+        })
       })
     })
   })
@@ -386,8 +391,9 @@ describe('LessonService', () => {
       it('存在しない問題はPROBLEM_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findProblemById).mockResolvedValue(null)
 
-        await expect(service.getProblem('non-existent'))
-          .rejects.toMatchObject({ code: 'PROBLEM_NOT_FOUND' })
+        await expect(service.getProblem('non-existent')).rejects.toMatchObject({
+          code: 'PROBLEM_NOT_FOUND',
+        })
       })
     })
 
@@ -398,15 +404,14 @@ describe('LessonService', () => {
           problems: [],
         })
         vi.mocked(mockRepository.getMaxProblemOrder).mockResolvedValue(2)
-        vi.mocked(mockRepository.createProblem).mockResolvedValue(
-          createMockProblem({ order: 3 })
-        )
+        vi.mocked(mockRepository.createProblem).mockResolvedValue(createMockProblem({ order: 3 }))
 
         await service.createProblem({
           sfen: '9/9/9/9/9/9/9/9/9 b - 1',
           playerTurn: 'black',
           moveTree: [],
           instruction: '',
+          explanation: '',
           lessonId: 'lesson-1',
         })
 
@@ -415,6 +420,7 @@ describe('LessonService', () => {
           playerTurn: 'black',
           moveTree: [],
           instruction: '',
+          explanation: '',
           lessonId: 'lesson-1',
           order: 3,
         })
@@ -423,13 +429,16 @@ describe('LessonService', () => {
       it('存在しないレッスンにはLESSON_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findLessonById).mockResolvedValue(null)
 
-        await expect(service.createProblem({
-          sfen: '9/9/9/9/9/9/9/9/9 b - 1',
-          playerTurn: 'black',
-          moveTree: [],
-          instruction: '',
-          lessonId: 'non-existent',
-        })).rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
+        await expect(
+          service.createProblem({
+            sfen: '9/9/9/9/9/9/9/9/9 b - 1',
+            playerTurn: 'black',
+            moveTree: [],
+            instruction: '',
+            explanation: '',
+            lessonId: 'non-existent',
+          }),
+        ).rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
       })
     })
 
@@ -437,7 +446,7 @@ describe('LessonService', () => {
       it('問題を更新できる', async () => {
         vi.mocked(mockRepository.findProblemById).mockResolvedValue(createMockProblem())
         vi.mocked(mockRepository.updateProblem).mockResolvedValue(
-          createMockProblem({ sfen: 'updated b - 1' })
+          createMockProblem({ sfen: 'updated b - 1' }),
         )
 
         const result = await service.updateProblem('problem-1', { sfen: 'updated b - 1' })
@@ -448,8 +457,9 @@ describe('LessonService', () => {
       it('存在しない問題はPROBLEM_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findProblemById).mockResolvedValue(null)
 
-        await expect(service.updateProblem('non-existent', { sfen: 'x' }))
-          .rejects.toMatchObject({ code: 'PROBLEM_NOT_FOUND' })
+        await expect(service.updateProblem('non-existent', { sfen: 'x' })).rejects.toMatchObject({
+          code: 'PROBLEM_NOT_FOUND',
+        })
       })
     })
 
@@ -466,8 +476,9 @@ describe('LessonService', () => {
       it('存在しない問題はPROBLEM_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findProblemById).mockResolvedValue(null)
 
-        await expect(service.deleteProblem('non-existent'))
-          .rejects.toMatchObject({ code: 'PROBLEM_NOT_FOUND' })
+        await expect(service.deleteProblem('non-existent')).rejects.toMatchObject({
+          code: 'PROBLEM_NOT_FOUND',
+        })
       })
     })
   })
@@ -489,7 +500,9 @@ describe('LessonService', () => {
         await service.reorderCourses(['course-2', 'course-1', 'course-3'])
 
         expect(mockRepository.reorderCourses).toHaveBeenCalledWith([
-          'course-2', 'course-1', 'course-3'
+          'course-2',
+          'course-1',
+          'course-3',
         ])
       })
 
@@ -498,9 +511,9 @@ describe('LessonService', () => {
           { ...createMockCourse({ id: 'course-1' }), sections: [] },
         ])
 
-        await expect(
-          service.reorderCourses(['course-1', 'non-existent'])
-        ).rejects.toMatchObject({ code: 'COURSE_NOT_FOUND' })
+        await expect(service.reorderCourses(['course-1', 'non-existent'])).rejects.toMatchObject({
+          code: 'COURSE_NOT_FOUND',
+        })
       })
     })
 
@@ -517,28 +530,29 @@ describe('LessonService', () => {
 
         await service.reorderSections('course-1', ['section-2', 'section-1'])
 
-        expect(mockRepository.reorderSections).toHaveBeenCalledWith(
-          'course-1', ['section-2', 'section-1']
-        )
+        expect(mockRepository.reorderSections).toHaveBeenCalledWith('course-1', [
+          'section-2',
+          'section-1',
+        ])
       })
 
       it('存在しないコースはCOURSE_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findCourseById).mockResolvedValue(null)
 
-        await expect(service.reorderSections('non-existent', ['a']))
-          .rejects.toMatchObject({ code: 'COURSE_NOT_FOUND' })
+        await expect(service.reorderSections('non-existent', ['a'])).rejects.toMatchObject({
+          code: 'COURSE_NOT_FOUND',
+        })
       })
 
       it('コースに属していないセクションIDはSECTION_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findCourseById).mockResolvedValue({
           ...createMockCourse(),
-          sections: [
-            { ...createMockSection({ id: 'section-1' }), lessons: [] },
-          ],
+          sections: [{ ...createMockSection({ id: 'section-1' }), lessons: [] }],
         })
 
-        await expect(service.reorderSections('course-1', ['section-1', 'invalid-id']))
-          .rejects.toMatchObject({ code: 'SECTION_NOT_FOUND' })
+        await expect(
+          service.reorderSections('course-1', ['section-1', 'invalid-id']),
+        ).rejects.toMatchObject({ code: 'SECTION_NOT_FOUND' })
       })
     })
 
@@ -555,28 +569,29 @@ describe('LessonService', () => {
 
         await service.reorderLessons('section-1', ['lesson-2', 'lesson-1'])
 
-        expect(mockRepository.reorderLessons).toHaveBeenCalledWith(
-          'section-1', ['lesson-2', 'lesson-1']
-        )
+        expect(mockRepository.reorderLessons).toHaveBeenCalledWith('section-1', [
+          'lesson-2',
+          'lesson-1',
+        ])
       })
 
       it('存在しないセクションはSECTION_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findSectionById).mockResolvedValue(null)
 
-        await expect(service.reorderLessons('non-existent', ['a']))
-          .rejects.toMatchObject({ code: 'SECTION_NOT_FOUND' })
+        await expect(service.reorderLessons('non-existent', ['a'])).rejects.toMatchObject({
+          code: 'SECTION_NOT_FOUND',
+        })
       })
 
       it('セクションに属していないレッスンIDはLESSON_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findSectionById).mockResolvedValue({
           ...createMockSection(),
-          lessons: [
-            { ...createMockLesson({ id: 'lesson-1' }), problems: [] },
-          ],
+          lessons: [{ ...createMockLesson({ id: 'lesson-1' }), problems: [] }],
         })
 
-        await expect(service.reorderLessons('section-1', ['lesson-1', 'invalid-id']))
-          .rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
+        await expect(
+          service.reorderLessons('section-1', ['lesson-1', 'invalid-id']),
+        ).rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
       })
     })
 
@@ -593,28 +608,29 @@ describe('LessonService', () => {
 
         await service.reorderProblems('lesson-1', ['problem-2', 'problem-1'])
 
-        expect(mockRepository.reorderProblems).toHaveBeenCalledWith(
-          'lesson-1', ['problem-2', 'problem-1']
-        )
+        expect(mockRepository.reorderProblems).toHaveBeenCalledWith('lesson-1', [
+          'problem-2',
+          'problem-1',
+        ])
       })
 
       it('存在しないレッスンはLESSON_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findLessonById).mockResolvedValue(null)
 
-        await expect(service.reorderProblems('non-existent', ['a']))
-          .rejects.toMatchObject({ code: 'LESSON_NOT_FOUND' })
+        await expect(service.reorderProblems('non-existent', ['a'])).rejects.toMatchObject({
+          code: 'LESSON_NOT_FOUND',
+        })
       })
 
       it('レッスンに属していない問題IDはPROBLEM_NOT_FOUNDエラー', async () => {
         vi.mocked(mockRepository.findLessonById).mockResolvedValue({
           ...createMockLesson(),
-          problems: [
-            createMockProblem({ id: 'problem-1' }),
-          ],
+          problems: [createMockProblem({ id: 'problem-1' })],
         })
 
-        await expect(service.reorderProblems('lesson-1', ['problem-1', 'invalid-id']))
-          .rejects.toMatchObject({ code: 'PROBLEM_NOT_FOUND' })
+        await expect(
+          service.reorderProblems('lesson-1', ['problem-1', 'invalid-id']),
+        ).rejects.toMatchObject({ code: 'PROBLEM_NOT_FOUND' })
       })
     })
   })

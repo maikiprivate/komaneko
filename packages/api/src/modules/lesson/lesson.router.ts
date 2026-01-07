@@ -79,60 +79,55 @@ export async function lessonRouter(app: FastifyInstance) {
   /**
    * GET /api/lesson/courses/:courseId - コース詳細取得
    */
-  app.get<{ Params: { courseId: string } }>(
-    '/courses/:courseId',
-    async (request, reply) => {
-      getAuthenticatedUserId(request) // 認証チェック
+  app.get<{ Params: { courseId: string } }>('/courses/:courseId', async (request, reply) => {
+    getAuthenticatedUserId(request) // 認証チェック
 
-      const course = await lessonService.getCourseById(request.params.courseId)
+    const course = await lessonService.getCourseById(request.params.courseId)
 
-      return reply.send({
-        data: {
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          sections: course.sections.map((section) => ({
-            id: section.id,
-            title: section.title,
-            lessons: section.lessons.map((lesson) => ({
-              id: lesson.id,
-              title: lesson.title,
-              problemCount: lesson.problems.length,
-            })),
+    return reply.send({
+      data: {
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        sections: course.sections.map((section) => ({
+          id: section.id,
+          title: section.title,
+          lessons: section.lessons.map((lesson) => ({
+            id: lesson.id,
+            title: lesson.title,
+            problemCount: lesson.problems.length,
           })),
-        },
-        meta: { timestamp: new Date().toISOString() },
-      })
-    }
-  )
+        })),
+      },
+      meta: { timestamp: new Date().toISOString() },
+    })
+  })
 
   /**
    * GET /api/lesson/lessons/:lessonId - レッスン詳細取得
    */
-  app.get<{ Params: { lessonId: string } }>(
-    '/lessons/:lessonId',
-    async (request, reply) => {
-      getAuthenticatedUserId(request) // 認証チェック
+  app.get<{ Params: { lessonId: string } }>('/lessons/:lessonId', async (request, reply) => {
+    getAuthenticatedUserId(request) // 認証チェック
 
-      const lesson = await lessonService.getLessonById(request.params.lessonId)
+    const lesson = await lessonService.getLessonById(request.params.lessonId)
 
-      return reply.send({
-        data: {
-          id: lesson.id,
-          title: lesson.title,
-          sectionId: lesson.sectionId,
-          problems: lesson.problems.map((problem) => ({
-            id: problem.id,
-            sfen: problem.sfen,
-            playerTurn: problem.playerTurn,
-            moveTree: problem.moveTree,
-            instruction: problem.instruction,
-          })),
-        },
-        meta: { timestamp: new Date().toISOString() },
-      })
-    }
-  )
+    return reply.send({
+      data: {
+        id: lesson.id,
+        title: lesson.title,
+        sectionId: lesson.sectionId,
+        problems: lesson.problems.map((problem) => ({
+          id: problem.id,
+          sfen: problem.sfen,
+          playerTurn: problem.playerTurn,
+          moveTree: problem.moveTree,
+          instruction: problem.instruction,
+          explanation: problem.explanation,
+        })),
+      },
+      meta: { timestamp: new Date().toISOString() },
+    })
+  })
 
   /**
    * POST /api/lesson/record - レッスン完了記録

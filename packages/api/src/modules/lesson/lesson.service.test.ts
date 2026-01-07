@@ -5,12 +5,12 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { LessonService } from './lesson.service.js'
 import type {
-  LessonReadRepository,
   CourseWithNested,
+  LessonReadRepository,
   LessonWithProblems,
 } from './lesson.repository.js'
+import { LessonService } from './lesson.service.js'
 
 describe('LessonService', () => {
   let service: LessonService
@@ -18,9 +18,7 @@ describe('LessonService', () => {
 
   const mockDate = new Date('2025-01-01T00:00:00Z')
 
-  const createMockCourse = (
-    overrides: Partial<CourseWithNested> = {}
-  ): CourseWithNested => ({
+  const createMockCourse = (overrides: Partial<CourseWithNested> = {}): CourseWithNested => ({
     id: 'course-1',
     order: 1,
     title: '駒の動かし方',
@@ -52,6 +50,7 @@ describe('LessonService', () => {
                 playerTurn: 'black',
                 moveTree: [],
                 instruction: '歩を前に進めましょう',
+                explanation: '',
                 lessonId: 'lesson-1',
                 createdAt: mockDate,
                 updatedAt: mockDate,
@@ -64,9 +63,7 @@ describe('LessonService', () => {
     ...overrides,
   })
 
-  const createMockLesson = (
-    overrides: Partial<LessonWithProblems> = {}
-  ): LessonWithProblems => ({
+  const createMockLesson = (overrides: Partial<LessonWithProblems> = {}): LessonWithProblems => ({
     id: 'lesson-1',
     order: 1,
     title: '歩を前に進める',
@@ -81,6 +78,7 @@ describe('LessonService', () => {
         playerTurn: 'black',
         moveTree: [],
         instruction: '歩を前に進めましょう',
+        explanation: '',
         lessonId: 'lesson-1',
         createdAt: mockDate,
         updatedAt: mockDate,
@@ -118,7 +116,10 @@ describe('LessonService', () => {
 
   describe('getAllCourses', () => {
     it('公開中のコース一覧を取得できる', async () => {
-      const mockCourses = [createMockCourse(), createMockCourse({ id: 'course-2', title: '持ち駒の使い方' })]
+      const mockCourses = [
+        createMockCourse(),
+        createMockCourse({ id: 'course-2', title: '持ち駒の使い方' }),
+      ]
       vi.mocked(mockRepository.findAllPublishedCourses).mockResolvedValue(mockCourses)
 
       const result = await service.getAllCourses()

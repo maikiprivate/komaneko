@@ -16,7 +16,10 @@ const MAX_TITLE_LENGTH = 100
 // =============================================================================
 
 export const createCourseSchema = z.object({
-  title: z.string().min(1, 'タイトルは必須です').max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`),
+  title: z
+    .string()
+    .min(1, 'タイトルは必須です')
+    .max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`),
   description: z.string().default(''),
   status: z.enum(['draft', 'published']).default('draft'),
 })
@@ -24,7 +27,11 @@ export const createCourseSchema = z.object({
 export type CreateCourseInput = z.infer<typeof createCourseSchema>
 
 export const updateCourseSchema = z.object({
-  title: z.string().min(1, 'タイトルは必須です').max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`).optional(),
+  title: z
+    .string()
+    .min(1, 'タイトルは必須です')
+    .max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`)
+    .optional(),
   description: z.string().optional(),
   status: z.enum(['draft', 'published']).optional(),
 })
@@ -36,14 +43,21 @@ export type UpdateCourseInput = z.infer<typeof updateCourseSchema>
 // =============================================================================
 
 export const createSectionSchema = z.object({
-  title: z.string().min(1, 'タイトルは必須です').max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`),
+  title: z
+    .string()
+    .min(1, 'タイトルは必須です')
+    .max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`),
   courseId: z.string().uuid('無効なコースIDです'),
 })
 
 export type CreateSectionInput = z.infer<typeof createSectionSchema>
 
 export const updateSectionSchema = z.object({
-  title: z.string().min(1, 'タイトルは必須です').max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`).optional(),
+  title: z
+    .string()
+    .min(1, 'タイトルは必須です')
+    .max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`)
+    .optional(),
 })
 
 export type UpdateSectionInput = z.infer<typeof updateSectionSchema>
@@ -53,14 +67,21 @@ export type UpdateSectionInput = z.infer<typeof updateSectionSchema>
 // =============================================================================
 
 export const createLessonSchema = z.object({
-  title: z.string().min(1, 'タイトルは必須です').max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`),
+  title: z
+    .string()
+    .min(1, 'タイトルは必須です')
+    .max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`),
   sectionId: z.string().uuid('無効なセクションIDです'),
 })
 
 export type CreateLessonInput = z.infer<typeof createLessonSchema>
 
 export const updateLessonSchema = z.object({
-  title: z.string().min(1, 'タイトルは必須です').max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`).optional(),
+  title: z
+    .string()
+    .min(1, 'タイトルは必須です')
+    .max(MAX_TITLE_LENGTH, `タイトルは${MAX_TITLE_LENGTH}文字以内で入力してください`)
+    .optional(),
 })
 
 export type UpdateLessonInput = z.infer<typeof updateLessonSchema>
@@ -107,6 +128,7 @@ export const createProblemSchema = z.object({
   playerTurn: z.enum(['black', 'white']).default('black'),
   moveTree: moveTreeSchema.default([]),
   instruction: z.string().default(''),
+  explanation: z.string().default(''),
   lessonId: z.string().uuid('無効なレッスンIDです'),
 })
 
@@ -117,6 +139,7 @@ export const updateProblemSchema = z.object({
   playerTurn: z.enum(['black', 'white']).optional(),
   moveTree: moveTreeSchema.optional(),
   instruction: z.string().optional(),
+  explanation: z.string().optional(),
 })
 
 export type UpdateProblemInput = z.infer<typeof updateProblemSchema>

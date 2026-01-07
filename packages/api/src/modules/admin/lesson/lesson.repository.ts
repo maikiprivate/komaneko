@@ -2,22 +2,16 @@
  * レッスン管理リポジトリ（DB操作）
  */
 
-import type {
-  Course,
-  Section,
-  Lesson,
-  LessonProblem,
-  PrismaClient,
-} from '@prisma/client'
+import type { Course, Lesson, LessonProblem, PrismaClient, Section } from '@prisma/client'
 import type {
   CreateCourseInput,
-  UpdateCourseInput,
-  CreateSectionInput,
-  UpdateSectionInput,
   CreateLessonInput,
-  UpdateLessonInput,
   CreateProblemInput,
+  CreateSectionInput,
+  UpdateCourseInput,
+  UpdateLessonInput,
   UpdateProblemInput,
+  UpdateSectionInput,
 } from './lesson.schema.js'
 
 // =============================================================================
@@ -334,6 +328,7 @@ export function createLessonRepository(prisma: PrismaClient): LessonRepository {
           playerTurn: data.playerTurn ?? 'black',
           moveTree: data.moveTree ?? [],
           instruction: data.instruction ?? '',
+          explanation: data.explanation ?? '',
           lessonId: data.lessonId,
         },
       })
@@ -347,6 +342,7 @@ export function createLessonRepository(prisma: PrismaClient): LessonRepository {
           ...(data.playerTurn !== undefined && { playerTurn: data.playerTurn }),
           ...(data.moveTree !== undefined && { moveTree: data.moveTree }),
           ...(data.instruction !== undefined && { instruction: data.instruction }),
+          ...(data.explanation !== undefined && { explanation: data.explanation }),
         },
       })
     },
