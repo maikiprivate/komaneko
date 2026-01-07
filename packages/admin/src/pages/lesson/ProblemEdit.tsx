@@ -6,36 +6,43 @@
  * - 右パネル: 問題リスト
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { ShogiBoardWithStands } from '../../components/shogi/ShogiBoardWithStands'
-import { parseSfen, boardStateToSfen, EMPTY_BOARD_SFEN } from '../../lib/shogi/sfen'
-import type { EditorMode, MoveTree, BranchPath } from '../../lib/lesson/types'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import {
-  getCourses,
-  updateProblem as apiUpdateProblem,
+  type ApiCourse,
+  type ApiProblem,
   createProblem as apiCreateProblem,
   deleteProblem as apiDeleteProblem,
   reorderProblems as apiReorderProblems,
-  type ApiCourse,
-  type ApiProblem,
+  updateProblem as apiUpdateProblem,
+  getCourses,
 } from '../../api/lesson'
-import type { PieceType, Player, Position } from '../../lib/shogi/types'
-import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
-import { createEmptyBoardState } from '../../lib/shogi/sfen'
-import { getPossibleMoves, getDropPositions, canPromote, mustPromote, makeMove, makeDrop } from '../../lib/shogi/moveGenerator'
+import { ShogiBoardWithStands } from '../../components/shogi/ShogiBoardWithStands'
 import {
-  positionToSfenMove,
-  dropToSfenMove,
-  createEmptyMoveTree,
   addMoveAtPath,
   createDefaultPath,
-  truncatePathToIndex,
-  switchBranchAtPath,
+  createEmptyMoveTree,
+  deserializeMoveTree,
+  dropToSfenMove,
+  positionToSfenMove,
   replayMoveTreeWithPath,
   serializeMoveTree,
-  deserializeMoveTree,
+  switchBranchAtPath,
+  truncatePathToIndex,
 } from '../../lib/lesson/moveTreeUtils'
+import type { BranchPath, EditorMode, MoveTree } from '../../lib/lesson/types'
+import {
+  canPromote,
+  getDropPositions,
+  getPossibleMoves,
+  makeDrop,
+  makeMove,
+  mustPromote,
+} from '../../lib/shogi/moveGenerator'
+import { EMPTY_BOARD_SFEN, boardStateToSfen, parseSfen } from '../../lib/shogi/sfen'
+import { createEmptyBoardState } from '../../lib/shogi/sfen'
+import type { PieceType, Player, Position } from '../../lib/shogi/types'
+import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 
 // =============================================================================
 // UI用の型定義
@@ -48,6 +55,7 @@ interface UiProblem {
   sfen: string
   playerTurn: 'black' | 'white'
   instruction: string
+  explanation: string
   moveTree?: MoveTree
   /** 新規作成の問題かどうか（APIに未保存） */
   isNew?: boolean
@@ -63,15 +71,17 @@ interface LessonData {
 
 /** API問題をUI問題に変換 */
 function toUiProblem(apiProblem: ApiProblem): UiProblem {
-  const moveTree = apiProblem.moveTree && apiProblem.moveTree.length > 0
-    ? deserializeMoveTree(apiProblem.moveTree, apiProblem.sfen)
-    : undefined
+  const moveTree =
+    apiProblem.moveTree && apiProblem.moveTree.length > 0
+      ? deserializeMoveTree(apiProblem.moveTree, apiProblem.sfen)
+      : undefined
   return {
     id: apiProblem.id,
     order: apiProblem.order,
     sfen: apiProblem.sfen,
     playerTurn: apiProblem.playerTurn,
     instruction: apiProblem.instruction ?? '',
+    explanation: apiProblem.explanation ?? '',
     moveTree,
   }
 }
@@ -79,7 +89,7 @@ function toUiProblem(apiProblem: ApiProblem): UiProblem {
 /** 全コースからレッスンを検索 */
 function findLessonFromCourses(
   courses: ApiCourse[],
-  lessonId: string
+  lessonId: string,
 ): { lessonData: LessonData; problems: UiProblem[] } | undefined {
   for (const course of courses) {
     for (const section of course.sections) {
@@ -241,26 +251,43 @@ export function ProblemEdit() {
   }, [initialBoardState, selectedProblem?.moveTree, selectedSfen])
 
   // 指示文変更
-  const handleInstructionChange = useCallback((value: string) => {
-    if (!selectedProblem) return
-    const newProblems = [...problems]
-    newProblems[selectedIndex] = { ...selectedProblem, instruction: value }
-    setProblems(newProblems)
-  }, [problems, selectedIndex, selectedProblem])
+  const handleInstructionChange = useCallback(
+    (value: string) => {
+      if (!selectedProblem) return
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...selectedProblem, instruction: value }
+      setProblems(newProblems)
+    },
+    [problems, selectedIndex, selectedProblem],
+  )
+
+  // 解説文変更
+  const handleExplanationChange = useCallback(
+    (value: string) => {
+      if (!selectedProblem) return
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...selectedProblem, explanation: value }
+      setProblems(newProblems)
+    },
+    [problems, selectedIndex, selectedProblem],
+  )
 
   // 問題選択（選択前に現在のmoveTreeを保存）
-  const handleProblemSelect = useCallback((newIndex: number) => {
-    if (newIndex === selectedIndex) return
+  const handleProblemSelect = useCallback(
+    (newIndex: number) => {
+      if (newIndex === selectedIndex) return
 
-    // 現在の問題にMoveTreeを保存
-    if (fullMoveTree && fullMoveTree.branches.length > 0) {
-      const newProblems = [...problems]
-      newProblems[selectedIndex] = { ...problems[selectedIndex], moveTree: fullMoveTree }
-      setProblems(newProblems)
-    }
+      // 現在の問題にMoveTreeを保存
+      if (fullMoveTree && fullMoveTree.branches.length > 0) {
+        const newProblems = [...problems]
+        newProblems[selectedIndex] = { ...problems[selectedIndex], moveTree: fullMoveTree }
+        setProblems(newProblems)
+      }
 
-    setSelectedIndex(newIndex)
-  }, [selectedIndex, fullMoveTree, problems])
+      setSelectedIndex(newIndex)
+    },
+    [selectedIndex, fullMoveTree, problems],
+  )
 
   // 問題追加
   const handleAddProblem = useCallback(() => {
@@ -270,6 +297,7 @@ export function ProblemEdit() {
       sfen: EMPTY_BOARD_SFEN,
       playerTurn: 'black',
       instruction: '',
+      explanation: '',
       isNew: true,
     }
     setProblems([...problems, newProblem])
@@ -277,36 +305,45 @@ export function ProblemEdit() {
   }, [problems])
 
   // 問題削除
-  const handleDeleteProblem = useCallback((index: number) => {
-    if (problems.length <= 1) return
-    const problemToDelete = problems[index]
-    // 新規作成でない問題は削除対象として追跡
-    if (!problemToDelete.isNew) {
-      setDeletedProblemIds((prev) => [...prev, problemToDelete.id])
-    }
-    const newProblems = problems.filter((_, i) => i !== index)
-    setProblems(newProblems)
-    if (selectedIndex >= newProblems.length) {
-      setSelectedIndex(newProblems.length - 1)
-    }
-  }, [problems, selectedIndex])
+  const handleDeleteProblem = useCallback(
+    (index: number) => {
+      if (problems.length <= 1) return
+      const problemToDelete = problems[index]
+      // 新規作成でない問題は削除対象として追跡
+      if (!problemToDelete.isNew) {
+        setDeletedProblemIds((prev) => [...prev, problemToDelete.id])
+      }
+      const newProblems = problems.filter((_, i) => i !== index)
+      setProblems(newProblems)
+      if (selectedIndex >= newProblems.length) {
+        setSelectedIndex(newProblems.length - 1)
+      }
+    },
+    [problems, selectedIndex],
+  )
 
   // 問題並び替え
-  const handleMoveUp = useCallback((index: number) => {
-    if (index <= 0) return
-    const newProblems = [...problems]
-    ;[newProblems[index - 1], newProblems[index]] = [newProblems[index], newProblems[index - 1]]
-    setProblems(newProblems)
-    setSelectedIndex(index - 1)
-  }, [problems])
+  const handleMoveUp = useCallback(
+    (index: number) => {
+      if (index <= 0) return
+      const newProblems = [...problems]
+      ;[newProblems[index - 1], newProblems[index]] = [newProblems[index], newProblems[index - 1]]
+      setProblems(newProblems)
+      setSelectedIndex(index - 1)
+    },
+    [problems],
+  )
 
-  const handleMoveDown = useCallback((index: number) => {
-    if (index >= problems.length - 1) return
-    const newProblems = [...problems]
-    ;[newProblems[index], newProblems[index + 1]] = [newProblems[index + 1], newProblems[index]]
-    setProblems(newProblems)
-    setSelectedIndex(index + 1)
-  }, [problems])
+  const handleMoveDown = useCallback(
+    (index: number) => {
+      if (index >= problems.length - 1) return
+      const newProblems = [...problems]
+      ;[newProblems[index], newProblems[index + 1]] = [newProblems[index + 1], newProblems[index]]
+      setProblems(newProblems)
+      setSelectedIndex(index + 1)
+    },
+    [problems],
+  )
 
   // 保存
   const handleSave = useCallback(async () => {
@@ -330,9 +367,7 @@ export function ProblemEdit() {
       // 各問題をAPIで保存
       const savedProblems: UiProblem[] = []
       for (const problem of updatedProblems) {
-        const moveTreeData = problem.moveTree
-          ? serializeMoveTree(problem.moveTree)
-          : []
+        const moveTreeData = problem.moveTree ? serializeMoveTree(problem.moveTree) : []
 
         if (problem.isNew) {
           // 新規作成
@@ -341,6 +376,7 @@ export function ProblemEdit() {
             playerTurn: problem.playerTurn,
             moveTree: moveTreeData,
             instruction: problem.instruction,
+            explanation: problem.explanation,
             lessonId,
           })
           savedProblems.push(toUiProblem(created))
@@ -351,6 +387,7 @@ export function ProblemEdit() {
             playerTurn: problem.playerTurn,
             moveTree: moveTreeData,
             instruction: problem.instruction,
+            explanation: problem.explanation,
           })
           savedProblems.push(toUiProblem(updated))
         }
@@ -381,149 +418,185 @@ export function ProblemEdit() {
   }, [])
 
   // 盤面セルクリック（初期配置モード）
-  const handleSetupCellClick = useCallback((row: number, col: number) => {
-    // 問題がない場合は自動で新規作成
-    if (!selectedProblem) {
-      handleAddProblem()
-      return
-    }
-
-    const currentBoard = parseSfen(selectedProblem.sfen)
-    const newBoard = currentBoard.board.map((r) => [...r])
-    const currentCell = newBoard[row][col]
-
-    if (selectedPalettePiece) {
-      // 駒を配置
-      newBoard[row][col] = {
-        type: selectedPalettePiece,
-        owner: selectedOwner,
+  const handleSetupCellClick = useCallback(
+    (row: number, col: number) => {
+      // 問題がない場合は自動で新規作成
+      if (!selectedProblem) {
+        handleAddProblem()
+        return
       }
-    } else if (currentCell) {
-      // 駒を削除
-      newBoard[row][col] = null
-    } else {
-      // 何もしない
-      return
-    }
 
-    // 新しいSFENを生成して問題を更新
-    const newBoardState = {
-      ...currentBoard,
-      board: newBoard,
-    }
-    const newSfen = boardStateToSfen(newBoardState)
+      const currentBoard = parseSfen(selectedProblem.sfen)
+      const newBoard = currentBoard.board.map((r) => [...r])
+      const currentCell = newBoard[row][col]
 
-    const newProblems = [...problems]
-    newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
-    setProblems(newProblems)
-  }, [selectedProblem, selectedPalettePiece, selectedOwner, problems, selectedIndex, handleAddProblem])
+      if (selectedPalettePiece) {
+        // 駒を配置
+        newBoard[row][col] = {
+          type: selectedPalettePiece,
+          owner: selectedOwner,
+        }
+      } else if (currentCell) {
+        // 駒を削除
+        newBoard[row][col] = null
+      } else {
+        // 何もしない
+        return
+      }
+
+      // 新しいSFENを生成して問題を更新
+      const newBoardState = {
+        ...currentBoard,
+        board: newBoard,
+      }
+      const newSfen = boardStateToSfen(newBoardState)
+
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+      setProblems(newProblems)
+    },
+    [
+      selectedProblem,
+      selectedPalettePiece,
+      selectedOwner,
+      problems,
+      selectedIndex,
+      handleAddProblem,
+    ],
+  )
 
   // 手をツリーに追加する共通処理（分岐対応版）
-  const addMoveToTreeNew = useCallback((sfenMove: string, newBoardState: import('../../lib/shogi/types').BoardState, isPlayerMove: boolean) => {
-    if (!fullMoveTree || !selectedSfen) return
+  const addMoveToTreeNew = useCallback(
+    (
+      sfenMove: string,
+      newBoardState: import('../../lib/shogi/types').BoardState,
+      isPlayerMove: boolean,
+    ) => {
+      if (!fullMoveTree || !selectedSfen) return
 
-    // 現在のパスを選択ノードまで切り詰める
-    const truncatedPath = selectedNodeIndex >= 0
-      ? truncatePathToIndex(currentPath, selectedNodeIndex)
-      : []
+      // 現在のパスを選択ノードまで切り詰める
+      const truncatedPath =
+        selectedNodeIndex >= 0 ? truncatePathToIndex(currentPath, selectedNodeIndex) : []
 
-    // 新しい手を追加
-    const { tree: newTree, path: newPath } = addMoveAtPath(
-      fullMoveTree,
-      truncatedPath,
-      sfenMove,
-      isPlayerMove
-    )
+      // 新しい手を追加
+      const { tree: newTree, path: newPath } = addMoveAtPath(
+        fullMoveTree,
+        truncatedPath,
+        sfenMove,
+        isPlayerMove,
+      )
 
-    // 状態を更新
-    setFullMoveTree(newTree)
-    setCurrentPath(newPath)
-    setSelectedNodeIndex(newPath.length - 1)
-    setMoveModeBoardState(newBoardState)
-    setCurrentTurn(prev => prev === 'sente' ? 'gote' : 'sente')
-    setSelectedPosition(null)
-    setSelectedHandPiece(null)
-    setPossibleMoves([])
-  }, [fullMoveTree, currentPath, selectedNodeIndex, selectedSfen])
+      // 状態を更新
+      setFullMoveTree(newTree)
+      setCurrentPath(newPath)
+      setSelectedNodeIndex(newPath.length - 1)
+      setMoveModeBoardState(newBoardState)
+      setCurrentTurn((prev) => (prev === 'sente' ? 'gote' : 'sente'))
+      setSelectedPosition(null)
+      setSelectedHandPiece(null)
+      setPossibleMoves([])
+    },
+    [fullMoveTree, currentPath, selectedNodeIndex, selectedSfen],
+  )
 
   // 手を実行（盤上の移動）
-  const executeMove = useCallback((from: Position, to: Position, promote: boolean) => {
-    const newBoardState = makeMove(moveModeBoardState, from, to, promote)
-    if (!newBoardState) return
+  const executeMove = useCallback(
+    (from: Position, to: Position, promote: boolean) => {
+      const newBoardState = makeMove(moveModeBoardState, from, to, promote)
+      if (!newBoardState) return
 
-    const sfenMove = positionToSfenMove(from, to, promote)
-    const isPlayerMove = currentTurn === 'sente'
-    addMoveToTreeNew(sfenMove, newBoardState, isPlayerMove)
-  }, [currentTurn, moveModeBoardState, addMoveToTreeNew])
+      const sfenMove = positionToSfenMove(from, to, promote)
+      const isPlayerMove = currentTurn === 'sente'
+      addMoveToTreeNew(sfenMove, newBoardState, isPlayerMove)
+    },
+    [currentTurn, moveModeBoardState, addMoveToTreeNew],
+  )
 
   // 駒を打つ
-  const executeDrop = useCallback((pieceType: PieceType, to: Position) => {
-    // 手番に基づいて駒を打つ（selectedHandPieceOwnerではなくcurrentTurnを使用）
-    const newBoardState = makeDrop(moveModeBoardState, pieceType, to, currentTurn)
-    if (!newBoardState) return
+  const executeDrop = useCallback(
+    (pieceType: PieceType, to: Position) => {
+      // 手番に基づいて駒を打つ（selectedHandPieceOwnerではなくcurrentTurnを使用）
+      const newBoardState = makeDrop(moveModeBoardState, pieceType, to, currentTurn)
+      if (!newBoardState) return
 
-    const sfenMove = dropToSfenMove(pieceType, to)
-    const isPlayerMove = currentTurn === 'sente'
-    addMoveToTreeNew(sfenMove, newBoardState, isPlayerMove)
-  }, [currentTurn, moveModeBoardState, addMoveToTreeNew])
+      const sfenMove = dropToSfenMove(pieceType, to)
+      const isPlayerMove = currentTurn === 'sente'
+      addMoveToTreeNew(sfenMove, newBoardState, isPlayerMove)
+    },
+    [currentTurn, moveModeBoardState, addMoveToTreeNew],
+  )
 
   // 盤面セルクリック（手順設定モード）
-  const handleMovesCellClick = useCallback((row: number, col: number) => {
-    const clickedPos = { row, col }
-    const piece = boardState.board[row][col]
+  const handleMovesCellClick = useCallback(
+    (row: number, col: number) => {
+      const clickedPos = { row, col }
+      const piece = boardState.board[row][col]
 
-    // 持ち駒が選択されていて、打てる位置の場合
-    if (selectedHandPiece && possibleMoves.some(m => m.row === row && m.col === col)) {
-      executeDrop(selectedHandPiece, clickedPos)
-      return
-    }
-
-    // 移動先が選択されている場合
-    if (selectedPosition && possibleMoves.some(m => m.row === row && m.col === col)) {
-      const fromPiece = boardState.board[selectedPosition.row][selectedPosition.col]
-      if (!fromPiece) return
-
-      // 成り判定
-      if (canPromote(fromPiece.type, selectedPosition, clickedPos, currentTurn)) {
-        if (mustPromote(fromPiece.type, clickedPos, currentTurn)) {
-          // 強制成り
-          executeMove(selectedPosition, clickedPos, true)
-        } else {
-          // 成り選択ダイアログ表示
-          setPendingPromotion({
-            from: selectedPosition,
-            to: clickedPos,
-            pieceType: fromPiece.type,
-          })
-        }
-      } else {
-        // 成れない
-        executeMove(selectedPosition, clickedPos, false)
+      // 持ち駒が選択されていて、打てる位置の場合
+      if (selectedHandPiece && possibleMoves.some((m) => m.row === row && m.col === col)) {
+        executeDrop(selectedHandPiece, clickedPos)
+        return
       }
-      return
-    }
 
-    // 自分の駒をクリックした場合：選択して合法手を表示
-    if (piece && piece.owner === currentTurn) {
-      const moves = getPossibleMoves(boardState.board, clickedPos, piece)
-      setSelectedPosition(clickedPos)
+      // 移動先が選択されている場合
+      if (selectedPosition && possibleMoves.some((m) => m.row === row && m.col === col)) {
+        const fromPiece = boardState.board[selectedPosition.row][selectedPosition.col]
+        if (!fromPiece) return
+
+        // 成り判定
+        if (canPromote(fromPiece.type, selectedPosition, clickedPos, currentTurn)) {
+          if (mustPromote(fromPiece.type, clickedPos, currentTurn)) {
+            // 強制成り
+            executeMove(selectedPosition, clickedPos, true)
+          } else {
+            // 成り選択ダイアログ表示
+            setPendingPromotion({
+              from: selectedPosition,
+              to: clickedPos,
+              pieceType: fromPiece.type,
+            })
+          }
+        } else {
+          // 成れない
+          executeMove(selectedPosition, clickedPos, false)
+        }
+        return
+      }
+
+      // 自分の駒をクリックした場合：選択して合法手を表示
+      if (piece && piece.owner === currentTurn) {
+        const moves = getPossibleMoves(boardState.board, clickedPos, piece)
+        setSelectedPosition(clickedPos)
+        setSelectedHandPiece(null)
+        setPossibleMoves(moves)
+        return
+      }
+
+      // それ以外：選択解除
+      setSelectedPosition(null)
       setSelectedHandPiece(null)
-      setPossibleMoves(moves)
-      return
-    }
-
-    // それ以外：選択解除
-    setSelectedPosition(null)
-    setSelectedHandPiece(null)
-    setPossibleMoves([])
-  }, [boardState, selectedPosition, selectedHandPiece, possibleMoves, currentTurn, executeMove, executeDrop])
+      setPossibleMoves([])
+    },
+    [
+      boardState,
+      selectedPosition,
+      selectedHandPiece,
+      possibleMoves,
+      currentTurn,
+      executeMove,
+      executeDrop,
+    ],
+  )
 
   // 成り選択
-  const handlePromotionChoice = useCallback((promote: boolean) => {
-    if (!pendingPromotion) return
-    executeMove(pendingPromotion.from, pendingPromotion.to, promote)
-    setPendingPromotion(null)
-  }, [pendingPromotion, executeMove])
+  const handlePromotionChoice = useCallback(
+    (promote: boolean) => {
+      if (!pendingPromotion) return
+      executeMove(pendingPromotion.from, pendingPromotion.to, promote)
+      setPendingPromotion(null)
+    },
+    [pendingPromotion, executeMove],
+  )
 
   // 手順クリア
   const handleMoveTreeClear = useCallback(() => {
@@ -541,95 +614,113 @@ export function ProblemEdit() {
   }, [initialBoardState, selectedSfen])
 
   // ノードクリック（局面を復元）
-  const handleNodeClick = useCallback((index: number) => {
-    if (index === -1) {
-      // 初期局面に戻る
-      setMoveModeBoardState(initialBoardState)
-      setCurrentTurn('sente')
-    } else {
-      // 指定されたノードの局面を復元
-      const node = currentPathNodes[index]
-      if (node) {
-        setMoveModeBoardState(node.boardState)
-        // 次の手番はこの手を指したプレイヤーの相手
-        setCurrentTurn(node.isPlayerMove ? 'gote' : 'sente')
+  const handleNodeClick = useCallback(
+    (index: number) => {
+      if (index === -1) {
+        // 初期局面に戻る
+        setMoveModeBoardState(initialBoardState)
+        setCurrentTurn('sente')
+      } else {
+        // 指定されたノードの局面を復元
+        const node = currentPathNodes[index]
+        if (node) {
+          setMoveModeBoardState(node.boardState)
+          // 次の手番はこの手を指したプレイヤーの相手
+          setCurrentTurn(node.isPlayerMove ? 'gote' : 'sente')
+        }
       }
-    }
-    setSelectedNodeIndex(index)
-    setSelectedPosition(null)
-    setSelectedHandPiece(null)
-    setPossibleMoves([])
-  }, [initialBoardState, currentPathNodes])
-
-  // 分岐切り替え
-  const handleBranchSwitch = useCallback((nodeIndex: number, newBranchIndex: number) => {
-    if (!fullMoveTree) return
-
-    // 新しいパスを生成
-    const newPath = switchBranchAtPath(fullMoveTree, currentPath, nodeIndex, newBranchIndex)
-    setCurrentPath(newPath)
-
-    // パスに沿って手順を再生し、最後の局面を復元
-    const newNodes = replayMoveTreeWithPath(fullMoveTree, newPath)
-    if (newNodes.length > 0) {
-      const lastNode = newNodes[newNodes.length - 1]
-      setMoveModeBoardState(lastNode.boardState)
-      setCurrentTurn(lastNode.isPlayerMove ? 'gote' : 'sente')
-      setSelectedNodeIndex(newNodes.length - 1)
-    } else {
-      setMoveModeBoardState(initialBoardState)
-      setCurrentTurn('sente')
-      setSelectedNodeIndex(-1)
-    }
-
-    setSelectedPosition(null)
-    setSelectedHandPiece(null)
-    setPossibleMoves([])
-  }, [fullMoveTree, currentPath, initialBoardState])
-
-  // 持ち駒クリック（手順設定モード：駒を打つために選択）
-  const handleMovesHandPieceClick = useCallback((pieceType: PieceType, owner: Player) => {
-    // 手番のプレイヤーでなければ無視
-    if (owner !== currentTurn) return
-
-    // 既に選択中の駒を再クリックした場合は解除
-    if (selectedHandPiece === pieceType && selectedHandPieceOwner === owner) {
+      setSelectedNodeIndex(index)
+      setSelectedPosition(null)
       setSelectedHandPiece(null)
       setPossibleMoves([])
-      return
-    }
+    },
+    [initialBoardState, currentPathNodes],
+  )
 
-    // 持ち駒を持っているか確認
-    const handPieces = boardState.capturedPieces[owner]
-    if (!handPieces[pieceType] || handPieces[pieceType] === 0) return
+  // 分岐切り替え
+  const handleBranchSwitch = useCallback(
+    (nodeIndex: number, newBranchIndex: number) => {
+      if (!fullMoveTree) return
 
-    // 打てる場所を計算
-    const dropPositions = getDropPositions(boardState.board, pieceType, owner)
+      // 新しいパスを生成
+      const newPath = switchBranchAtPath(fullMoveTree, currentPath, nodeIndex, newBranchIndex)
+      setCurrentPath(newPath)
 
-    setSelectedPosition(null)
-    setSelectedHandPiece(pieceType)
-    setSelectedHandPieceOwner(owner)
-    setPossibleMoves(dropPositions)
-  }, [selectedHandPiece, selectedHandPieceOwner, boardState, currentTurn])
+      // パスに沿って手順を再生し、最後の局面を復元
+      const newNodes = replayMoveTreeWithPath(fullMoveTree, newPath)
+      if (newNodes.length > 0) {
+        const lastNode = newNodes[newNodes.length - 1]
+        setMoveModeBoardState(lastNode.boardState)
+        setCurrentTurn(lastNode.isPlayerMove ? 'gote' : 'sente')
+        setSelectedNodeIndex(newNodes.length - 1)
+      } else {
+        setMoveModeBoardState(initialBoardState)
+        setCurrentTurn('sente')
+        setSelectedNodeIndex(-1)
+      }
+
+      setSelectedPosition(null)
+      setSelectedHandPiece(null)
+      setPossibleMoves([])
+    },
+    [fullMoveTree, currentPath, initialBoardState],
+  )
+
+  // 持ち駒クリック（手順設定モード：駒を打つために選択）
+  const handleMovesHandPieceClick = useCallback(
+    (pieceType: PieceType, owner: Player) => {
+      // 手番のプレイヤーでなければ無視
+      if (owner !== currentTurn) return
+
+      // 既に選択中の駒を再クリックした場合は解除
+      if (selectedHandPiece === pieceType && selectedHandPieceOwner === owner) {
+        setSelectedHandPiece(null)
+        setPossibleMoves([])
+        return
+      }
+
+      // 持ち駒を持っているか確認
+      const handPieces = boardState.capturedPieces[owner]
+      if (!handPieces[pieceType] || handPieces[pieceType] === 0) return
+
+      // 打てる場所を計算
+      const dropPositions = getDropPositions(boardState.board, pieceType, owner)
+
+      setSelectedPosition(null)
+      setSelectedHandPiece(pieceType)
+      setSelectedHandPieceOwner(owner)
+      setPossibleMoves(dropPositions)
+    },
+    [selectedHandPiece, selectedHandPieceOwner, boardState, currentTurn],
+  )
 
   // 先手持ち駒クリック
-  const handleSenteHandPieceClick = useCallback((pieceType: PieceType) => {
-    handleMovesHandPieceClick(pieceType, 'sente')
-  }, [handleMovesHandPieceClick])
+  const handleSenteHandPieceClick = useCallback(
+    (pieceType: PieceType) => {
+      handleMovesHandPieceClick(pieceType, 'sente')
+    },
+    [handleMovesHandPieceClick],
+  )
 
   // 後手持ち駒クリック
-  const handleGoteHandPieceClick = useCallback((pieceType: PieceType) => {
-    handleMovesHandPieceClick(pieceType, 'gote')
-  }, [handleMovesHandPieceClick])
+  const handleGoteHandPieceClick = useCallback(
+    (pieceType: PieceType) => {
+      handleMovesHandPieceClick(pieceType, 'gote')
+    },
+    [handleMovesHandPieceClick],
+  )
 
   // 統合クリックハンドラ
-  const handleCellClick = useCallback((row: number, col: number) => {
-    if (mode === 'setup') {
-      handleSetupCellClick(row, col)
-    } else {
-      handleMovesCellClick(row, col)
-    }
-  }, [mode, handleSetupCellClick, handleMovesCellClick])
+  const handleCellClick = useCallback(
+    (row: number, col: number) => {
+      if (mode === 'setup') {
+        handleSetupCellClick(row, col)
+      } else {
+        handleMovesCellClick(row, col)
+      }
+    },
+    [mode, handleSetupCellClick, handleMovesCellClick],
+  )
 
   // 盤面リセット
   const handleBoardReset = useCallback(() => {
@@ -641,54 +732,22 @@ export function ProblemEdit() {
   }, [selectedProblem, problems, selectedIndex])
 
   // 駒台クリック（持ち駒追加）
-  const handleStandClick = useCallback((player: Player) => {
-    if (mode !== 'setup' || !selectedProblem || !selectedPalettePiece) return
+  const handleStandClick = useCallback(
+    (player: Player) => {
+      if (mode !== 'setup' || !selectedProblem || !selectedPalettePiece) return
 
-    // 成駒は持ち駒にできない
-    if (!HAND_PIECE_TYPES.includes(selectedPalettePiece)) return
+      // 成駒は持ち駒にできない
+      if (!HAND_PIECE_TYPES.includes(selectedPalettePiece)) return
 
-    const currentBoard = parseSfen(selectedProblem.sfen)
-    const newCapturedPieces = {
-      sente: { ...currentBoard.capturedPieces.sente },
-      gote: { ...currentBoard.capturedPieces.gote },
-    }
-
-    // 持ち駒を追加
-    const currentCount = newCapturedPieces[player][selectedPalettePiece] ?? 0
-    newCapturedPieces[player][selectedPalettePiece] = currentCount + 1
-
-    const newBoardState = {
-      ...currentBoard,
-      capturedPieces: newCapturedPieces,
-    }
-    const newSfen = boardStateToSfen(newBoardState)
-
-    const newProblems = [...problems]
-    newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
-    setProblems(newProblems)
-  }, [mode, selectedProblem, selectedPalettePiece, problems, selectedIndex])
-
-  const handleSenteStandClick = useCallback(() => handleStandClick('sente'), [handleStandClick])
-  const handleGoteStandClick = useCallback(() => handleStandClick('gote'), [handleStandClick])
-
-  // 持ち駒クリック（削除）
-  const handleHandPieceClick = useCallback((pieceType: PieceType) => {
-    if (mode !== 'setup' || !selectedProblem) return
-
-    const currentBoard = parseSfen(selectedProblem.sfen)
-    const newCapturedPieces = {
-      sente: { ...currentBoard.capturedPieces.sente },
-      gote: { ...currentBoard.capturedPieces.gote },
-    }
-
-    // 先手の持ち駒から削除を試みる（先手駒台がクリック可能なので）
-    const senteCount = newCapturedPieces.sente[pieceType] ?? 0
-    if (senteCount > 0) {
-      if (senteCount === 1) {
-        delete newCapturedPieces.sente[pieceType]
-      } else {
-        newCapturedPieces.sente[pieceType] = senteCount - 1
+      const currentBoard = parseSfen(selectedProblem.sfen)
+      const newCapturedPieces = {
+        sente: { ...currentBoard.capturedPieces.sente },
+        gote: { ...currentBoard.capturedPieces.gote },
       }
+
+      // 持ち駒を追加
+      const currentCount = newCapturedPieces[player][selectedPalettePiece] ?? 0
+      newCapturedPieces[player][selectedPalettePiece] = currentCount + 1
 
       const newBoardState = {
         ...currentBoard,
@@ -699,8 +758,46 @@ export function ProblemEdit() {
       const newProblems = [...problems]
       newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
       setProblems(newProblems)
-    }
-  }, [mode, selectedProblem, problems, selectedIndex])
+    },
+    [mode, selectedProblem, selectedPalettePiece, problems, selectedIndex],
+  )
+
+  const handleSenteStandClick = useCallback(() => handleStandClick('sente'), [handleStandClick])
+  const handleGoteStandClick = useCallback(() => handleStandClick('gote'), [handleStandClick])
+
+  // 持ち駒クリック（削除）
+  const handleHandPieceClick = useCallback(
+    (pieceType: PieceType) => {
+      if (mode !== 'setup' || !selectedProblem) return
+
+      const currentBoard = parseSfen(selectedProblem.sfen)
+      const newCapturedPieces = {
+        sente: { ...currentBoard.capturedPieces.sente },
+        gote: { ...currentBoard.capturedPieces.gote },
+      }
+
+      // 先手の持ち駒から削除を試みる（先手駒台がクリック可能なので）
+      const senteCount = newCapturedPieces.sente[pieceType] ?? 0
+      if (senteCount > 0) {
+        if (senteCount === 1) {
+          delete newCapturedPieces.sente[pieceType]
+        } else {
+          newCapturedPieces.sente[pieceType] = senteCount - 1
+        }
+
+        const newBoardState = {
+          ...currentBoard,
+          capturedPieces: newCapturedPieces,
+        }
+        const newSfen = boardStateToSfen(newBoardState)
+
+        const newProblems = [...problems]
+        newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+        setProblems(newProblems)
+      }
+    },
+    [mode, selectedProblem, problems, selectedIndex],
+  )
 
   // ローディング中
   if (loading) {
@@ -780,8 +877,16 @@ export function ProblemEdit() {
                   onSenteHandPieceClick={mode === 'moves' ? handleSenteHandPieceClick : undefined}
                   onGoteHandPieceClick={mode === 'moves' ? handleGoteHandPieceClick : undefined}
                   selectedPosition={mode === 'moves' ? selectedPosition : undefined}
-                  selectedHandPiece={mode === 'moves' && selectedHandPieceOwner === 'sente' ? selectedHandPiece : undefined}
-                  selectedGoteHandPiece={mode === 'moves' && selectedHandPieceOwner === 'gote' ? selectedHandPiece : undefined}
+                  selectedHandPiece={
+                    mode === 'moves' && selectedHandPieceOwner === 'sente'
+                      ? selectedHandPiece
+                      : undefined
+                  }
+                  selectedGoteHandPiece={
+                    mode === 'moves' && selectedHandPieceOwner === 'gote'
+                      ? selectedHandPiece
+                      : undefined
+                  }
                   possibleMoves={mode === 'moves' ? possibleMoves : undefined}
                 />
               </div>
@@ -789,15 +894,28 @@ export function ProblemEdit() {
 
             {/* 指示文 */}
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                指示文
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">指示文</label>
               <input
                 type="text"
                 value={selectedProblem?.instruction ?? ''}
                 onChange={(e) => handleInstructionChange(e.target.value)}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 placeholder="歩を前に進めてにゃ！"
+              />
+            </div>
+
+            {/* 解説文（正解後に表示） */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                解説（正解後に表示）
+              </label>
+              <textarea
+                value={selectedProblem?.explanation ?? ''}
+                onChange={(e) => handleExplanationChange(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-y"
+                placeholder="この問題のポイントを解説するにゃ！（空欄の場合は表示されません）"
               />
             </div>
 
@@ -830,10 +948,7 @@ export function ProblemEdit() {
 
       {/* 成り確認ダイアログ */}
       {pendingPromotion && (
-        <PromotionDialog
-          pieceType={pendingPromotion.pieceType}
-          onChoice={handlePromotionChoice}
-        />
+        <PromotionDialog pieceType={pendingPromotion.pieceType} onChoice={handlePromotionChoice} />
       )}
     </div>
   )

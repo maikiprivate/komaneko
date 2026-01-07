@@ -21,6 +21,7 @@ export interface ApiProblem {
   playerTurn: 'black' | 'white'
   moveTree: string[][] // SFEN手順の配列
   instruction: string // 指示文
+  explanation: string // 解説文（正解後に表示）
   lessonId: string
   createdAt: string
   updatedAt: string
@@ -99,6 +100,7 @@ export interface CreateProblemInput {
   playerTurn?: 'black' | 'white'
   moveTree?: string[][]
   instruction?: string
+  explanation?: string
   lessonId: string
 }
 
@@ -107,6 +109,7 @@ export interface UpdateProblemInput {
   playerTurn?: 'black' | 'white'
   moveTree?: string[][]
   instruction?: string
+  explanation?: string
 }
 
 // =============================================================================
