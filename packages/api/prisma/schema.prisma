@@ -190,6 +190,7 @@ model LessonProblem {
   playerTurn  String   @default("black") @map("player_turn") // black | white
   moveTree    Json     // SfenMove[][] 形式（正解手順ツリー）
   instruction String   @default("") // 指示文（例：「歩を前に進めてにゃ！」）
+  explanation String   @default("") // 解説文（正解後に表示、空の場合は表示しない）
   lessonId    String   @map("lesson_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
