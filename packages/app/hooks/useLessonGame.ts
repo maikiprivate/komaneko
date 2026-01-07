@@ -125,6 +125,18 @@ interface UseLessonGameReturn {
     onComplete: () => void
   }
 
+  /** 解説 */
+  explanation: {
+    /** 解説表示中かどうか */
+    visible: boolean
+    /** 解説文（空の場合は表示しない） */
+    text: string
+    /** 最後の問題かどうか */
+    isLastProblem: boolean
+    /** 次へ押下時のコールバック */
+    onDismiss: () => void
+  }
+
   /** ヒント */
   hint: {
     highlight: MoveHighlight | null
@@ -216,6 +228,9 @@ export function useLessonGame({
 
   // 全問題の記録（API送信用）
   const [problemAttempts, setProblemAttempts] = useState<ProblemAttemptState[]>([])
+
+  // 解説表示状態
+  const [showExplanation, setShowExplanation] = useState(false)
 
   // シーケンス管理（複数手順対応）
   // 現在のシーケンス内での位置（0 = 最初の手、1 = 相手の応手、2 = 次の自分の手...）
@@ -338,6 +353,15 @@ export function useLessonGame({
       }
       const newAttempts = [...problemAttempts, attempt]
       setProblemAttempts(newAttempts)
+
+      // 解説がある場合は解説表示に切り替え
+      // 解説がない場合は次の問題へ or レッスン完了
+      if (currentProblem?.explanation) {
+        setShowExplanation(true)
+        setPendingAction(null)
+        setFeedback('none')
+        return
+      }
 
       // 次の問題へ or レッスン完了
       if (currentProblemIndex < totalProblems - 1) {
@@ -652,6 +676,25 @@ export function useLessonGame({
     [pendingPromotion, checkAnswer],
   )
 
+  // 解説を閉じて次へ進む
+  const handleExplanationDismiss = useCallback(async () => {
+    setShowExplanation(false)
+
+    // 次の問題へ or レッスン完了
+    if (currentProblemIndex < totalProblems - 1) {
+      advanceToNextProblem()
+    } else {
+      await handleLessonComplete(correctCount, problemAttempts)
+    }
+  }, [
+    currentProblemIndex,
+    totalProblems,
+    correctCount,
+    problemAttempts,
+    advanceToNextProblem,
+    handleLessonComplete,
+  ])
+
   // やり直し
   const handleReset = useCallback(() => {
     if (!currentProblem) return
@@ -789,6 +832,12 @@ export function useLessonGame({
     feedback: {
       type: feedback,
       onComplete: handleFeedbackComplete,
+    },
+    explanation: {
+      visible: showExplanation,
+      text: currentProblem?.explanation ?? '',
+      isLastProblem: currentProblemIndex >= totalProblems - 1,
+      onDismiss: handleExplanationDismiss,
     },
     hint: {
       highlight: hintHighlight,

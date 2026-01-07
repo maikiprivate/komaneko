@@ -45,6 +45,7 @@ export interface ProblemData {
   playerTurn: 'black' | 'white'
   moveTree: unknown // SfenMove[][]
   instruction: string
+  explanation: string // 解説文（正解後に表示、空なら非表示）
 }
 
 /** レッスン詳細 */

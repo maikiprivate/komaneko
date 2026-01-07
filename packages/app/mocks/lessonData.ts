@@ -47,6 +47,8 @@ export interface SequenceProblem {
   sfen: string
   instruction: string
   correctSequences: SequenceMove[][]
+  /** 解説文（正解後に表示、空文字の場合は表示しない） */
+  explanation: string
 }
 
 /** レッスン */

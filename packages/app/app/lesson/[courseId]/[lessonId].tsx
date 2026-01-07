@@ -17,6 +17,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { ExplanationOverlay } from '@/components/ExplanationOverlay'
 import { KomanekoComment } from '@/components/KomanekoComment'
 import { KomanekoCutIn } from '@/components/KomanekoCutIn'
 import { FeedbackOverlay } from '@/components/shogi/FeedbackOverlay'
@@ -167,6 +168,7 @@ function convertApiProblemToSequenceProblem(problem: ProblemData): SequenceProbl
     sfen: problem.sfen,
     instruction: problem.instruction || '',
     correctSequences,
+    explanation: problem.explanation || '',
   }
 }
 
@@ -515,6 +517,14 @@ export default function LessonPlayScreen() {
         <KomanekoCutIn
           message={game.solutionPlayback.cutInMessage}
           visible={game.solutionPlayback.isCutInVisible}
+        />
+
+        {/* 解説オーバーレイ */}
+        <ExplanationOverlay
+          visible={game.explanation.visible}
+          explanation={game.explanation.text}
+          onNext={game.explanation.onDismiss}
+          isLastProblem={game.explanation.isLastProblem}
         />
 
         {/* フッター */}
