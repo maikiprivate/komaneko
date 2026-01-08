@@ -34,6 +34,7 @@ export default function StreakUpdateScreen() {
     courseId?: string
     lessonId?: string
     time?: string
+    incorrectIds?: string
   }>()
   const streakCount = Number(params.count) || 1
 
@@ -122,6 +123,7 @@ export default function StreakUpdateScreen() {
           courseId: params.courseId,
           lessonId: params.lessonId,
           time: params.time ?? '0:00',
+          incorrectIds: params.incorrectIds ?? '',
         },
       })
       return

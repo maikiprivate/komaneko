@@ -198,14 +198,22 @@ export default function LessonPlayScreen() {
   const router = useRouter()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  const { courseId, lessonId, isReview } = useLocalSearchParams<{
+  const { courseId, lessonId, isReview, incorrectIds } = useLocalSearchParams<{
     courseId: string
     lessonId: string
     isReview?: string
+    incorrectIds?: string
   }>()
 
   // 復習モードかどうか
   const isReviewMode = isReview === 'true'
+
+  // 復習対象の問題IDセット
+  const reviewProblemIds = useMemo(() => {
+    if (!incorrectIds) return null
+    const ids = incorrectIds.split(',').filter((id) => id.length > 0)
+    return ids.length > 0 ? new Set(ids) : null
+  }, [incorrectIds])
 
   // ハート管理
   const { hearts, isLoading: heartsLoading, error: heartsError, updateFromConsumeResponse } = useHearts()
@@ -249,10 +257,25 @@ export default function LessonPlayScreen() {
   }, [lessonId])
 
   // APIデータをuseLessonGameが期待する形式に変換（メモ化）
-  const lesson = useMemo(() => {
-    if (!lessonData) return undefined
-    return convertApiLessonToSequenceLesson(lessonData) ?? undefined
-  }, [lessonData])
+  // 復習モードの場合は復習対象の問題のみにフィルタリング
+  const { lesson, hasNoReviewProblems } = useMemo(() => {
+    if (!lessonData) return { lesson: undefined, hasNoReviewProblems: false }
+    const converted = convertApiLessonToSequenceLesson(lessonData)
+    if (!converted) return { lesson: undefined, hasNoReviewProblems: false }
+
+    // 復習モードで復習対象IDがある場合はフィルタリング
+    if (isReviewMode && reviewProblemIds) {
+      const filteredProblems = converted.problems.filter((p) =>
+        reviewProblemIds.has(p.id)
+      )
+      if (filteredProblems.length === 0) {
+        return { lesson: undefined, hasNoReviewProblems: true }
+      }
+      return { lesson: { ...converted, problems: filteredProblems }, hasNoReviewProblems: false }
+    }
+
+    return { lesson: converted, hasNoReviewProblems: false }
+  }, [lessonData, isReviewMode, reviewProblemIds])
 
   // ローディング状態の統合
   const isLoading = heartsLoading || isLoadingLesson
@@ -327,6 +350,12 @@ export default function LessonPlayScreen() {
           const seconds = totalSeconds % 60
           const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`
 
+          // 間違えた問題IDを抽出
+          const incorrectIds = data.problems
+            .filter((p) => !p.isCorrect)
+            .map((p) => p.problemId)
+            .join(',')
+
           router.push({
             pathname: '/streak-update',
             params: {
@@ -339,6 +368,7 @@ export default function LessonPlayScreen() {
               courseId,
               lessonId,
               time: timeString,
+              incorrectIds,
             },
           })
           return 'streak'
@@ -400,6 +430,11 @@ export default function LessonPlayScreen() {
 
   // レッスンが見つからない場合
   if (!game.isReady) {
+    // 復習モードで対象問題が0件の場合は専用メッセージ
+    const notFoundMessage = hasNoReviewProblems
+      ? '復習する問題がありません'
+      : 'レッスンが見つかりません'
+
     return (
       <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -409,7 +444,7 @@ export default function LessonPlayScreen() {
         </View>
         <View style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: colors.text.primary }]}>
-            レッスンが見つかりません
+            {notFoundMessage}
           </Text>
         </View>
       </View>

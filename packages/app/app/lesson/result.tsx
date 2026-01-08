@@ -29,6 +29,7 @@ export default function LessonResultScreen() {
     courseId: string
     lessonId: string
     time: string
+    incorrectIds?: string
   }>()
 
   // 必須パラメータの検証
@@ -69,13 +70,15 @@ export default function LessonResultScreen() {
     router.dismissAll()
   }
 
-  // 同じレッスンをもう一度（復習）
+  // 間違えた問題を復習
   // dismissTo + push: スタックをセクション一覧まで戻してから新画面を開く
   // これにより「戻る」でセクション一覧に戻れる正しいスタック構造になる
   // isReview=true: 復習時はAPI記録しない（ハート消費なし）
+  // incorrectIds: 復習対象の問題ID（カンマ区切り）
   const handleRetry = () => {
     router.dismissTo(`/lesson/${params.courseId}`)
-    router.push(`/lesson/${params.courseId}/${params.lessonId}?isReview=true`)
+    const incorrectIds = params.incorrectIds || ''
+    router.push(`/lesson/${params.courseId}/${params.lessonId}?isReview=true&incorrectIds=${incorrectIds}`)
   }
 
   // 次のレッスンへ

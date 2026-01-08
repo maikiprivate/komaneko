@@ -317,6 +317,12 @@ export function useLessonGame({
         }
       }
 
+      // 間違えた問題IDを抽出
+      const incorrectProblemIds = allAttempts
+        .filter((a) => !a.isCorrect)
+        .map((a) => a.problemId)
+        .join(',')
+
       // 結果画面へ遷移（ストリーク画面を経由しない場合）
       router.replace({
         pathname: '/lesson/result',
@@ -326,6 +332,7 @@ export function useLessonGame({
           courseId,
           lessonId,
           time: timeString,
+          incorrectIds: incorrectProblemIds,
         },
       })
       return true
