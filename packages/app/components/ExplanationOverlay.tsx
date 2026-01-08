@@ -1,10 +1,11 @@
 /**
- * 解説オーバーレイコンポーネント
+ * 解説オーバーレイコンポーネント（ボトムシート形式）
  *
- * 問題正解後に駒猫が解説を表示する。
- * 解説文が空の場合は表示しない。
+ * 問題正解後に画面下部からスライドアップして表示。
+ * 駒猫が解説を表示する。
  */
 
+import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useEffect, useRef } from 'react'
 import {
   Animated,
@@ -14,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 
@@ -37,30 +39,32 @@ export function ExplanationOverlay({
   isLastProblem,
 }: ExplanationOverlayProps) {
   const { colors, palette } = useTheme()
+  const insets = useSafeAreaInsets()
 
-  const opacity = useRef(new Animated.Value(0)).current
-  const translateY = useRef(new Animated.Value(20)).current
+  const translateY = useRef(new Animated.Value(400)).current
+  const backdropOpacity = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (visible) {
-      // 表示アニメーション
-      opacity.setValue(0)
-      translateY.setValue(20)
+      // 表示アニメーション（下からスライドアップ）
+      translateY.setValue(400)
+      backdropOpacity.setValue(0)
 
       Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 300,
+        Animated.spring(translateY, {
+          toValue: 0,
+          friction: 8,
+          tension: 65,
           useNativeDriver: true,
         }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 300,
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start()
     }
-  }, [visible, opacity, translateY])
+  }, [visible, translateY, backdropOpacity])
 
   if (!visible) {
     return null
@@ -72,43 +76,44 @@ export function ExplanationOverlay({
       <Animated.View
         style={[
           styles.backdrop,
-          { opacity: Animated.multiply(opacity, 0.6) },
+          { opacity: Animated.multiply(backdropOpacity, 0.3) },
         ]}
       />
 
-      {/* コンテンツ */}
+      {/* ボトムシート */}
       <Animated.View
         style={[
-          styles.content,
+          styles.bottomSheet,
           {
-            opacity,
+            backgroundColor: palette.correctLight,
+            paddingBottom: insets.bottom + 16,
             transform: [{ translateY }],
           },
         ]}
       >
-        {/* 駒猫キャラクター */}
-        <Image
-          source={characterImage}
-          style={styles.characterImage}
-          resizeMode="contain"
-        />
-
-        {/* 吹き出し */}
-        <View style={styles.bubbleContainer}>
-          <View style={styles.tailWrapper}>
-            <View
-              style={[styles.bubbleTailBorder, { borderBottomColor: colors.border }]}
-            />
-            <View
-              style={[styles.bubbleTailFill, { borderBottomColor: colors.card.background }]}
-            />
+        {/* 正解ヘッダー */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={[styles.checkIcon, { backgroundColor: palette.correctFeedback }]}>
+              <FontAwesome name="check" size={16} color="#fff" />
+            </View>
+            <Text style={[styles.headerText, { color: palette.correctFeedback }]}>
+              正解！
+            </Text>
           </View>
-          <View
-            style={[
-              styles.bubble,
-              { backgroundColor: colors.card.background, borderColor: colors.border },
-            ]}
-          >
+        </View>
+
+        {/* 解説カード */}
+        <View style={[styles.card, { backgroundColor: colors.card.background, borderColor: colors.border }]}>
+          <Image
+            source={characterImage}
+            style={styles.characterImage}
+            resizeMode="contain"
+          />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardTitle, { color: palette.orange }]}>
+              駒猫のワンポイント
+            </Text>
             <Text style={[styles.explanationText, { color: colors.text.primary }]}>
               {explanation}
             </Text>
@@ -122,7 +127,7 @@ export function ExplanationOverlay({
           activeOpacity={0.8}
         >
           <Text style={styles.nextButtonText}>
-            {isLastProblem ? '完了' : '次へ'}
+            {isLastProblem ? '完了' : '次の問題へ'}
           </Text>
         </TouchableOpacity>
       </Animated.View>
@@ -137,8 +142,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
     zIndex: 200,
   },
   backdrop: {
@@ -149,71 +153,67 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: '#000',
   },
-  content: {
+  bottomSheet: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 24,
+    paddingHorizontal: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    maxWidth: 360,
+    marginBottom: 20,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checkIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  card: {
+    flexDirection: 'row',
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
   },
   characterImage: {
-    width: 120,
-    height: 120,
+    width: 80,
+    height: 80,
+    marginRight: 16,
+  },
+  cardContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 8,
   },
-  bubbleContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  tailWrapper: {
-    width: 20,
-    height: 12,
-    marginBottom: -1,
-    zIndex: 1,
-  },
-  bubbleTailBorder: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 10,
-    borderRightWidth: 10,
-    borderBottomWidth: 12,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  bubbleTailFill: {
-    position: 'absolute',
-    top: 2,
-    left: 1,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 9,
-    borderRightWidth: 9,
-    borderBottomWidth: 10,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  bubble: {
-    width: '100%',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
   explanationText: {
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 24,
-    textAlign: 'center',
   },
   nextButton: {
-    marginTop: 20,
-    paddingHorizontal: 48,
-    paddingVertical: 14,
-    borderRadius: 28,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   nextButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
   },
 })

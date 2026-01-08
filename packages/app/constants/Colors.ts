@@ -34,6 +34,7 @@ const palette = {
   green: '#4CAF50',
   greenLight: '#C8E6C9',
   correctFeedback: '#8BC34A',
+  correctLight: '#E8F5E9', // 正解時のボトムシート背景
 
   // 将棋盤インタラクション
   shogiSelected: '#FFE0B2',
