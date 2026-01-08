@@ -34,20 +34,13 @@ export function LessonRow({
       </div>
       <div className="flex-1 min-w-0">
         <span className="text-sm text-slate-700 leading-relaxed">{lesson.title}</span>
-        <span className="ml-3 text-xs text-slate-400">
-          {lesson.problems.length}問
-        </span>
+        <span className="ml-3 text-xs text-slate-400">{lesson.problems.length}問</span>
       </div>
       <div className="flex items-center gap-2">
-        <Link
-          to={`/lessons/problems/${lesson.id}`}
-          onClick={(e) => e.stopPropagation()}
-        >
+        <Link to={`/lessons/problems/${lesson.id}`} onClick={(e) => e.stopPropagation()}>
           <ActionButton variant="primary">問題編集</ActionButton>
         </Link>
-        <ActionButton
-          onClick={() => onEdit(lesson.id, lesson.title, sectionName)}
-        >
+        <ActionButton onClick={() => onEdit(lesson.id, lesson.title, sectionName)}>
           編集
         </ActionButton>
         <ActionButton

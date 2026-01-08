@@ -3,7 +3,7 @@
  * 後手視点の場合、盤面を180度回転させる
  */
 
-import type { Board, Perspective, CapturedPieces } from './types'
+import type { Board, CapturedPieces, Perspective } from './types'
 
 /**
  * 盤面を指定した視点に変換
@@ -56,7 +56,7 @@ export interface PieceStandOrder {
 export function getPieceStandOrder(
   sentePieces: CapturedPieces,
   gotePieces: CapturedPieces,
-  perspective: Perspective
+  perspective: Perspective,
 ): PieceStandOrder {
   if (perspective === 'sente') {
     return {

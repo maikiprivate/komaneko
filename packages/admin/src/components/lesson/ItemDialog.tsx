@@ -3,7 +3,7 @@
  * セクション・レッスンの追加・編集で共通利用
  */
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 interface ItemDialogProps {
   /** 追加モード時のタイトル */
@@ -94,9 +94,7 @@ export function ItemDialog({
                 autoFocus
               />
               {showError && (
-                <p className="mt-1.5 text-xs text-red-500">
-                  {inputLabel}を入力してください
-                </p>
+                <p className="mt-1.5 text-xs text-red-500">{inputLabel}を入力してください</p>
               )}
             </div>
           </div>

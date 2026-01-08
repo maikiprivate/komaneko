@@ -2,18 +2,14 @@
  * 編集パネルコンポーネント（モード切替 + 駒パレット統合）
  */
 
-import type { PieceType, Player } from '../../lib/shogi/types'
 import type { EditorMode } from '../../lib/lesson/types'
+import type { PieceType, Player } from '../../lib/shogi/types'
 
 /** 通常駒 */
-const NORMAL_PIECES: PieceType[] = [
-  'ou', 'hi', 'kaku', 'kin', 'gin', 'kei', 'kyo', 'fu',
-]
+const NORMAL_PIECES: PieceType[] = ['ou', 'hi', 'kaku', 'kin', 'gin', 'kei', 'kyo', 'fu']
 
 /** 成駒 */
-const PROMOTED_PIECES: PieceType[] = [
-  'ryu', 'uma', 'narigin', 'narikei', 'narikyo', 'to',
-]
+const PROMOTED_PIECES: PieceType[] = ['ryu', 'uma', 'narigin', 'narikei', 'narikyo', 'to']
 
 interface EditorPanelProps {
   mode: EditorMode
@@ -68,7 +64,12 @@ export function EditorPanel({
             }`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+              />
             </svg>
             初期配置
           </button>
@@ -81,7 +82,12 @@ export function EditorPanel({
             }`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 5l7 7-7 7M5 5l7 7-7 7"
+              />
             </svg>
             手順設定
           </button>
@@ -138,9 +144,7 @@ export function EditorPanel({
 
       {/* 手順設定モード時のヒント */}
       {mode === 'moves' && (
-        <div className="text-center text-xs text-slate-400 py-1">
-          駒をクリックして手を入力
-        </div>
+        <div className="text-center text-xs text-slate-400 py-1">駒をクリックして手を入力</div>
       )}
     </div>
   )

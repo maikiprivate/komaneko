@@ -2,10 +2,10 @@
  * 手順ツリーのユーティリティ関数
  */
 
-import type { MoveNode, MoveTree, SfenMove, EditorProblem, BranchPath, BranchInfo } from './types'
-import type { Position, BoardState, PieceType } from '../shogi/types'
-import { parseSfen, EMPTY_BOARD_SFEN } from '../shogi/sfen'
-import { makeMove, makeDrop } from '../shogi/moveGenerator'
+import { makeDrop, makeMove } from '../shogi/moveGenerator'
+import { EMPTY_BOARD_SFEN, parseSfen } from '../shogi/sfen'
+import type { BoardState, PieceType, Position } from '../shogi/types'
+import type { BranchInfo, BranchPath, EditorProblem, MoveNode, MoveTree, SfenMove } from './types'
 
 /**
  * エディタ用のノード（盤面状態を含む）
@@ -37,10 +37,7 @@ export function createEmptyMoveTree(sfen: string): MoveTree {
 /**
  * 新しいMoveNodeを作成
  */
-export function createMoveNode(
-  move: SfenMove,
-  isPlayerMove: boolean
-): MoveNode {
+export function createMoveNode(move: SfenMove, isPlayerMove: boolean): MoveNode {
   return {
     id: generateId(),
     move,
@@ -53,11 +50,7 @@ export function createMoveNode(
  * Position を SFEN形式の手に変換
  * 例: { row: 6, col: 6 } -> { row: 5, col: 6 } => "7g7f"
  */
-export function positionToSfenMove(
-  from: Position,
-  to: Position,
-  promote: boolean = false
-): SfenMove {
+export function positionToSfenMove(from: Position, to: Position, promote = false): SfenMove {
   const files = '987654321'
   const ranks = 'abcdefghi'
 
@@ -183,10 +176,7 @@ export function serializeMoveTree(tree: MoveTree): SfenMove[][] {
  * シーケンス配列を手順ツリーに変換
  * API読み込み用
  */
-export function deserializeMoveTree(
-  sequences: SfenMove[][],
-  rootSfen: string
-): MoveTree {
+export function deserializeMoveTree(sequences: SfenMove[][], rootSfen: string): MoveTree {
   const tree: MoveTree = {
     rootSfen,
     branches: [],
@@ -264,10 +254,7 @@ export function createNewProblem(order: number): EditorProblem {
  * 現在は分岐なしの線形配列のみ対応
  * 将来的に分岐対応時は拡張が必要
  */
-export function editorNodesToMoveTree(
-  nodes: EditorMoveNode[],
-  rootSfen: string
-): MoveTree {
+export function editorNodesToMoveTree(nodes: EditorMoveNode[], rootSfen: string): MoveTree {
   if (nodes.length === 0) {
     return createEmptyMoveTree(rootSfen)
   }
@@ -304,7 +291,7 @@ export function editorNodesToMoveTree(
  */
 export function moveTreeToEditorNodes(
   tree: MoveTree,
-  replayMoves: (rootSfen: string, moves: MoveNode[]) => EditorMoveNode[]
+  replayMoves: (rootSfen: string, moves: MoveNode[]) => EditorMoveNode[],
 ): EditorMoveNode[] {
   if (tree.branches.length === 0) {
     return []
@@ -400,7 +387,7 @@ export function addMoveAtPath(
   tree: MoveTree,
   path: BranchPath[],
   move: SfenMove,
-  isPlayerMove: boolean
+  isPlayerMove: boolean,
 ): { tree: MoveTree; path: BranchPath[] } {
   // 深いコピーを作成（イミュータブル操作のため）
   // structuredCloneはJSON.parse/stringifyより効率的で、undefinedも正しく扱える
@@ -502,7 +489,7 @@ export function deleteBranchAtPath(tree: MoveTree, path: BranchPath[]): MoveTree
 export function getBranchInfoAtPath(
   tree: MoveTree,
   path: BranchPath[],
-  nodeIndex: number
+  nodeIndex: number,
 ): BranchInfo | null {
   if (nodeIndex < 0 || nodeIndex >= path.length) {
     return null
@@ -558,7 +545,7 @@ export function switchBranchAtPath(
   tree: MoveTree,
   path: BranchPath[],
   nodeIndex: number,
-  newBranchIndex: number
+  newBranchIndex: number,
 ): BranchPath[] {
   const branchInfo = getBranchInfoAtPath(tree, path, nodeIndex)
   if (!branchInfo || newBranchIndex >= branchInfo.siblings.length) {
@@ -638,8 +625,14 @@ export function sfenPosToPosition(file: string, rank: string): Position {
  */
 export function sfenCharToPieceType(char: string): PieceType {
   const map: Record<string, PieceType> = {
-    P: 'fu', L: 'kyo', N: 'kei', S: 'gin',
-    G: 'kin', B: 'kaku', R: 'hi', K: 'ou',
+    P: 'fu',
+    L: 'kyo',
+    N: 'kei',
+    S: 'gin',
+    G: 'kin',
+    B: 'kaku',
+    R: 'hi',
+    K: 'ou',
   }
   return map[char.toUpperCase()] || 'fu'
 }

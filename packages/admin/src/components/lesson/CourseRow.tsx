@@ -18,7 +18,12 @@ interface CourseRowProps {
   onAddLesson: (sectionId: string, sectionName: string) => void
   onDeleteLesson: (lessonId: string) => void
   onDeleteSection: (sectionId: string, sectionName: string, lessonCount: number) => void
-  onDeleteCourse: (courseId: string, courseName: string, sectionCount: number, lessonCount: number) => void
+  onDeleteCourse: (
+    courseId: string,
+    courseName: string,
+    sectionCount: number,
+    lessonCount: number,
+  ) => void
   onMoveSectionUp: (sectionId: string) => void
   onMoveSectionDown: (sectionId: string) => void
   onMoveCourseUp: (courseId: string) => void
@@ -51,7 +56,7 @@ export function CourseRow({
   const lessonCount = course.sections.reduce((sum, s) => sum + s.lessons.length, 0)
   const problemCount = course.sections.reduce(
     (sum, s) => sum + s.lessons.reduce((lsum, l) => lsum + l.problems.length, 0),
-    0
+    0,
   )
 
   return (
@@ -65,7 +70,9 @@ export function CourseRow({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <h3 className="text-base font-semibold text-slate-800 leading-normal">{course.title}</h3>
+            <h3 className="text-base font-semibold text-slate-800 leading-normal">
+              {course.title}
+            </h3>
             <StatusBadge status={course.status} />
           </div>
           <p className="mt-1 text-sm text-slate-400">
@@ -129,7 +136,12 @@ export function CourseRow({
               className="flex items-center gap-2 text-sm text-primary hover:text-primary-dark font-medium transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               セクションを追加
             </button>

@@ -2,7 +2,7 @@
  * 詰将棋リポジトリ（DB操作）
  */
 
-import type { Tsumeshogi, PrismaClient } from '@prisma/client'
+import type { PrismaClient, Tsumeshogi } from '@prisma/client'
 
 export interface FindAllOptions {
   moveCount?: number

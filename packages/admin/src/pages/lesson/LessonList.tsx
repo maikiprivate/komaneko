@@ -4,31 +4,27 @@
  * コース → セクション → レッスン のネスト型テーブル
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  getCourses,
-  createCourse,
-  updateCourse,
-  deleteCourse,
-  reorderCourses,
-  createSection,
-  updateSection,
-  deleteSection,
-  reorderSections,
-  createLesson,
-  updateLesson,
-  deleteLesson,
-  reorderLessons,
   type ApiCourse,
-  type ApiSection,
   type ApiLesson,
+  type ApiSection,
   type CourseStatus,
+  createCourse,
+  createLesson,
+  createSection,
+  deleteCourse,
+  deleteLesson,
+  deleteSection,
+  getCourses,
+  reorderCourses,
+  reorderLessons,
+  reorderSections,
+  updateCourse,
+  updateLesson,
+  updateSection,
 } from '../../api/lesson'
-import {
-  CourseDialog,
-  ItemDialog,
-  CourseRow,
-} from '../../components/lesson'
+import { CourseDialog, CourseRow, ItemDialog } from '../../components/lesson'
 
 // =============================================================================
 // 型定義（UIコンポーネント用）
@@ -40,7 +36,11 @@ interface UiProblem {
   order: number
   sfen: string
   instruction: string
-  correctMove: { from: { row: number; col: number }; to: { row: number; col: number }; promote?: boolean }
+  correctMove: {
+    from: { row: number; col: number }
+    to: { row: number; col: number }
+    promote?: boolean
+  }
 }
 
 /** レッスン（UI用） */
@@ -80,7 +80,7 @@ function toUiLesson(apiLesson: ApiLesson): UiLesson {
     order: apiLesson.order,
     title: apiLesson.title,
     // 問題は一覧では表示しないため簡易変換
-    problems: apiLesson.problems.map(p => ({
+    problems: apiLesson.problems.map((p) => ({
       id: p.id,
       order: p.order,
       sfen: p.sfen,
@@ -123,9 +123,9 @@ function toUiCourse(apiCourse: ApiCourse): UiCourse {
 function swapItem<T extends { id: string }>(
   items: T[],
   itemId: string,
-  direction: 'up' | 'down'
+  direction: 'up' | 'down',
 ): string[] | null {
-  const idx = items.findIndex(item => item.id === itemId)
+  const idx = items.findIndex((item) => item.id === itemId)
   if (idx === -1) return null
 
   if (direction === 'up' && idx <= 0) return null
@@ -135,7 +135,7 @@ function swapItem<T extends { id: string }>(
   const swapIdx = direction === 'up' ? idx - 1 : idx + 1
   ;[newItems[swapIdx], newItems[idx]] = [newItems[idx], newItems[swapIdx]]
 
-  return newItems.map(item => item.id)
+  return newItems.map((item) => item.id)
 }
 
 // =============================================================================
@@ -146,7 +146,13 @@ function swapItem<T extends { id: string }>(
 type DialogState =
   | { type: 'none' }
   | { type: 'addCourse' }
-  | { type: 'editCourse'; courseId: string; title: string; description: string; status: CourseStatus }
+  | {
+      type: 'editCourse'
+      courseId: string
+      title: string
+      description: string
+      status: CourseStatus
+    }
   | { type: 'addSection'; courseId: string; courseName: string }
   | { type: 'editSection'; sectionId: string; title: string; courseName: string }
   | { type: 'addLesson'; sectionId: string; sectionName: string }
@@ -180,7 +186,11 @@ export function LessonList() {
   }, [fetchCourses])
 
   // コース追加
-  const handleAddCourse = async (data: { title: string; description: string; status: CourseStatus }) => {
+  const handleAddCourse = async (data: {
+    title: string
+    description: string
+    status: CourseStatus
+  }) => {
     try {
       await createCourse(data)
       await fetchCourses()
@@ -219,7 +229,11 @@ export function LessonList() {
   }
 
   // コース編集
-  const handleEditCourse = async (data: { title: string; description: string; status: CourseStatus }) => {
+  const handleEditCourse = async (data: {
+    title: string
+    description: string
+    status: CourseStatus
+  }) => {
     if (dialog.type !== 'editCourse') return
     const { courseId } = dialog
 
@@ -271,10 +285,15 @@ export function LessonList() {
   }
 
   // セクション削除
-  const handleDeleteSection = async (sectionId: string, sectionName: string, lessonCount: number) => {
-    const message = lessonCount > 0
-      ? `「${sectionName}」を削除しますか？\n（${lessonCount}件のレッスンも削除されます）`
-      : `「${sectionName}」を削除しますか？`
+  const handleDeleteSection = async (
+    sectionId: string,
+    sectionName: string,
+    lessonCount: number,
+  ) => {
+    const message =
+      lessonCount > 0
+        ? `「${sectionName}」を削除しますか？\n（${lessonCount}件のレッスンも削除されます）`
+        : `「${sectionName}」を削除しますか？`
     if (!window.confirm(message)) return
 
     try {
@@ -286,7 +305,12 @@ export function LessonList() {
   }
 
   // コース削除
-  const handleDeleteCourse = async (courseId: string, courseName: string, sectionCount: number, lessonCount: number) => {
+  const handleDeleteCourse = async (
+    courseId: string,
+    courseName: string,
+    sectionCount: number,
+    lessonCount: number,
+  ) => {
     let message = `「${courseName}」を削除しますか？`
     if (sectionCount > 0 || lessonCount > 0) {
       message += `\n（${sectionCount}件のセクション、${lessonCount}件のレッスンも削除されます）`
@@ -303,13 +327,13 @@ export function LessonList() {
 
   // セクションを含むコースを検索
   const findCourseBySection = (sectionId: string) =>
-    courses.find(c => c.sections.some(s => s.id === sectionId))
+    courses.find((c) => c.sections.some((s) => s.id === sectionId))
 
   // レッスンを含むセクションを検索
   const findSectionByLesson = (lessonId: string): UiSection | undefined => {
     for (const course of courses) {
       for (const section of course.sections) {
-        if (section.lessons.some(l => l.id === lessonId)) {
+        if (section.lessons.some((l) => l.id === lessonId)) {
           return section
         }
       }
@@ -318,9 +342,7 @@ export function LessonList() {
   }
 
   // 並び替え実行（共通処理）
-  const executeReorder = async (
-    reorderFn: () => Promise<void>
-  ) => {
+  const executeReorder = async (reorderFn: () => Promise<void>) => {
     try {
       await reorderFn()
       await fetchCourses()
@@ -388,7 +410,10 @@ export function LessonList() {
         <div className="flex flex-col items-center justify-center py-16">
           <div className="text-red-500 mb-4">{error}</div>
           <button
-            onClick={() => { setLoading(true); fetchCourses() }}
+            onClick={() => {
+              setLoading(true)
+              fetchCourses()
+            }}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
           >
             再読み込み
@@ -456,22 +481,31 @@ export function LessonList() {
         {courses.length === 0 && (
           <div className="py-16 text-center bg-white rounded-xl border border-dashed border-slate-200">
             <div className="w-12 h-12 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              <svg
+                className="w-6 h-6 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
               </svg>
             </div>
             <p className="text-slate-500">コースがありません</p>
-            <p className="mt-1 text-sm text-slate-400">「+ コース追加」ボタンから追加してください</p>
+            <p className="mt-1 text-sm text-slate-400">
+              「+ コース追加」ボタンから追加してください
+            </p>
           </div>
         )}
       </div>
 
       {/* ダイアログ */}
       {dialog.type === 'addCourse' && (
-        <CourseDialog
-          onSubmit={handleAddCourse}
-          onCancel={() => setDialog({ type: 'none' })}
-        />
+        <CourseDialog onSubmit={handleAddCourse} onCancel={() => setDialog({ type: 'none' })} />
       )}
       {dialog.type === 'editCourse' && (
         <CourseDialog

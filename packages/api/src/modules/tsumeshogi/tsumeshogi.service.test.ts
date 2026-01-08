@@ -4,8 +4,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TsumeshogiService } from './tsumeshogi.service.js'
 import type { TsumeshogiRepository } from './tsumeshogi.repository.js'
+import { TsumeshogiService } from './tsumeshogi.service.js'
 
 describe('TsumeshogiService', () => {
   let service: TsumeshogiService
@@ -213,7 +213,11 @@ describe('TsumeshogiService', () => {
 
     it('混在するステータスを正しく判定する', async () => {
       vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1'])
-      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2', 'tsume-3'])
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue([
+        'tsume-1',
+        'tsume-2',
+        'tsume-3',
+      ])
 
       const result = await service.getStatusMap('user-1')
 
@@ -253,7 +257,11 @@ describe('TsumeshogiService', () => {
 
     it('statusFilter: in_progressの場合はin_progressのIDのみ取得', async () => {
       vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1'])
-      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2', 'tsume-3'])
+      vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue([
+        'tsume-1',
+        'tsume-2',
+        'tsume-3',
+      ])
       vi.mocked(mockRepository.findAll).mockResolvedValue([])
 
       await service.getAll({ moveCount: 3, statusFilter: 'in_progress', userId: 'user-1' })
@@ -339,7 +347,11 @@ describe('TsumeshogiService', () => {
       vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2'])
       vi.mocked(mockRepository.count).mockResolvedValue(2)
 
-      const result = await service.getCount({ moveCount: 3, statusFilter: 'solved', userId: 'user-1' })
+      const result = await service.getCount({
+        moveCount: 3,
+        statusFilter: 'solved',
+        userId: 'user-1',
+      })
 
       expect(result).toBe(2)
       expect(mockRepository.count).toHaveBeenCalledWith({
@@ -352,7 +364,11 @@ describe('TsumeshogiService', () => {
       vi.mocked(mockRepository.findAttemptedTsumeshogiIds).mockResolvedValue(['tsume-1'])
       vi.mocked(mockRepository.count).mockResolvedValue(99)
 
-      const result = await service.getCount({ moveCount: 3, statusFilter: 'unsolved', userId: 'user-1' })
+      const result = await service.getCount({
+        moveCount: 3,
+        statusFilter: 'unsolved',
+        userId: 'user-1',
+      })
 
       expect(result).toBe(99)
       expect(mockRepository.count).toHaveBeenCalledWith({
@@ -407,7 +423,11 @@ describe('TsumeshogiService', () => {
     })
 
     it('statusFilterとカーソルを組み合わせて使用できる', async () => {
-      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue(['tsume-1', 'tsume-2', 'tsume-3'])
+      vi.mocked(mockRepository.findSolvedTsumeshogiIds).mockResolvedValue([
+        'tsume-1',
+        'tsume-2',
+        'tsume-3',
+      ])
       vi.mocked(mockRepository.findAll).mockResolvedValue([])
       vi.mocked(mockRepository.count).mockResolvedValue(3)
 

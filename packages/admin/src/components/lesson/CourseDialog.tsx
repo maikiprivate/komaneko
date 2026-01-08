@@ -2,7 +2,7 @@
  * コース追加・編集ダイアログコンポーネント
  */
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { CourseStatus } from '../../mocks/lessonData'
 
 interface CourseDialogProps {
@@ -79,15 +79,11 @@ export function CourseDialog({ initialValues, onSubmit, onCancel }: CourseDialog
                 autoFocus
               />
               {showError && (
-                <p className="mt-1.5 text-xs text-red-500">
-                  コース名を入力してください
-                </p>
+                <p className="mt-1.5 text-xs text-red-500">コース名を入力してください</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                説明
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">説明</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -97,9 +93,7 @@ export function CourseDialog({ initialValues, onSubmit, onCancel }: CourseDialog
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                ステータス
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">ステータス</label>
               <div className="flex gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input

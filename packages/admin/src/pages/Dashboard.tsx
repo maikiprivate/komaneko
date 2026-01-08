@@ -58,15 +58,9 @@ export function Dashboard() {
           将棋盤コンポーネント（開発プレビュー）
         </h2>
         <div className="flex justify-center">
-          <ShogiBoardWithStands
-            boardState={demoBoard}
-            perspective="sente"
-            cellSize={44}
-          />
+          <ShogiBoardWithStands boardState={demoBoard} perspective="sente" cellSize={44} />
         </div>
-        <p className="text-sm text-gray-500 mt-4 text-center">
-          SFEN: {DEMO_SFEN}
-        </p>
+        <p className="text-sm text-gray-500 mt-4 text-center">SFEN: {DEMO_SFEN}</p>
       </div>
     </div>
   )

@@ -14,10 +14,7 @@ import { HeartsService } from '../hearts/hearts.service.js'
 import { createLearningRecordRepository } from '../learning/learning-record.repository.js'
 import { LearningService } from '../learning/learning.service.js'
 import { createTsumeshogiRepository } from './tsumeshogi.repository.js'
-import {
-  recordTsumeshogiSchema,
-  tsumeshogiQuerySchema,
-} from './tsumeshogi.schema.js'
+import { recordTsumeshogiSchema, tsumeshogiQuerySchema } from './tsumeshogi.schema.js'
 import { TsumeshogiService } from './tsumeshogi.service.js'
 
 export async function tsumeshogiRouter(app: FastifyInstance) {
@@ -31,10 +28,7 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
   const learningRecordRepository = createLearningRecordRepository(prisma)
   const heartsRepository = createHeartsRepository(prisma)
   const heartsService = new HeartsService(heartsRepository)
-  const learningService = new LearningService(
-    learningRecordRepository,
-    heartsService
-  )
+  const learningService = new LearningService(learningRecordRepository, heartsService)
 
   // 認証フック: 全エンドポイントで認証必須
   app.addHook('preHandler', async (request) => {
@@ -61,9 +55,7 @@ export async function tsumeshogiRouter(app: FastifyInstance) {
     // statusFilter: allの場合のみstatusMapを取得（フィルタ済みの場合は不要）
     const [{ problems, total }, statusMap] = await Promise.all([
       tsumeshogiService.getAllWithCount({ moveCount, statusFilter, userId, limit, afterNumber }),
-      statusFilter === 'all'
-        ? tsumeshogiService.getStatusMap(userId)
-        : Promise.resolve(new Map()),
+      statusFilter === 'all' ? tsumeshogiService.getStatusMap(userId) : Promise.resolve(new Map()),
     ])
 
     // ステータスの決定: statusFilterがall以外の場合はフィルタ値をそのまま使用

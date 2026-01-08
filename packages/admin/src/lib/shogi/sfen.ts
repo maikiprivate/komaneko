@@ -34,7 +34,7 @@ function parseBoardString(boardStr: string): Board {
         continue
       }
 
-      const num = parseInt(char, 10)
+      const num = Number.parseInt(char, 10)
       if (!isNaN(num)) {
         // 数字は空マスの数
         for (let i = 0; i < num; i++) {
@@ -72,7 +72,7 @@ function parseHandString(handStr: string): { sente: CapturedPieces; gote: Captur
 
   let count = 0
   for (const char of handStr) {
-    const num = parseInt(char, 10)
+    const num = Number.parseInt(char, 10)
     if (!isNaN(num)) {
       count = count * 10 + num
       continue

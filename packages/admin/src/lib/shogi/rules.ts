@@ -4,7 +4,13 @@
  * アプリ側からコピー（packages/app/lib/shogi/rules.ts）
  */
 
-import { getPossibleMoves, getDropPositions, makeMove, makeDrop, getPromotionOptions } from './moveGenerator'
+import {
+  getDropPositions,
+  getPossibleMoves,
+  getPromotionOptions,
+  makeDrop,
+  makeMove,
+} from './moveGenerator'
 import type { Board, BoardState, Move, Player, Position } from './types'
 import { HAND_PIECE_TYPES } from './types'
 
@@ -117,11 +123,7 @@ export function getAllLegalMoves(boardState: BoardState, player: Player): Move[]
 /**
  * 打ち歩詰めかどうかを判定
  */
-export function isDropPawnMate(
-  boardState: BoardState,
-  to: Position,
-  player: Player,
-): boolean {
+export function isDropPawnMate(boardState: BoardState, to: Position, player: Player): boolean {
   // 歩を打った仮盤面を作成
   const newState = makeDrop(boardState, 'fu', to, player)
   const opponent = player === 'sente' ? 'gote' : 'sente'

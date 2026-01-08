@@ -5,9 +5,9 @@
  */
 
 import {
+  JST_OFFSET_HOURS,
   getDateString,
   getYesterdayDateString,
-  JST_OFFSET_HOURS,
 } from '@komaneko/shared/utils/date'
 import { prisma } from '../../db/client.js'
 import type { HeartsService } from '../hearts/hearts.service.js'
@@ -67,7 +67,7 @@ export interface RecordCompletionOptions {
 export class LearningService {
   constructor(
     private learningRecordRepository: LearningRecordRepository,
-    private heartsService: HeartsService
+    private heartsService: HeartsService,
   ) {}
 
   /**
@@ -77,19 +77,18 @@ export class LearningService {
    */
   async recordCompletion(
     userId: string,
-    options: RecordCompletionOptions
+    options: RecordCompletionOptions,
   ): Promise<LearningCompletionResult> {
     return prisma.$transaction(async (tx) => {
       const today = getDateString(new Date(), JST_OFFSET_HOURS)
       const isCorrect = options.isCorrect ?? true
 
       // 1. レコード作成前に今日の完了状況を確認（updated判定用）
-      const completedDatesBeforeCreate =
-        await this.learningRecordRepository.findCompletedDates(
-          userId,
-          COMPLETED_DATES_DAYS,
-          tx
-        )
+      const completedDatesBeforeCreate = await this.learningRecordRepository.findCompletedDates(
+        userId,
+        COMPLETED_DATES_DAYS,
+        tx,
+      )
       const hadCompletedToday = completedDatesBeforeCreate.includes(today)
 
       // 2. ハート消費（失敗時はトランザクション全体がロールバック）
@@ -114,7 +113,7 @@ export class LearningService {
             isCorrect,
             completedDate,
           },
-          tx
+          tx,
         )
       } else if (options.contentType === 'lesson' && options.contentId) {
         // レッスン完了（常にisCompleted=true、completedDate=today）
@@ -130,7 +129,7 @@ export class LearningService {
             completedDate: today,
             completionSeconds: options.lessonData.completionSeconds,
           },
-          tx
+          tx,
         )
       }
 
@@ -139,10 +138,7 @@ export class LearningService {
         isCorrect && !hadCompletedToday
           ? [today, ...completedDatesBeforeCreate]
           : completedDatesBeforeCreate
-      const allDates = await this.learningRecordRepository.findAllCompletedDates(
-        userId,
-        tx
-      )
+      const allDates = await this.learningRecordRepository.findAllCompletedDates(userId, tx)
 
       const currentCount = calculateCurrentStreak(completedDates, today)
       const longestCount = calculateLongestStreak(allDates)
@@ -151,10 +147,7 @@ export class LearningService {
       const updated = isCorrect && !hadCompletedToday
 
       // 最長記録を更新したか判定
-      const isNewRecord =
-        updated &&
-        currentCount === longestCount &&
-        currentCount > 1
+      const isNewRecord = updated && currentCount === longestCount && currentCount > 1
 
       return {
         streak: {
@@ -176,10 +169,7 @@ export class LearningService {
     const today = getDateString(new Date(), JST_OFFSET_HOURS)
 
     const [completedDates, lastActiveDate, allDates] = await Promise.all([
-      this.learningRecordRepository.findCompletedDates(
-        userId,
-        COMPLETED_DATES_DAYS
-      ),
+      this.learningRecordRepository.findCompletedDates(userId, COMPLETED_DATES_DAYS),
       this.learningRecordRepository.findLastCompletedDate(userId),
       this.learningRecordRepository.findAllCompletedDates(userId),
     ])
@@ -204,10 +194,7 @@ export class LearningService {
  * 今日または昨日から遡って連続している日数をカウント。
  * 今日も昨日も学習していない場合は0。
  */
-function calculateCurrentStreak(
-  completedDates: string[],
-  today: string
-): number {
+function calculateCurrentStreak(completedDates: string[], today: string): number {
   const yesterday = getYesterdayDateString(new Date(), JST_OFFSET_HOURS)
 
   // 今日も昨日も学習していない → 0

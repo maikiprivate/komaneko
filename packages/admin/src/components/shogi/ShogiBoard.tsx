@@ -2,12 +2,12 @@
  * 将棋盤コンポーネント（Web版）
  */
 
-import type { Board, Perspective, Position } from '../../lib/shogi/types'
 import {
-  transformBoardForPerspective,
   getFileLabels,
   getRankLabels,
+  transformBoardForPerspective,
 } from '../../lib/shogi/perspective'
+import type { Board, Perspective, Position } from '../../lib/shogi/types'
 import { Piece } from './Piece'
 
 /** 将棋盤の木目色 */
@@ -88,7 +88,10 @@ export function ShogiBoard({
   const rankLabels = getRankLabels(perspective)
 
   // 表示座標から元の盤面座標に変換
-  const toOriginalCoord = (displayRow: number, displayCol: number): { row: number; col: number } => {
+  const toOriginalCoord = (
+    displayRow: number,
+    displayCol: number,
+  ): { row: number; col: number } => {
     if (perspective === 'gote') {
       return { row: 8 - displayRow, col: 8 - displayCol }
     }

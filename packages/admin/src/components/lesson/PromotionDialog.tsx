@@ -9,23 +9,14 @@ interface PromotionDialogProps {
   onChoice: (promote: boolean) => void
 }
 
-export function PromotionDialog({
-  pieceType,
-  onChoice,
-}: PromotionDialogProps) {
+export function PromotionDialog({ pieceType, onChoice }: PromotionDialogProps) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-xs w-full mx-4">
         <div className="flex justify-center mb-3">
-          <img
-            src={`/pieces/${pieceType}.png`}
-            alt={pieceType}
-            className="w-12 h-12"
-          />
+          <img src={`/pieces/${pieceType}.png`} alt={pieceType} className="w-12 h-12" />
         </div>
-        <h3 className="text-lg font-medium text-slate-800 mb-4 text-center">
-          成りますか？
-        </h3>
+        <h3 className="text-lg font-medium text-slate-800 mb-4 text-center">成りますか？</h3>
         <div className="flex gap-3">
           <button
             onClick={() => onChoice(true)}

@@ -20,11 +20,18 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     archived: 'アーカイブ',
   }
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full border ${styles[status]}`}>
-      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-        status === 'published' ? 'bg-emerald-500' :
-        status === 'draft' ? 'bg-amber-500' : 'bg-slate-400'
-      }`} />
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full border ${styles[status]}`}
+    >
+      <span
+        className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+          status === 'published'
+            ? 'bg-emerald-500'
+            : status === 'draft'
+              ? 'bg-amber-500'
+              : 'bg-slate-400'
+        }`}
+      />
       {labels[status]}
     </span>
   )

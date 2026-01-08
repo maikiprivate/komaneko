@@ -50,10 +50,7 @@ export function clearToken(): void {
 /**
  * APIリクエストを実行
  */
-export async function apiRequest<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
 
   const headers: HeadersInit = {
@@ -62,7 +59,7 @@ export async function apiRequest<T>(
   }
 
   if (token) {
-    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+    ;(headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -82,7 +79,7 @@ export async function apiRequest<T>(
     throw new ApiClientError(
       error?.code || 'UNKNOWN_ERROR',
       error?.message || 'Unknown error occurred',
-      response.status
+      response.status,
     )
   }
 

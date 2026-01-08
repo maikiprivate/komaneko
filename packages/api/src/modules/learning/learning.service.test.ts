@@ -5,15 +5,13 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { LearningService } from './learning.service.js'
 import type { LearningRecordRepository } from './learning-record.repository.js'
+import { LearningService } from './learning.service.js'
 
 // prisma.$transactionをモック
 vi.mock('../../db/client.js', () => ({
   prisma: {
-    $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) =>
-      callback({})
-    ),
+    $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) => callback({})),
   },
 }))
 
@@ -61,10 +59,7 @@ describe('LearningService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    service = new LearningService(
-      mockLearningRecordRepository,
-      mockHeartsService as never
-    )
+    service = new LearningService(mockLearningRecordRepository, mockHeartsService as never)
   })
 
   describe('recordCompletion', () => {
@@ -111,18 +106,14 @@ describe('LearningService', () => {
             isCorrect: true,
             completedDate: '2025-01-15',
           },
-          expect.anything()
+          expect.anything(),
         )
         // ストリーク計算結果
         expect(result.streak.currentCount).toBe(3) // 3日連続
         expect(result.streak.longestCount).toBe(3)
         expect(result.streak.updated).toBe(true) // 今日初めての完了
         // completedDates返却（サービスが今日を追加）
-        expect(result.completedDates).toEqual([
-          '2025-01-15',
-          '2025-01-14',
-          '2025-01-13',
-        ])
+        expect(result.completedDates).toEqual(['2025-01-15', '2025-01-14', '2025-01-13'])
       } finally {
         restoreDate()
       }
@@ -139,9 +130,7 @@ describe('LearningService', () => {
           completedDate: null,
           createdAt: new Date(),
         })
-        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
-          '2025-01-14',
-        ])
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue(['2025-01-14'])
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-14',
         ])
@@ -166,7 +155,7 @@ describe('LearningService', () => {
             isCorrect: false,
             completedDate: null, // 不正解時はnull
           },
-          expect.anything()
+          expect.anything(),
         )
         // ストリークは昨日の記録から計算（今日は更新されない）
         expect(result.streak.currentCount).toBe(1) // 昨日の1日分
@@ -187,9 +176,7 @@ describe('LearningService', () => {
           completedDate: '2025-01-15',
           createdAt: new Date(),
         })
-        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
-          '2025-01-15',
-        ])
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue(['2025-01-15'])
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-15',
         ])
@@ -319,9 +306,7 @@ describe('LearningService', () => {
     })
 
     it('ハート不足時はトランザクション全体がロールバックされる', async () => {
-      mockHeartsService.consumeHearts.mockRejectedValue(
-        new Error('NO_HEARTS_LEFT')
-      )
+      mockHeartsService.consumeHearts.mockRejectedValue(new Error('NO_HEARTS_LEFT'))
 
       await expect(
         service.recordCompletion('user-1', {
@@ -329,7 +314,7 @@ describe('LearningService', () => {
           contentType: 'tsumeshogi',
           contentId: 'tsume-123',
           isCorrect: true,
-        })
+        }),
       ).rejects.toThrow('NO_HEARTS_LEFT')
 
       // ハート消費が失敗したため、LearningRecord作成も呼ばれない
@@ -347,9 +332,7 @@ describe('LearningService', () => {
           completedDate: '2025-01-15',
           createdAt: new Date(),
         })
-        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
-          '2025-01-15',
-        ])
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue(['2025-01-15'])
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-15',
         ])
@@ -367,11 +350,7 @@ describe('LearningService', () => {
           isCorrect: true,
         })
 
-        expect(mockHeartsService.consumeHearts).toHaveBeenCalledWith(
-          'user-1',
-          3,
-          expect.anything()
-        )
+        expect(mockHeartsService.consumeHearts).toHaveBeenCalledWith('user-1', 3, expect.anything())
         expect(result.hearts?.consumed).toBe(3)
       } finally {
         restoreDate()
@@ -389,7 +368,7 @@ describe('LearningService', () => {
           '2025-01-13',
         ])
         vi.mocked(mockLearningRecordRepository.findLastCompletedDate).mockResolvedValue(
-          '2025-01-15'
+          '2025-01-15',
         )
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-13',
@@ -403,11 +382,7 @@ describe('LearningService', () => {
         expect(result.longestCount).toBe(3)
         expect(result.lastActiveDate).toBe('2025-01-15')
         expect(result.updatedToday).toBe(true)
-        expect(result.completedDates).toEqual([
-          '2025-01-15',
-          '2025-01-14',
-          '2025-01-13',
-        ])
+        expect(result.completedDates).toEqual(['2025-01-15', '2025-01-14', '2025-01-13'])
       } finally {
         restoreDate()
       }
@@ -421,7 +396,7 @@ describe('LearningService', () => {
           '2025-01-13',
         ])
         vi.mocked(mockLearningRecordRepository.findLastCompletedDate).mockResolvedValue(
-          '2025-01-14'
+          '2025-01-14',
         )
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-13',
@@ -440,11 +415,9 @@ describe('LearningService', () => {
     it('今日も昨日も学習していない場合、currentCountは0', async () => {
       const restoreDate = mockDate('2025-01-15T10:00:00+09:00')
       try {
-        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
-          '2025-01-10',
-        ])
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue(['2025-01-10'])
         vi.mocked(mockLearningRecordRepository.findLastCompletedDate).mockResolvedValue(
-          '2025-01-10'
+          '2025-01-10',
         )
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-10',
@@ -498,9 +471,27 @@ describe('LearningService', () => {
         })
 
         const problems = [
-          { problemId: 'p1', problemIndex: 0, isCorrect: true, usedHint: false, usedSolution: false },
-          { problemId: 'p2', problemIndex: 1, isCorrect: false, usedHint: true, usedSolution: false },
-          { problemId: 'p3', problemIndex: 2, isCorrect: false, usedHint: false, usedSolution: true },
+          {
+            problemId: 'p1',
+            problemIndex: 0,
+            isCorrect: true,
+            usedHint: false,
+            usedSolution: false,
+          },
+          {
+            problemId: 'p2',
+            problemIndex: 1,
+            isCorrect: false,
+            usedHint: true,
+            usedSolution: false,
+          },
+          {
+            problemId: 'p3',
+            problemIndex: 2,
+            isCorrect: false,
+            usedHint: false,
+            usedSolution: true,
+          },
         ]
 
         const result = await service.recordCompletion('user-1', {
@@ -523,7 +514,7 @@ describe('LearningService', () => {
             problems,
             completedDate: '2025-01-15',
           },
-          expect.anything()
+          expect.anything(),
         )
         // createWithTsumeshogiは呼ばれない
         expect(mockLearningRecordRepository.createWithTsumeshogi).not.toHaveBeenCalled()
@@ -550,7 +541,7 @@ describe('LearningService', () => {
             contentId: 'lesson-123',
             isCorrect: true,
             // lessonData: undefined
-          })
+          }),
         ).rejects.toThrow('lessonData is required')
 
         // 記録メソッドは呼ばれない
@@ -573,9 +564,7 @@ describe('LearningService', () => {
           createdAt: new Date(),
         })
         // 既に今日の記録がある
-        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue([
-          '2025-01-15',
-        ])
+        vi.mocked(mockLearningRecordRepository.findCompletedDates).mockResolvedValue(['2025-01-15'])
         vi.mocked(mockLearningRecordRepository.findAllCompletedDates).mockResolvedValue([
           '2025-01-15',
         ])
@@ -588,7 +577,13 @@ describe('LearningService', () => {
           lessonData: {
             correctCount: 3,
             problems: [
-              { problemId: 'p1', problemIndex: 0, isCorrect: true, usedHint: false, usedSolution: false },
+              {
+                problemId: 'p1',
+                problemIndex: 0,
+                isCorrect: true,
+                usedHint: false,
+                usedSolution: false,
+              },
             ],
           },
         })

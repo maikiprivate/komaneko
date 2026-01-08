@@ -85,7 +85,7 @@ export class HeartsService {
   async consumeHearts(
     userId: string,
     amount: number,
-    tx?: PrismaClientOrTx
+    tx?: PrismaClientOrTx,
   ): Promise<ConsumeResult> {
     const hearts = await this.repository.findByUserId(userId, tx)
 
@@ -121,7 +121,7 @@ export class HeartsService {
         maxCount: currentData.maxCount,
         recoveryStartedAt: newRecoveryStartedAt,
       },
-      tx
+      tx,
     )
 
     return {

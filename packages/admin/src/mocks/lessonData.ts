@@ -63,11 +63,13 @@ export function getCourseById(courseId: string): Course | undefined {
 }
 
 /** レッスンIDからレッスンを取得 */
-export function getLessonById(lessonId: string): {
-  course: Course
-  section: Section
-  lesson: Lesson
-} | undefined {
+export function getLessonById(lessonId: string):
+  | {
+      course: Course
+      section: Section
+      lesson: Lesson
+    }
+  | undefined {
   for (const course of mockCourses) {
     for (const section of course.sections) {
       const lesson = section.lessons.find((l) => l.id === lessonId)
@@ -89,7 +91,7 @@ export function getCourseProblemCount(course: Course): number {
   return course.sections.reduce(
     (total, section) =>
       total + section.lessons.reduce((sum, lesson) => sum + lesson.problems.length, 0),
-    0
+    0,
   )
 }
 

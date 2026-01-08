@@ -2,23 +2,23 @@
  * moveTreeUtils.ts のユニットテスト
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
-  createEmptyMoveTree,
-  serializeMoveTree,
-  deserializeMoveTree,
-  positionToSfenMove,
-  dropToSfenMove,
-  sfenMoveToJapanese,
   addMoveAtPath,
   countMoveNodes,
-  isTreeEmpty,
   createDefaultPath,
-  getNodesAlongPath,
-  deleteBranchAtPath,
+  createEmptyMoveTree,
   createMoveNode,
+  deleteBranchAtPath,
+  deserializeMoveTree,
+  dropToSfenMove,
+  getNodesAlongPath,
+  isTreeEmpty,
+  positionToSfenMove,
+  serializeMoveTree,
+  sfenMoveToJapanese,
 } from './moveTreeUtils'
-import type { MoveTree, BranchPath } from './types'
+import type { BranchPath, MoveTree } from './types'
 
 describe('createEmptyMoveTree', () => {
   it('空の手順ツリーを作成', () => {
@@ -42,22 +42,28 @@ describe('serializeMoveTree / deserializeMoveTree', () => {
     const rootSfen = '9/9/9/9/9/9/9/9/9 b - 1'
     const original: MoveTree = {
       rootSfen,
-      branches: [{
-        id: '1',
-        move: '7g7f',
-        isPlayerMove: true,
-        children: [{
-          id: '2',
-          move: '3c3d',
-          isPlayerMove: false,
-          children: [{
-            id: '3',
-            move: '2g2f',
-            isPlayerMove: true,
-            children: [],
-          }],
-        }],
-      }],
+      branches: [
+        {
+          id: '1',
+          move: '7g7f',
+          isPlayerMove: true,
+          children: [
+            {
+              id: '2',
+              move: '3c3d',
+              isPlayerMove: false,
+              children: [
+                {
+                  id: '3',
+                  move: '2g2f',
+                  isPlayerMove: true,
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     }
 
     const serialized = serializeMoveTree(original)
@@ -75,7 +81,7 @@ describe('serializeMoveTree / deserializeMoveTree', () => {
     const rootSfen = '9/9/9/9/9/9/9/9/9 b - 1'
     const sequences = [
       ['7g7f', '3c3d', '2g2f'],
-      ['7g7f', '8c8d', '2g2f'],  // 2手目で分岐
+      ['7g7f', '8c8d', '2g2f'], // 2手目で分岐
     ]
 
     const tree = deserializeMoveTree(sequences, rootSfen)
@@ -214,17 +220,21 @@ describe('countMoveNodes', () => {
   it('単一パスのカウント', () => {
     const tree: MoveTree = {
       rootSfen: '9/9/9/9/9/9/9/9/9 b - 1',
-      branches: [{
-        id: '1',
-        move: '7g7f',
-        isPlayerMove: true,
-        children: [{
-          id: '2',
-          move: '3c3d',
-          isPlayerMove: false,
-          children: [],
-        }],
-      }],
+      branches: [
+        {
+          id: '1',
+          move: '7g7f',
+          isPlayerMove: true,
+          children: [
+            {
+              id: '2',
+              move: '3c3d',
+              isPlayerMove: false,
+              children: [],
+            },
+          ],
+        },
+      ],
     }
     expect(countMoveNodes(tree)).toBe(2)
   })
@@ -239,12 +249,14 @@ describe('isTreeEmpty', () => {
   it('手があるツリーはfalse', () => {
     const tree: MoveTree = {
       rootSfen: '9/9/9/9/9/9/9/9/9 b - 1',
-      branches: [{
-        id: '1',
-        move: '7g7f',
-        isPlayerMove: true,
-        children: [],
-      }],
+      branches: [
+        {
+          id: '1',
+          move: '7g7f',
+          isPlayerMove: true,
+          children: [],
+        },
+      ],
     }
     expect(isTreeEmpty(tree)).toBe(false)
   })
@@ -259,17 +271,21 @@ describe('createDefaultPath', () => {
   it('単一パスを返す', () => {
     const tree: MoveTree = {
       rootSfen: '9/9/9/9/9/9/9/9/9 b - 1',
-      branches: [{
-        id: 'node1',
-        move: '7g7f',
-        isPlayerMove: true,
-        children: [{
-          id: 'node2',
-          move: '3c3d',
-          isPlayerMove: false,
-          children: [],
-        }],
-      }],
+      branches: [
+        {
+          id: 'node1',
+          move: '7g7f',
+          isPlayerMove: true,
+          children: [
+            {
+              id: 'node2',
+              move: '3c3d',
+              isPlayerMove: false,
+              children: [],
+            },
+          ],
+        },
+      ],
     }
     const path = createDefaultPath(tree)
 
@@ -283,17 +299,21 @@ describe('getNodesAlongPath', () => {
   it('パスに沿ったノードを取得', () => {
     const tree: MoveTree = {
       rootSfen: '9/9/9/9/9/9/9/9/9 b - 1',
-      branches: [{
-        id: 'node1',
-        move: '7g7f',
-        isPlayerMove: true,
-        children: [{
-          id: 'node2',
-          move: '3c3d',
-          isPlayerMove: false,
-          children: [],
-        }],
-      }],
+      branches: [
+        {
+          id: 'node1',
+          move: '7g7f',
+          isPlayerMove: true,
+          children: [
+            {
+              id: 'node2',
+              move: '3c3d',
+              isPlayerMove: false,
+              children: [],
+            },
+          ],
+        },
+      ],
     }
     const path: BranchPath[] = [
       { nodeId: 'node1', branchIndex: 0 },
@@ -326,15 +346,17 @@ describe('deleteBranchAtPath', () => {
   it('子ノードを削除', () => {
     const tree: MoveTree = {
       rootSfen: '9/9/9/9/9/9/9/9/9 b - 1',
-      branches: [{
-        id: 'node1',
-        move: '7g7f',
-        isPlayerMove: true,
-        children: [
-          { id: 'child1', move: '3c3d', isPlayerMove: false, children: [] },
-          { id: 'child2', move: '8c8d', isPlayerMove: false, children: [] },
-        ],
-      }],
+      branches: [
+        {
+          id: 'node1',
+          move: '7g7f',
+          isPlayerMove: true,
+          children: [
+            { id: 'child1', move: '3c3d', isPlayerMove: false, children: [] },
+            { id: 'child2', move: '8c8d', isPlayerMove: false, children: [] },
+          ],
+        },
+      ],
     }
     const path: BranchPath[] = [
       { nodeId: 'node1', branchIndex: 0 },

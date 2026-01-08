@@ -2,10 +2,10 @@
  * 将棋盤 + 駒台のセットコンポーネント
  */
 
-import type { BoardState, Perspective, Position, PieceType } from '../../lib/shogi/types'
 import { getPieceStandOrder } from '../../lib/shogi/perspective'
-import { ShogiBoard } from './ShogiBoard'
+import type { BoardState, Perspective, PieceType, Position } from '../../lib/shogi/types'
 import { PieceStand } from './PieceStand'
+import { ShogiBoard } from './ShogiBoard'
 
 interface ShogiBoardWithStandsProps {
   boardState: BoardState
@@ -60,7 +60,7 @@ export function ShogiBoardWithStands({
   const { top, bottom } = getPieceStandOrder(
     boardState.capturedPieces.sente,
     boardState.capturedPieces.gote,
-    perspective
+    perspective,
   )
 
   // 盤面の幅を計算（セル9個 + 段ラベル）
@@ -72,9 +72,10 @@ export function ShogiBoardWithStands({
 
   // 視点に応じて持ち駒クリックハンドラを決定
   const topPieceClick = perspective === 'sente' ? onGoteHandPieceClick : onSenteHandPieceClick
-  const bottomPieceClick = perspective === 'sente'
-    ? (onSenteHandPieceClick ?? onHandPieceClick)
-    : (onGoteHandPieceClick ?? onHandPieceClick)
+  const bottomPieceClick =
+    perspective === 'sente'
+      ? (onSenteHandPieceClick ?? onHandPieceClick)
+      : (onGoteHandPieceClick ?? onHandPieceClick)
 
   // 視点に応じて選択状態を決定
   const topSelectedPiece = perspective === 'sente' ? selectedGoteHandPiece : selectedHandPiece

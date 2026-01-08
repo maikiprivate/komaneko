@@ -2,13 +2,7 @@
  * レッスンリポジトリ（ユーザー向け、読み取り専用）
  */
 
-import type {
-  Course,
-  Section,
-  Lesson,
-  LessonProblem,
-  PrismaClient,
-} from '@prisma/client'
+import type { Course, Lesson, LessonProblem, PrismaClient, Section } from '@prisma/client'
 
 // =============================================================================
 // 型定義
@@ -46,9 +40,7 @@ export interface LessonReadRepository {
 // リポジトリ実装
 // =============================================================================
 
-export function createLessonReadRepository(
-  prisma: PrismaClient
-): LessonReadRepository {
+export function createLessonReadRepository(prisma: PrismaClient): LessonReadRepository {
   const nestedInclude = {
     sections: {
       orderBy: { order: 'asc' as const },

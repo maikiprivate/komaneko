@@ -5,8 +5,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { hashPassword } from '../../shared/utils/password.js'
-import { AuthService } from './auth.service.js'
 import type { AuthRepository } from './auth.repository.js'
+import { AuthService } from './auth.service.js'
 
 describe('AuthService', () => {
   let authService: AuthService

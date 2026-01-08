@@ -4,10 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  type AdminMiddlewareRepository,
-  createAdminMiddleware,
-} from './admin.middleware.js'
+import { type AdminMiddlewareRepository, createAdminMiddleware } from './admin.middleware.js'
 
 describe('AdminMiddleware', () => {
   let mockRepository: AdminMiddlewareRepository

@@ -4,8 +4,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HeartsService } from './hearts.service.js'
 import type { HeartsRepository } from './hearts.repository.js'
+import { HeartsService } from './hearts.service.js'
 
 describe('HeartsService', () => {
   let heartsService: HeartsService
@@ -103,7 +103,7 @@ describe('HeartsService', () => {
           maxCount: 10,
           recoveryStartedAt: now,
         },
-        undefined
+        undefined,
       )
     })
 

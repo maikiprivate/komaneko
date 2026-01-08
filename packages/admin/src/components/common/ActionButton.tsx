@@ -17,7 +17,8 @@ export function ActionButton({
 }: ActionButtonProps) {
   const styles = {
     primary: 'bg-primary text-white hover:bg-primary-dark',
-    secondary: 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300',
+    secondary:
+      'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300',
     danger: 'bg-white text-red-600 border border-slate-200 hover:bg-red-50 hover:border-red-200',
   }
   return (

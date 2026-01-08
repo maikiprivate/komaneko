@@ -16,15 +16,15 @@ import { createAuthRepository } from '../../auth/auth.repository.js'
 import { createLessonRepository } from './lesson.repository.js'
 import {
   createCourseSchema,
-  updateCourseSchema,
-  createSectionSchema,
-  updateSectionSchema,
   createLessonSchema,
-  updateLessonSchema,
   createProblemSchema,
-  updateProblemSchema,
+  createSectionSchema,
   reorderSchema,
   reorderWithParentSchema,
+  updateCourseSchema,
+  updateLessonSchema,
+  updateProblemSchema,
+  updateSectionSchema,
 } from './lesson.schema.js'
 import { LessonService } from './lesson.service.js'
 

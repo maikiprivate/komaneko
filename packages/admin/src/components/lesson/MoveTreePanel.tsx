@@ -3,13 +3,13 @@
  */
 
 import { useState } from 'react'
-import type { Player } from '../../lib/shogi/types'
-import type { MoveTree, BranchPath } from '../../lib/lesson/types'
 import {
+  type EditorMoveNode,
   getBranchInfoAtPath,
   sfenMoveToJapanese,
-  type EditorMoveNode,
 } from '../../lib/lesson/moveTreeUtils'
+import type { BranchPath, MoveTree } from '../../lib/lesson/types'
+import type { Player } from '../../lib/shogi/types'
 
 interface MoveTreePanelProps {
   nodes: EditorMoveNode[]
@@ -68,7 +68,9 @@ export function MoveTreePanel({
       <div className="flex-1 p-4 overflow-auto">
         {nodes.length === 0 ? (
           <div className="text-center py-8 text-slate-400 text-sm">
-            手順設定モードで<br />盤面をクリックして手を追加
+            手順設定モードで
+            <br />
+            盤面をクリックして手を追加
           </div>
         ) : (
           <div className="space-y-1">
@@ -86,7 +88,9 @@ export function MoveTreePanel({
             </button>
             {nodes.map((node, index) => {
               const branchCount = getBranchCount(index)
-              const branchInfo = fullMoveTree ? getBranchInfoAtPath(fullMoveTree, currentPath, index) : null
+              const branchInfo = fullMoveTree
+                ? getBranchInfoAtPath(fullMoveTree, currentPath, index)
+                : null
 
               return (
                 <div key={node.id} className="relative">
@@ -94,12 +98,17 @@ export function MoveTreePanel({
                     onClick={() => onNodeClick(index)}
                     className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm text-left transition-colors ${
                       selectedNodeIndex === index
-                        ? 'ring-2 ring-primary ' + (node.isPlayerMove ? 'bg-blue-100' : 'bg-orange-100')
-                        : (node.isPlayerMove ? 'bg-blue-50 hover:bg-blue-100' : 'bg-orange-50 hover:bg-orange-100')
+                        ? 'ring-2 ring-primary ' +
+                          (node.isPlayerMove ? 'bg-blue-100' : 'bg-orange-100')
+                        : node.isPlayerMove
+                          ? 'bg-blue-50 hover:bg-blue-100'
+                          : 'bg-orange-50 hover:bg-orange-100'
                     }`}
                   >
                     <span className="text-slate-400 w-5">{index + 1}.</span>
-                    <span className={`flex-1 ${node.isPlayerMove ? 'text-blue-700' : 'text-orange-700'}`}>
+                    <span
+                      className={`flex-1 ${node.isPlayerMove ? 'text-blue-700' : 'text-orange-700'}`}
+                    >
                       {node.isPlayerMove ? '▲' : '△'} {sfenMoveToJapanese(node.move)}
                     </span>
                     {/* 分岐バッジ */}
@@ -125,12 +134,24 @@ export function MoveTreePanel({
                             i === branchInfo.currentIndex ? 'bg-primary/10' : ''
                           }`}
                         >
-                          <span className={sibling.isPlayerMove ? 'text-blue-700' : 'text-orange-700'}>
+                          <span
+                            className={sibling.isPlayerMove ? 'text-blue-700' : 'text-orange-700'}
+                          >
                             {sibling.isPlayerMove ? '▲' : '△'} {sfenMoveToJapanese(sibling.move)}
                           </span>
                           {i === branchInfo.currentIndex && (
-                            <svg className="w-4 h-4 text-primary ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            <svg
+                              className="w-4 h-4 text-primary ml-auto"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
                           )}
                         </button>

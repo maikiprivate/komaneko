@@ -2,22 +2,19 @@
  * レッスン管理サービス（ビジネスロジック）
  */
 
-import type { Course, Section, Lesson, LessonProblem } from '@prisma/client'
+import type { Course, Lesson, LessonProblem, Section } from '@prisma/client'
 
 import { AppError } from '../../../shared/errors/AppError.js'
-import type {
-  LessonRepository,
-  CourseWithNested,
-} from './lesson.repository.js'
+import type { CourseWithNested, LessonRepository } from './lesson.repository.js'
 import type {
   CreateCourseInput,
-  UpdateCourseInput,
-  CreateSectionInput,
-  UpdateSectionInput,
   CreateLessonInput,
-  UpdateLessonInput,
   CreateProblemInput,
+  CreateSectionInput,
+  UpdateCourseInput,
+  UpdateLessonInput,
   UpdateProblemInput,
+  UpdateSectionInput,
 } from './lesson.schema.js'
 
 export class LessonService {
@@ -58,7 +55,7 @@ export class LessonService {
   async reorderCourses(orderedIds: string[]): Promise<void> {
     // 全コースを取得してIDの存在確認
     const courses = await this.repository.findAllCourses()
-    const courseIds = new Set(courses.map(c => c.id))
+    const courseIds = new Set(courses.map((c) => c.id))
     for (const id of orderedIds) {
       if (!courseIds.has(id)) {
         throw new AppError('COURSE_NOT_FOUND')
@@ -107,7 +104,7 @@ export class LessonService {
       throw new AppError('COURSE_NOT_FOUND')
     }
     // 渡されたIDが全てこのコースに属しているか検証
-    const courseSectionIds = new Set(course.sections.map(s => s.id))
+    const courseSectionIds = new Set(course.sections.map((s) => s.id))
     for (const id of orderedIds) {
       if (!courseSectionIds.has(id)) {
         throw new AppError('SECTION_NOT_FOUND')
@@ -156,7 +153,7 @@ export class LessonService {
       throw new AppError('SECTION_NOT_FOUND')
     }
     // 渡されたIDが全てこのセクションに属しているか検証
-    const sectionLessonIds = new Set(section.lessons.map(l => l.id))
+    const sectionLessonIds = new Set(section.lessons.map((l) => l.id))
     for (const id of orderedIds) {
       if (!sectionLessonIds.has(id)) {
         throw new AppError('LESSON_NOT_FOUND')
@@ -213,7 +210,7 @@ export class LessonService {
       throw new AppError('LESSON_NOT_FOUND')
     }
     // 渡されたIDが全てこのレッスンに属しているか検証
-    const lessonProblemIds = new Set(lesson.problems.map(p => p.id))
+    const lessonProblemIds = new Set(lesson.problems.map((p) => p.id))
     for (const id of orderedIds) {
       if (!lessonProblemIds.has(id)) {
         throw new AppError('PROBLEM_NOT_FOUND')

@@ -9,12 +9,7 @@ interface OrderButtonsProps {
   canMoveDown: boolean
 }
 
-export function OrderButtons({
-  onMoveUp,
-  onMoveDown,
-  canMoveUp,
-  canMoveDown,
-}: OrderButtonsProps) {
+export function OrderButtons({ onMoveUp, onMoveDown, canMoveUp, canMoveDown }: OrderButtonsProps) {
   return (
     <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5">
       <button

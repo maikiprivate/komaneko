@@ -73,10 +73,7 @@ export class AuthService {
       })
     } catch (error) {
       // Prismaの一意制約違反エラー（P2002）をAppErrorに変換
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const target = error.meta?.target as string[] | undefined
         if (target?.includes('email')) {
           throw new AppError('EMAIL_ALREADY_EXISTS')

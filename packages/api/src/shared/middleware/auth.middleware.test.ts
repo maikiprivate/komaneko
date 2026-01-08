@@ -5,10 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { generateAccessToken } from '../utils/jwt.js'
-import {
-  type AuthMiddlewareRepository,
-  createAuthMiddleware,
-} from './auth.middleware.js'
+import { type AuthMiddlewareRepository, createAuthMiddleware } from './auth.middleware.js'
 
 describe('AuthMiddleware', () => {
   let mockRepository: AuthMiddlewareRepository
@@ -39,9 +36,7 @@ describe('AuthMiddleware', () => {
       const result = await middleware.authenticate(authHeader)
 
       expect(result).toEqual({ userId })
-      expect(mockRepository.findActiveSessionByUserId).toHaveBeenCalledWith(
-        userId
-      )
+      expect(mockRepository.findActiveSessionByUserId).toHaveBeenCalledWith(userId)
     })
 
     it('Authorizationヘッダーがない場合はエラー', async () => {
@@ -51,9 +46,7 @@ describe('AuthMiddleware', () => {
     })
 
     it('Bearerスキームでない場合はエラー', async () => {
-      await expect(
-        middleware.authenticate('Basic abc123')
-      ).rejects.toMatchObject({
+      await expect(middleware.authenticate('Basic abc123')).rejects.toMatchObject({
         code: 'UNAUTHORIZED',
       })
     })
@@ -65,9 +58,7 @@ describe('AuthMiddleware', () => {
     })
 
     it('無効なトークンの場合はエラー', async () => {
-      await expect(
-        middleware.authenticate('Bearer invalid-token')
-      ).rejects.toMatchObject({
+      await expect(middleware.authenticate('Bearer invalid-token')).rejects.toMatchObject({
         code: 'INVALID_TOKEN',
       })
     })
@@ -78,9 +69,7 @@ describe('AuthMiddleware', () => {
       const authHeader = `Bearer ${token}`
 
       // セッションが存在しない
-      vi.mocked(mockRepository.findActiveSessionByUserId).mockResolvedValue(
-        null
-      )
+      vi.mocked(mockRepository.findActiveSessionByUserId).mockResolvedValue(null)
 
       await expect(middleware.authenticate(authHeader)).rejects.toMatchObject({
         code: 'SESSION_EXPIRED',

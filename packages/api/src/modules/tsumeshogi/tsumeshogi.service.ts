@@ -5,8 +5,8 @@
 import type { Tsumeshogi } from '@prisma/client'
 
 import { AppError } from '../../shared/errors/AppError.js'
-import type { TsumeshogiRepository, FindAllOptions } from './tsumeshogi.repository.js'
-import type { TsumeshogiStatus, StatusFilter } from './tsumeshogi.schema.js'
+import type { FindAllOptions, TsumeshogiRepository } from './tsumeshogi.repository.js'
+import type { StatusFilter, TsumeshogiStatus } from './tsumeshogi.schema.js'
 
 export interface GetAllOptions {
   moveCount?: number

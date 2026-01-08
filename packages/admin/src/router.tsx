@@ -1,14 +1,14 @@
+import type { ReactNode } from 'react'
 /**
  * React Router設定
  */
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { Layout } from './components/Layout'
-import { Login } from './pages/Login'
+import { useAuth } from './hooks/useAuth'
 import { Dashboard } from './pages/Dashboard'
+import { Login } from './pages/Login'
 import { LessonList } from './pages/lesson/LessonList'
 import { ProblemEdit } from './pages/lesson/ProblemEdit'
-import { useAuth } from './hooks/useAuth'
-import type { ReactNode } from 'react'
 
 /**
  * 認証必須ルートのラッパー
@@ -75,7 +75,12 @@ export const router = createBrowserRouter([
       },
       {
         path: 'tsumeshogi',
-        element: <div className="p-8"><h1 className="text-2xl font-bold">詰将棋管理</h1><p className="text-gray-500 mt-2">Step 5で実装</p></div>,
+        element: (
+          <div className="p-8">
+            <h1 className="text-2xl font-bold">詰将棋管理</h1>
+            <p className="text-gray-500 mt-2">Step 5で実装</p>
+          </div>
+        ),
       },
       {
         path: 'lessons',
@@ -87,7 +92,12 @@ export const router = createBrowserRouter([
       },
       {
         path: 'backup',
-        element: <div className="p-8"><h1 className="text-2xl font-bold">バックアップ</h1><p className="text-gray-500 mt-2">Step 10で実装</p></div>,
+        element: (
+          <div className="p-8">
+            <h1 className="text-2xl font-bold">バックアップ</h1>
+            <p className="text-gray-500 mt-2">Step 10で実装</p>
+          </div>
+        ),
       },
     ],
   },

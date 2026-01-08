@@ -10,16 +10,13 @@ export interface HeartsRepository {
   upsert(
     userId: string,
     data: { count: number; maxCount: number; recoveryStartedAt: Date },
-    tx?: PrismaClientOrTx
+    tx?: PrismaClientOrTx,
   ): Promise<Hearts>
 }
 
 export function createHeartsRepository(prisma: PrismaClient): HeartsRepository {
   return {
-    async findByUserId(
-      userId: string,
-      tx?: PrismaClientOrTx
-    ): Promise<Hearts | null> {
+    async findByUserId(userId: string, tx?: PrismaClientOrTx): Promise<Hearts | null> {
       const client = tx ?? prisma
       return client.hearts.findUnique({ where: { userId } })
     },
@@ -27,7 +24,7 @@ export function createHeartsRepository(prisma: PrismaClient): HeartsRepository {
     async upsert(
       userId: string,
       data: { count: number; maxCount: number; recoveryStartedAt: Date },
-      tx?: PrismaClientOrTx
+      tx?: PrismaClientOrTx,
     ): Promise<Hearts> {
       const client = tx ?? prisma
       return client.hearts.upsert({

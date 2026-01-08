@@ -99,9 +99,7 @@ export function SectionRow({
             />
           ))}
           {section.lessons.length === 0 && (
-            <div className="py-6 text-center text-sm text-slate-400">
-              レッスンがありません
-            </div>
+            <div className="py-6 text-center text-sm text-slate-400">レッスンがありません</div>
           )}
           <div className="py-3 px-5 bg-slate-50 border-t border-slate-100">
             <button
@@ -109,7 +107,12 @@ export function SectionRow({
               className="flex items-center gap-1.5 text-xs text-primary hover:text-primary-dark font-medium transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               レッスンを追加
             </button>

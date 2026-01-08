@@ -51,11 +51,11 @@ export function ProblemListPanel({
                 : 'hover:bg-slate-50 border-l-2 border-transparent'
             }`}
           >
-            <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-medium ${
-              index === selectedIndex
-                ? 'bg-primary text-white'
-                : 'bg-slate-100 text-slate-600'
-            }`}>
+            <span
+              className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-medium ${
+                index === selectedIndex ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
               {index + 1}
             </span>
             <div className="flex-1 min-w-0">
@@ -66,42 +66,64 @@ export function ProblemListPanel({
             {/* ホバー時にアクションボタン表示 */}
             <div className="hidden group-hover:flex items-center gap-0.5">
               <button
-                onClick={(e) => { e.stopPropagation(); onMoveUp(index) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onMoveUp(index)
+                }}
                 disabled={index === 0}
                 className="p-0.5 text-slate-400 hover:text-slate-600 rounded disabled:opacity-30"
                 title="上へ"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 15l7-7 7 7"
+                  />
                 </svg>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); onMoveDown(index) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onMoveDown(index)
+                }}
                 disabled={index === problems.length - 1}
                 className="p-0.5 text-slate-400 hover:text-slate-600 rounded disabled:opacity-30"
                 title="下へ"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); onDelete(index) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(index)
+                }}
                 disabled={problems.length <= 1}
                 className="p-0.5 text-slate-400 hover:text-red-500 rounded disabled:opacity-30"
                 title="削除"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
           </div>
         ))}
         {problems.length === 0 && (
-          <div className="py-6 text-center text-xs text-slate-400">
-            問題なし
-          </div>
+          <div className="py-6 text-center text-xs text-slate-400">問題なし</div>
         )}
       </div>
     </div>

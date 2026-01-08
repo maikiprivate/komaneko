@@ -31,9 +31,7 @@ export function createAuthMiddleware(repository: AuthMiddlewareRepository) {
      * @returns 認証済みユーザー情報
      * @throws AppError 認証失敗時
      */
-    async authenticate(
-      authHeader: string | undefined
-    ): Promise<AuthenticatedUser> {
+    async authenticate(authHeader: string | undefined): Promise<AuthenticatedUser> {
       // 1. Authorizationヘッダーの検証
       if (!authHeader) {
         throw new AppError('UNAUTHORIZED')

@@ -10,20 +10,20 @@ export type Perspective = 'sente' | 'gote'
 
 /** 駒の種類 */
 export type PieceType =
-  | 'fu'    // 歩
-  | 'kyo'   // 香
-  | 'kei'   // 桂
-  | 'gin'   // 銀
-  | 'kin'   // 金
-  | 'kaku'  // 角
-  | 'hi'    // 飛
-  | 'ou'    // 王/玉
-  | 'to'    // と（成歩）
-  | 'narikyo'  // 成香
-  | 'narikei'  // 成桂
-  | 'narigin'  // 成銀
-  | 'uma'   // 馬（成角）
-  | 'ryu'   // 龍（成飛）
+  | 'fu' // 歩
+  | 'kyo' // 香
+  | 'kei' // 桂
+  | 'gin' // 銀
+  | 'kin' // 金
+  | 'kaku' // 角
+  | 'hi' // 飛
+  | 'ou' // 王/玉
+  | 'to' // と（成歩）
+  | 'narikyo' // 成香
+  | 'narikei' // 成桂
+  | 'narigin' // 成銀
+  | 'uma' // 馬（成角）
+  | 'ryu' // 龍（成飛）
 
 /** 駒 */
 export interface Piece {
@@ -33,8 +33,8 @@ export interface Piece {
 
 /** 盤上の位置（0-indexed） */
 export interface Position {
-  row: number  // 0-8（一段目-九段目）
-  col: number  // 0-8（9筋-1筋）
+  row: number // 0-8（一段目-九段目）
+  col: number // 0-8（9筋-1筋）
 }
 
 /** 盤面（9x9の2次元配列） */
@@ -90,9 +90,7 @@ export const PIECE_NAMES: Record<PieceType, string> = {
 }
 
 /** 持ち駒として使える駒（成駒以外） */
-export const HAND_PIECE_TYPES: PieceType[] = [
-  'hi', 'kaku', 'kin', 'gin', 'kei', 'kyo', 'fu',
-]
+export const HAND_PIECE_TYPES: PieceType[] = ['hi', 'kaku', 'kin', 'gin', 'kei', 'kyo', 'fu']
 
 /** 盤上の駒を動かす手 */
 export interface MoveAction {

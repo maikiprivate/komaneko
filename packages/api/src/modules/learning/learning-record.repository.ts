@@ -2,8 +2,8 @@
  * 学習記録リポジトリ（DB操作）
  */
 
+import { JST_OFFSET_HOURS, getDateString } from '@komaneko/shared/utils/date'
 import type { LearningRecord, PrismaClient } from '@prisma/client'
-import { getDateString, JST_OFFSET_HOURS } from '@komaneko/shared/utils/date'
 
 import type { PrismaClientOrTx } from '../../db/client.js'
 
@@ -27,7 +27,7 @@ export interface LearningRecordRepository {
       isCorrect: boolean
       completedDate: string | null // 完了時のみ設定（YYYY-MM-DD）
     },
-    tx?: PrismaClientOrTx
+    tx?: PrismaClientOrTx,
   ): Promise<LearningRecord>
 
   /**
@@ -42,40 +42,28 @@ export interface LearningRecordRepository {
       completedDate: string // 完了時のみ呼ばれるため必須
       completionSeconds?: number
     },
-    tx?: PrismaClientOrTx
+    tx?: PrismaClientOrTx,
   ): Promise<LearningRecord>
 
   /**
    * 完了日リスト取得（過去N日間、ストリーク・カレンダー用）
    * 重複排除済みのユニークな日付リストを返す
    */
-  findCompletedDates(
-    userId: string,
-    days: number,
-    tx?: PrismaClientOrTx
-  ): Promise<string[]>
+  findCompletedDates(userId: string, days: number, tx?: PrismaClientOrTx): Promise<string[]>
 
   /**
    * 最終完了日取得
    */
-  findLastCompletedDate(
-    userId: string,
-    tx?: PrismaClientOrTx
-  ): Promise<string | null>
+  findLastCompletedDate(userId: string, tx?: PrismaClientOrTx): Promise<string | null>
 
   /**
    * 全完了日取得（longestCount計算用）
    * 重複排除済みのユニークな日付リストを返す
    */
-  findAllCompletedDates(
-    userId: string,
-    tx?: PrismaClientOrTx
-  ): Promise<string[]>
+  findAllCompletedDates(userId: string, tx?: PrismaClientOrTx): Promise<string[]>
 }
 
-export function createLearningRecordRepository(
-  prisma: PrismaClient
-): LearningRecordRepository {
+export function createLearningRecordRepository(prisma: PrismaClient): LearningRecordRepository {
   return {
     async createWithTsumeshogi(
       userId: string,
@@ -84,7 +72,7 @@ export function createLearningRecordRepository(
         isCorrect: boolean
         completedDate: string | null
       },
-      tx?: PrismaClientOrTx
+      tx?: PrismaClientOrTx,
     ): Promise<LearningRecord> {
       const client = tx ?? prisma
       return client.learningRecord.create({
@@ -112,7 +100,7 @@ export function createLearningRecordRepository(
         completedDate: string
         completionSeconds?: number
       },
-      tx?: PrismaClientOrTx
+      tx?: PrismaClientOrTx,
     ): Promise<LearningRecord> {
       const client = tx ?? prisma
       return client.learningRecord.create({
@@ -144,7 +132,7 @@ export function createLearningRecordRepository(
     async findCompletedDates(
       userId: string,
       days: number,
-      tx?: PrismaClientOrTx
+      tx?: PrismaClientOrTx,
     ): Promise<string[]> {
       const client = tx ?? prisma
 
@@ -169,15 +157,10 @@ export function createLearningRecordRepository(
         orderBy: { completedDate: 'desc' },
       })
 
-      return records
-        .map((r) => r.completedDate)
-        .filter((date): date is string => date !== null)
+      return records.map((r) => r.completedDate).filter((date): date is string => date !== null)
     },
 
-    async findLastCompletedDate(
-      userId: string,
-      tx?: PrismaClientOrTx
-    ): Promise<string | null> {
+    async findLastCompletedDate(userId: string, tx?: PrismaClientOrTx): Promise<string | null> {
       const client = tx ?? prisma
 
       const record = await client.learningRecord.findFirst({
@@ -193,10 +176,7 @@ export function createLearningRecordRepository(
       return record?.completedDate ?? null
     },
 
-    async findAllCompletedDates(
-      userId: string,
-      tx?: PrismaClientOrTx
-    ): Promise<string[]> {
+    async findAllCompletedDates(userId: string, tx?: PrismaClientOrTx): Promise<string[]> {
       const client = tx ?? prisma
 
       const records = await client.learningRecord.findMany({
@@ -210,9 +190,7 @@ export function createLearningRecordRepository(
         orderBy: { completedDate: 'asc' },
       })
 
-      return records
-        .map((r) => r.completedDate)
-        .filter((date): date is string => date !== null)
+      return records.map((r) => r.completedDate).filter((date): date is string => date !== null)
     },
   }
 }

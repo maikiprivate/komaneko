@@ -4,7 +4,16 @@
  * アプリ側からコピー（packages/app/lib/shogi/moveGenerator.ts）
  */
 
-import type { Board, BoardState, CapturedPieces, Move, Piece, PieceType, Player, Position } from './types'
+import type {
+  Board,
+  BoardState,
+  CapturedPieces,
+  Move,
+  Piece,
+  PieceType,
+  Player,
+  Position,
+} from './types'
 
 /** 移動方向（先手視点: row-は前進） */
 type Direction = [row: number, col: number]

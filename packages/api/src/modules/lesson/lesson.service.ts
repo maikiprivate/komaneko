@@ -4,8 +4,8 @@
 
 import { AppError } from '../../shared/errors/AppError.js'
 import type {
-  LessonReadRepository,
   CourseWithNested,
+  LessonReadRepository,
   LessonWithProblems,
 } from './lesson.repository.js'
 
@@ -40,17 +40,11 @@ export class LessonService {
 
     return courses.map((course) => {
       // コース内の全レッスンIDを取得
-      const lessonIds = course.sections.flatMap((s) =>
-        s.lessons.map((l) => l.id)
-      )
+      const lessonIds = course.sections.flatMap((s) => s.lessons.map((l) => l.id))
       const totalLessons = lessonIds.length
-      const completedLessons = lessonIds.filter((id) =>
-        completedSet.has(id)
-      ).length
+      const completedLessons = lessonIds.filter((id) => completedSet.has(id)).length
       const progressPercent =
-        totalLessons > 0
-          ? Math.round((completedLessons / totalLessons) * 100)
-          : 0
+        totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
 
       return {
         courseId: course.id,
