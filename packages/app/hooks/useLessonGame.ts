@@ -242,6 +242,14 @@ export function useLessonGame({
   // 相手の応手タイマー
   const opponentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // タイマークリーンアップヘルパー
+  const clearOpponentTimer = useCallback(() => {
+    if (opponentTimerRef.current) {
+      clearTimeout(opponentTimerRef.current)
+      opponentTimerRef.current = null
+    }
+  }, [])
+
   // 問題が変わったらシーケンスをリセット
   useEffect(() => {
     if (currentProblem) {
@@ -251,14 +259,12 @@ export function useLessonGame({
     }
   }, [currentProblem])
 
-  // クリーンアップ
+  // アンマウント時のクリーンアップ
   useEffect(() => {
     return () => {
-      if (opponentTimerRef.current) {
-        clearTimeout(opponentTimerRef.current)
-      }
+      clearOpponentTimer()
     }
-  }, [])
+  }, [clearOpponentTimer])
 
   // 解答再生フック
   const solutionPlayback = useSolutionPlayback()
@@ -440,9 +446,13 @@ export function useLessonGame({
             opponentMove.promote ?? false,
           )
         } else {
-          // 不正な手 - エラーログを出力してリセット
+          // 不正な手 - エラーログを出力して初期状態にリセット
           console.warn('[useLessonGame] Invalid opponent move:', opponentMove)
           setIsOpponentThinking(false)
+          // 盤面とシーケンス状態をリセットして再試行可能にする
+          setBoardState(parseSfen(currentProblem.sfen))
+          setSequenceIndex(0)
+          setActiveVariationIndices(currentProblem.correctSequences.map((_, i) => i))
           return
         }
 
@@ -706,13 +716,10 @@ export function useLessonGame({
   const handleReset = useCallback(() => {
     if (!currentProblem) return
 
-    // 相手の応手タイマーをキャンセル
-    if (opponentTimerRef.current) {
-      clearTimeout(opponentTimerRef.current)
-      opponentTimerRef.current = null
-    }
-
+    // タイマーをキャンセル
+    clearOpponentTimer()
     solutionPlayback.reset()
+
     setBoardState(parseSfen(currentProblem.sfen))
     clearSelection()
     setHintHighlight(null)
@@ -720,7 +727,7 @@ export function useLessonGame({
     setSequenceIndex(0)
     setActiveVariationIndices(currentProblem.correctSequences.map((_, i) => i))
     setIsOpponentThinking(false)
-  }, [currentProblem, clearSelection, solutionPlayback])
+  }, [currentProblem, clearSelection, clearOpponentTimer, solutionPlayback])
 
   // ヒント表示
   const handleHint = useCallback(() => {
@@ -752,14 +759,14 @@ export function useLessonGame({
     }
   }, [currentProblem, sequenceIndex, activeVariationIndices])
 
-  // 解答表示
+  // 解答表示（駒打ち・複数手順対応版）
   const handleSolution = useCallback(() => {
     if (!currentProblem) return
     if (currentProblem.correctSequences.length === 0) return
     if (currentProblem.correctSequences[0].length === 0) return
 
     // 既に再生中なら何もしない
-    if (solutionPlayback.phase !== 'none') {
+    if (solutionPlayback.isPlaying) {
       return
     }
 
@@ -767,46 +774,44 @@ export function useLessonGame({
     setUsedSolution(true)
     setHasAttemptedWrong(true)
 
-    // 最初のバリエーションの最初の手を取得
-    // TODO: 現在は最初の手のみ表示。複数手順のシーケンス全体を
-    // アニメーション再生する機能は未実装（useSolutionPlaybackの拡張が必要）
-    const firstMove = currentProblem.correctSequences[0][0]
+    // 最初のバリエーションの全手順を取得
+    const sequence = currentProblem.correctSequences[0]
+    const initialSfen = currentProblem.sfen
 
-    // TODO: 駒打ちの解答再生アニメーションは未対応
-    // useSolutionPlaybackが移動のみ対応のため、駒打ちの場合はヒント表示で代用
-    if (firstMove.type === 'drop' || !firstMove.from) {
-      setHintHighlight({
-        from: undefined,
-        to: firstMove.to,
-        piece: firstMove.piece,
-      })
-      return
-    }
-
-    // 移動の場合はuseSolutionPlaybackを使用
-    const correctMove = {
-      from: firstMove.from,
-      to: firstMove.to,
-      promote: firstMove.promote,
-    }
+    // 盤面状態を保持（onMoveコールバック内で更新）
+    let currentState = parseSfen(initialSfen)
 
     solutionPlayback.play(
       {
-        correctMove,
-        sfen: currentProblem.sfen,
+        moves: sequence,
+        sfen: initialSfen,
       },
       {
         onPrepare: () => {
           clearSelection()
           setHintHighlight(null)
+          // 盤面を初期状態にリセット（途中まで解いていた場合のため）
+          setBoardState(parseSfen(initialSfen))
+          currentState = parseSfen(initialSfen)
         },
-        onBoardUpdate: (sfen, move) => {
-          const freshState = parseSfen(sfen)
-          const newState = makeMove(freshState, move.from, move.to, move.promote)
-          setBoardState(newState)
+        onMove: (move, moveIndex) => {
+          const turn = moveIndex % 2 === 0 ? 'sente' : 'gote'
+
+          // 手を実行
+          if (move.type === 'drop' && move.piece) {
+            currentState = makeDrop(currentState, move.piece, move.to, turn)
+          } else if (move.type === 'move' && move.from) {
+            currentState = makeMove(currentState, move.from, move.to, move.promote ?? false)
+          }
+
+          setBoardState(currentState)
         },
         onBoardReset: (sfen) => {
+          // 盤面リセット
           setBoardState(parseSfen(sfen))
+          // シーケンス状態もリセット（再挑戦できるようにする）
+          setSequenceIndex(0)
+          setActiveVariationIndices(currentProblem.correctSequences.map((_, i) => i))
         },
       },
     )
