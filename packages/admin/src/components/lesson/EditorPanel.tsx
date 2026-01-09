@@ -18,6 +18,7 @@ interface EditorPanelProps {
   selectedOwner: Player
   onPieceSelect: (piece: PieceType | null, owner: Player) => void
   onReset: () => void
+  onSetInitialPosition: () => void
 }
 
 export function EditorPanel({
@@ -27,6 +28,7 @@ export function EditorPanel({
   selectedOwner,
   onPieceSelect,
   onReset,
+  onSetInitialPosition,
 }: EditorPanelProps) {
   const isSelected = (piece: PieceType, owner: Player) =>
     selectedPiece === piece && selectedOwner === owner
@@ -119,8 +121,15 @@ export function EditorPanel({
             </div>
           </div>
 
-          {/* フッター: 選択解除・盤面リセット */}
+          {/* フッター: 初期配置・選択解除・盤面リセット */}
           <div className="flex items-center justify-center gap-4 pt-2 border-t border-slate-100">
+            <button
+              onClick={onSetInitialPosition}
+              className="text-xs text-primary hover:text-primary-dark transition-colors font-medium"
+            >
+              平手初期配置
+            </button>
+            <div className="w-px h-4 bg-slate-200" />
             <button
               onClick={() => onPieceSelect(null, selectedOwner)}
               disabled={!selectedPiece}

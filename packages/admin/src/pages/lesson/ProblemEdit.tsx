@@ -39,7 +39,7 @@ import {
   makeMove,
   mustPromote,
 } from '../../lib/shogi/moveGenerator'
-import { EMPTY_BOARD_SFEN, boardStateToSfen, parseSfen } from '../../lib/shogi/sfen'
+import { EMPTY_BOARD_SFEN, INITIAL_SFEN, boardStateToSfen, parseSfen } from '../../lib/shogi/sfen'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
 import type { PieceType, Player, Position } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
@@ -731,6 +731,15 @@ export function ProblemEdit() {
     setSelectedPalettePiece(null)
   }, [selectedProblem, problems, selectedIndex])
 
+  // 初期配置設定（平手）
+  const handleSetInitialPosition = useCallback(() => {
+    if (!selectedProblem) return
+    const newProblems = [...problems]
+    newProblems[selectedIndex] = { ...selectedProblem, sfen: INITIAL_SFEN }
+    setProblems(newProblems)
+    setSelectedPalettePiece(null)
+  }, [selectedProblem, problems, selectedIndex])
+
   // 駒台クリック（持ち駒追加）
   const handleStandClick = useCallback(
     (player: Player) => {
@@ -861,6 +870,7 @@ export function ProblemEdit() {
               selectedOwner={selectedOwner}
               onPieceSelect={handlePaletteSelect}
               onReset={handleBoardReset}
+              onSetInitialPosition={handleSetInitialPosition}
             />
 
             {/* 将棋盤 */}
