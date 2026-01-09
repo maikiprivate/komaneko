@@ -423,10 +423,23 @@ export function ProblemEdit() {
     setSelectedSetupPosition(null)
   }, [])
 
+  // 盤面のSFENを更新するヘルパー
+  const updateBoardSfen = useCallback(
+    (newBoard: (import('../../lib/shogi/types').Piece | null)[][]) => {
+      if (!selectedProblem) return
+      const currentBoard = parseSfen(selectedProblem.sfen)
+      const newBoardState = { ...currentBoard, board: newBoard }
+      const newSfen = boardStateToSfen(newBoardState)
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+      setProblems(newProblems)
+    },
+    [selectedProblem, problems, selectedIndex],
+  )
+
   // 盤面セルクリック（初期配置モード）
   const handleSetupCellClick = useCallback(
     (row: number, col: number) => {
-      // 問題がない場合は自動で新規作成
       if (!selectedProblem) {
         handleAddProblem()
         return
@@ -435,63 +448,55 @@ export function ProblemEdit() {
       const currentBoard = parseSfen(selectedProblem.sfen)
       const newBoard = currentBoard.board.map((r) => [...r])
       const currentCell = newBoard[row][col]
-      const clickedPos = { row, col }
 
-      // パレットから駒が選択されている場合：駒を配置
+      // Case 1: パレット駒選択中
       if (selectedPalettePiece) {
-        newBoard[row][col] = {
-          type: selectedPalettePiece,
-          owner: selectedOwner,
-        }
-        // 選択状態をリセット
-        setSelectedSetupPosition(null)
-      }
-      // 盤上の駒が選択されている場合：移動または選択解除
-      else if (selectedSetupPosition) {
-        const isSamePosition =
-          selectedSetupPosition.row === row && selectedSetupPosition.col === col
-        if (isSamePosition) {
-          // 同じ位置をクリック → 選択解除
+        if (currentCell) {
+          // 既存駒クリック → パレット解除して盤上駒を選択
+          setSelectedPalettePiece(null)
+          setSelectedSetupPosition({ row, col })
+        } else {
+          // 空セルクリック → 駒を配置
+          newBoard[row][col] = { type: selectedPalettePiece, owner: selectedOwner }
           setSelectedSetupPosition(null)
-          return
+          updateBoardSfen(newBoard)
         }
-        // 別の位置をクリック → 駒を移動
-        const sourcePiece = newBoard[selectedSetupPosition.row][selectedSetupPosition.col]
-        if (sourcePiece) {
-          newBoard[selectedSetupPosition.row][selectedSetupPosition.col] = null
-          newBoard[row][col] = sourcePiece
+        return
+      }
+
+      // Case 2: 盤上駒選択中
+      if (selectedSetupPosition) {
+        const isSamePos = selectedSetupPosition.row === row && selectedSetupPosition.col === col
+        if (isSamePos) {
+          // 同じ位置 → 駒を削除
+          newBoard[row][col] = null
+        } else {
+          // 別の位置 → 駒を移動
+          const piece = newBoard[selectedSetupPosition.row][selectedSetupPosition.col]
+          if (piece) {
+            newBoard[selectedSetupPosition.row][selectedSetupPosition.col] = null
+            newBoard[row][col] = piece
+          }
         }
         setSelectedSetupPosition(null)
-      }
-      // 何も選択されていない場合
-      else if (currentCell) {
-        // 駒があるセルをクリック → 選択（移動元として）
-        setSelectedSetupPosition(clickedPos)
-        return
-      } else {
-        // 空のセルをクリック → 何もしない
+        updateBoardSfen(newBoard)
         return
       }
 
-      // 新しいSFENを生成して問題を更新
-      const newBoardState = {
-        ...currentBoard,
-        board: newBoard,
+      // Case 3: 何も選択されていない
+      if (currentCell) {
+        // 駒クリック → 選択
+        setSelectedSetupPosition({ row, col })
       }
-      const newSfen = boardStateToSfen(newBoardState)
-
-      const newProblems = [...problems]
-      newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
-      setProblems(newProblems)
+      // 空セルクリック → 何もしない
     },
     [
       selectedProblem,
       selectedPalettePiece,
       selectedOwner,
       selectedSetupPosition,
-      problems,
-      selectedIndex,
       handleAddProblem,
+      updateBoardSfen,
     ],
   )
 

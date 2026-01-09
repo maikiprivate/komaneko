@@ -121,25 +121,13 @@ export function EditorPanel({
             </div>
           </div>
 
-          {/* フッター: 初期配置・選択解除・盤面リセット */}
+          {/* フッター: 初期配置・盤面リセット */}
           <div className="flex items-center justify-center gap-4 pt-2 border-t border-slate-100">
             <button
               onClick={onSetInitialPosition}
               className="text-xs text-primary hover:text-primary-dark transition-colors font-medium"
             >
               平手初期配置
-            </button>
-            <div className="w-px h-4 bg-slate-200" />
-            <button
-              onClick={() => onPieceSelect(null, selectedOwner)}
-              disabled={!selectedPiece}
-              className={`text-xs transition-colors ${
-                selectedPiece
-                  ? 'text-slate-500 hover:text-slate-700'
-                  : 'text-slate-300 cursor-not-allowed'
-              }`}
-            >
-              選択解除
             </button>
             <button
               onClick={onReset}
