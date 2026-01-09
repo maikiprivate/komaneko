@@ -91,7 +91,7 @@ export function EditorPanel({
                 d="M13 5l7 7-7 7M5 5l7 7-7 7"
               />
             </svg>
-            手順設定
+            解答設定
           </button>
         </div>
       </div>
@@ -139,7 +139,7 @@ export function EditorPanel({
         </>
       )}
 
-      {/* 手順設定モード時のヒント */}
+      {/* 解答設定モード時のヒント */}
       {mode === 'moves' && (
         <div className="text-center text-xs text-slate-400 py-1">駒をクリックして手を入力</div>
       )}
