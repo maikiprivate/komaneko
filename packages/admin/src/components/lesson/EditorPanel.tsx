@@ -18,6 +18,7 @@ interface EditorPanelProps {
   selectedOwner: Player
   onPieceSelect: (piece: PieceType | null, owner: Player) => void
   onReset: () => void
+  onSetInitialPosition: () => void
 }
 
 export function EditorPanel({
@@ -27,6 +28,7 @@ export function EditorPanel({
   selectedOwner,
   onPieceSelect,
   onReset,
+  onSetInitialPosition,
 }: EditorPanelProps) {
   const isSelected = (piece: PieceType, owner: Player) =>
     selectedPiece === piece && selectedOwner === owner
@@ -89,7 +91,7 @@ export function EditorPanel({
                 d="M13 5l7 7-7 7M5 5l7 7-7 7"
               />
             </svg>
-            手順設定
+            解答設定
           </button>
         </div>
       </div>
@@ -119,18 +121,13 @@ export function EditorPanel({
             </div>
           </div>
 
-          {/* フッター: 選択解除・盤面リセット */}
+          {/* フッター: 初期配置・盤面リセット */}
           <div className="flex items-center justify-center gap-4 pt-2 border-t border-slate-100">
             <button
-              onClick={() => onPieceSelect(null, selectedOwner)}
-              disabled={!selectedPiece}
-              className={`text-xs transition-colors ${
-                selectedPiece
-                  ? 'text-slate-500 hover:text-slate-700'
-                  : 'text-slate-300 cursor-not-allowed'
-              }`}
+              onClick={onSetInitialPosition}
+              className="text-xs text-primary hover:text-primary-dark transition-colors font-medium"
             >
-              選択解除
+              平手初期配置
             </button>
             <button
               onClick={onReset}
@@ -142,7 +139,7 @@ export function EditorPanel({
         </>
       )}
 
-      {/* 手順設定モード時のヒント */}
+      {/* 解答設定モード時のヒント */}
       {mode === 'moves' && (
         <div className="text-center text-xs text-slate-400 py-1">駒をクリックして手を入力</div>
       )}

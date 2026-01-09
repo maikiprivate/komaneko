@@ -39,9 +39,9 @@ import {
   makeMove,
   mustPromote,
 } from '../../lib/shogi/moveGenerator'
-import { EMPTY_BOARD_SFEN, boardStateToSfen, parseSfen } from '../../lib/shogi/sfen'
+import { EMPTY_BOARD_SFEN, INITIAL_SFEN, boardStateToSfen, parseSfen } from '../../lib/shogi/sfen'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
-import type { PieceType, Player, Position } from '../../lib/shogi/types'
+import type { Piece, PieceType, Player, Position } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 
 // =============================================================================
@@ -169,6 +169,8 @@ export function ProblemEdit() {
   // 駒パレット状態（初期配置モード用）
   const [selectedPalettePiece, setSelectedPalettePiece] = useState<PieceType | null>(null)
   const [selectedOwner, setSelectedOwner] = useState<Player>('sente')
+  // 初期配置モードで選択中の駒の位置（移動元）
+  const [selectedSetupPosition, setSelectedSetupPosition] = useState<Position | null>(null)
 
   // 手順設定モード用状態
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
@@ -216,6 +218,7 @@ export function ProblemEdit() {
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
+    setSelectedSetupPosition(null)
   }, [mode])
 
   // 問題切り替え時に盤面と手順を復元
@@ -227,6 +230,7 @@ export function ProblemEdit() {
     setSelectedHandPiece(null)
     setPossibleMoves([])
     setSelectedNodeIndex(-1)
+    setSelectedSetupPosition(null)
 
     // MoveTreeがあれば復元
     if (selectedProblem?.moveTree && selectedProblem.moveTree.branches.length > 0) {
@@ -415,12 +419,27 @@ export function ProblemEdit() {
   const handlePaletteSelect = useCallback((piece: PieceType | null, owner: Player) => {
     setSelectedPalettePiece(piece)
     setSelectedOwner(owner)
+    // パレットから駒を選択したら、盤上の選択をクリア
+    setSelectedSetupPosition(null)
   }, [])
+
+  // 盤面のSFENを更新するヘルパー
+  const updateBoardSfen = useCallback(
+    (newBoard: (Piece | null)[][]) => {
+      if (!selectedProblem) return
+      const currentBoard = parseSfen(selectedProblem.sfen)
+      const newBoardState = { ...currentBoard, board: newBoard }
+      const newSfen = boardStateToSfen(newBoardState)
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+      setProblems(newProblems)
+    },
+    [selectedProblem, problems, selectedIndex],
+  )
 
   // 盤面セルクリック（初期配置モード）
   const handleSetupCellClick = useCallback(
     (row: number, col: number) => {
-      // 問題がない場合は自動で新規作成
       if (!selectedProblem) {
         handleAddProblem()
         return
@@ -430,38 +449,54 @@ export function ProblemEdit() {
       const newBoard = currentBoard.board.map((r) => [...r])
       const currentCell = newBoard[row][col]
 
+      // Case 1: パレット駒選択中
       if (selectedPalettePiece) {
-        // 駒を配置
-        newBoard[row][col] = {
-          type: selectedPalettePiece,
-          owner: selectedOwner,
+        if (currentCell) {
+          // 既存駒クリック → パレット解除して盤上駒を選択
+          setSelectedPalettePiece(null)
+          setSelectedSetupPosition({ row, col })
+        } else {
+          // 空セルクリック → 駒を配置
+          newBoard[row][col] = { type: selectedPalettePiece, owner: selectedOwner }
+          setSelectedSetupPosition(null)
+          updateBoardSfen(newBoard)
         }
-      } else if (currentCell) {
-        // 駒を削除
-        newBoard[row][col] = null
-      } else {
-        // 何もしない
         return
       }
 
-      // 新しいSFENを生成して問題を更新
-      const newBoardState = {
-        ...currentBoard,
-        board: newBoard,
+      // Case 2: 盤上駒選択中
+      if (selectedSetupPosition) {
+        const isSamePos = selectedSetupPosition.row === row && selectedSetupPosition.col === col
+        if (isSamePos) {
+          // 同じ位置 → 駒を削除
+          newBoard[row][col] = null
+        } else {
+          // 別の位置 → 駒を移動
+          const piece = newBoard[selectedSetupPosition.row][selectedSetupPosition.col]
+          if (piece) {
+            newBoard[selectedSetupPosition.row][selectedSetupPosition.col] = null
+            newBoard[row][col] = piece
+          }
+        }
+        setSelectedSetupPosition(null)
+        updateBoardSfen(newBoard)
+        return
       }
-      const newSfen = boardStateToSfen(newBoardState)
 
-      const newProblems = [...problems]
-      newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
-      setProblems(newProblems)
+      // Case 3: 何も選択されていない
+      if (currentCell) {
+        // 駒クリック → 選択
+        setSelectedSetupPosition({ row, col })
+      }
+      // 空セルクリック → 何もしない
     },
     [
       selectedProblem,
       selectedPalettePiece,
       selectedOwner,
-      problems,
-      selectedIndex,
+      selectedSetupPosition,
       handleAddProblem,
+      updateBoardSfen,
     ],
   )
 
@@ -722,14 +757,28 @@ export function ProblemEdit() {
     [mode, handleSetupCellClick, handleMovesCellClick],
   )
 
+  // 問題のSFENを更新して選択状態をクリアするヘルパー
+  const updateProblemSfenAndClearSelection = useCallback(
+    (newSfen: string) => {
+      if (!selectedProblem) return
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+      setProblems(newProblems)
+      setSelectedPalettePiece(null)
+      setSelectedSetupPosition(null)
+    },
+    [selectedProblem, problems, selectedIndex],
+  )
+
   // 盤面リセット
   const handleBoardReset = useCallback(() => {
-    if (!selectedProblem) return
-    const newProblems = [...problems]
-    newProblems[selectedIndex] = { ...selectedProblem, sfen: EMPTY_BOARD_SFEN }
-    setProblems(newProblems)
-    setSelectedPalettePiece(null)
-  }, [selectedProblem, problems, selectedIndex])
+    updateProblemSfenAndClearSelection(EMPTY_BOARD_SFEN)
+  }, [updateProblemSfenAndClearSelection])
+
+  // 初期配置設定（平手）
+  const handleSetInitialPosition = useCallback(() => {
+    updateProblemSfenAndClearSelection(INITIAL_SFEN)
+  }, [updateProblemSfenAndClearSelection])
 
   // 駒台クリック（持ち駒追加）
   const handleStandClick = useCallback(
@@ -861,6 +910,7 @@ export function ProblemEdit() {
               selectedOwner={selectedOwner}
               onPieceSelect={handlePaletteSelect}
               onReset={handleBoardReset}
+              onSetInitialPosition={handleSetInitialPosition}
             />
 
             {/* 将棋盤 */}
@@ -876,7 +926,7 @@ export function ProblemEdit() {
                   onHandPieceClick={mode === 'setup' ? handleHandPieceClick : undefined}
                   onSenteHandPieceClick={mode === 'moves' ? handleSenteHandPieceClick : undefined}
                   onGoteHandPieceClick={mode === 'moves' ? handleGoteHandPieceClick : undefined}
-                  selectedPosition={mode === 'moves' ? selectedPosition : undefined}
+                  selectedPosition={mode === 'moves' ? selectedPosition : selectedSetupPosition}
                   selectedHandPiece={
                     mode === 'moves' && selectedHandPieceOwner === 'sente'
                       ? selectedHandPiece
