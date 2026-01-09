@@ -36,6 +36,8 @@ export interface CourseData {
   description: string
   progress: CourseProgress
   sections: SectionData[]
+  /** 完了済みレッスンIDリスト（コース詳細取得時のみ） */
+  completedLessonIds?: string[]
 }
 
 /** 問題（レッスン詳細内のネスト） */

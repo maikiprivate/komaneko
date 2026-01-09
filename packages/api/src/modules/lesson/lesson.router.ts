@@ -80,15 +80,19 @@ export async function lessonRouter(app: FastifyInstance) {
    * GET /api/lesson/courses/:courseId - コース詳細取得
    */
   app.get<{ Params: { courseId: string } }>('/courses/:courseId', async (request, reply) => {
-    getAuthenticatedUserId(request) // 認証チェック
+    const userId = getAuthenticatedUserId(request)
 
-    const course = await lessonService.getCourseById(request.params.courseId)
+    const [course, completedLessonIds] = await Promise.all([
+      lessonService.getCourseById(request.params.courseId),
+      lessonService.getCompletedLessonIds(userId),
+    ])
 
     return reply.send({
       data: {
         id: course.id,
         title: course.title,
         description: course.description,
+        completedLessonIds,
         sections: course.sections.map((section) => ({
           id: section.id,
           title: section.title,

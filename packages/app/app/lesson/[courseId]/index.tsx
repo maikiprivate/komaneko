@@ -21,13 +21,35 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '@/components/useTheme'
 import { getCourse, type CourseData, type LessonSummary } from '@/lib/api/lesson'
 
-/** レッスンの状態（将来の進捗管理で動的に設定） */
+/** レッスンの状態 */
 type LessonStatus = 'available' | 'completed' | 'locked'
 
-// TODO: 進捗管理実装時にレッスン状態を動的に取得
-const getLessonStatus = (_lesson: LessonSummary, _lessonIndex: number): LessonStatus => {
-  // 現時点では全てavailableとして表示
-  return 'available'
+/**
+ * レッスンの状態を判定
+ *
+ * @param lessonId - 判定対象のレッスンID
+ * @param completedSet - 完了済みレッスンIDのSet
+ * @param previousLessonId - 前のレッスンのID（最初のレッスンはnull）
+ */
+const getLessonStatus = (
+  lessonId: string,
+  completedSet: Set<string>,
+  previousLessonId: string | null
+): LessonStatus => {
+  // 完了済みなら completed
+  if (completedSet.has(lessonId)) {
+    return 'completed'
+  }
+
+  // 最初のレッスン or 前のレッスンが完了 → available
+  const isFirstLesson = previousLessonId === null
+  const isPreviousCompleted = previousLessonId !== null && completedSet.has(previousLessonId)
+  if (isFirstLesson || isPreviousCompleted) {
+    return 'available'
+  }
+
+  // それ以外は locked
+  return 'locked'
 }
 
 export default function SectionListScreen() {
@@ -76,21 +98,31 @@ export default function SectionListScreen() {
   // Note: Hooksは早期リターンより前に配置する必要がある
   const sections = useMemo(() => {
     if (!course) return []
+
+    const completedSet = new Set(course.completedLessonIds ?? [])
+    // セクションをまたいで前のレッスン情報を追跡
+    let previousLessonId: string | null = null
+    let previousStatus: LessonStatus | null = null
+
     return course.sections.map((section, sectionIndex) => ({
       ...section,
       sectionNumber: sectionIndex + 1,
       data: section.lessons.map((lesson, lessonIndex) => {
-        const status = getLessonStatus(lesson, lessonIndex)
-        const prevLesson = lessonIndex > 0 ? section.lessons[lessonIndex - 1] : null
-        const prevStatus = prevLesson ? getLessonStatus(prevLesson, lessonIndex - 1) : null
-        return {
+        const status = getLessonStatus(lesson.id, completedSet, previousLessonId)
+
+        const result = {
           ...lesson,
           lessonIndex,
           status,
           isFirst: lessonIndex === 0,
           isLast: lessonIndex === section.lessons.length - 1,
-          prevStatus,
+          prevStatus: previousStatus,
         }
+
+        // 次のレッスンのために現在の情報を保存
+        previousLessonId = lesson.id
+        previousStatus = status
+        return result
       }),
     }))
   }, [course])
@@ -100,8 +132,10 @@ export default function SectionListScreen() {
   }, [fetchCourse])
 
   const handleLessonPress = useCallback(
-    (lesson: LessonSummary) => {
+    (lesson: LessonSummary, status: LessonStatus) => {
       if (!courseId) return
+      // ロックされたレッスンは開けない
+      if (status === 'locked') return
       router.push(`/lesson/${courseId}/${lesson.id}`)
     },
     [courseId, router]
@@ -266,7 +300,7 @@ export default function SectionListScreen() {
                     lesson.status === 'available' && styles.lessonContentActive,
                     lesson.status === 'available' && { borderColor: palette.orange },
                   ]}
-                  onPress={() => handleLessonPress(lesson)}
+                  onPress={() => handleLessonPress(lesson, lesson.status)}
                   activeOpacity={lesson.status === 'locked' ? 1 : 0.7}
                 >
                   <Text style={[styles.lessonTitle, { color: style.textColor }]}>

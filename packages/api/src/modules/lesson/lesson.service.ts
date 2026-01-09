@@ -85,4 +85,11 @@ export class LessonService {
 
     return lesson
   }
+
+  /**
+   * ユーザーの完了済みレッスンID一覧を取得
+   */
+  async getCompletedLessonIds(userId: string): Promise<string[]> {
+    return this.repository.findCompletedLessonIds(userId)
+  }
 }
