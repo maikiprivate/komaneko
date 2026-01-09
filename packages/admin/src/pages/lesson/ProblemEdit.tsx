@@ -169,6 +169,8 @@ export function ProblemEdit() {
   // 駒パレット状態（初期配置モード用）
   const [selectedPalettePiece, setSelectedPalettePiece] = useState<PieceType | null>(null)
   const [selectedOwner, setSelectedOwner] = useState<Player>('sente')
+  // 初期配置モードで選択中の駒の位置（移動元）
+  const [selectedSetupPosition, setSelectedSetupPosition] = useState<Position | null>(null)
 
   // 手順設定モード用状態
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
@@ -216,6 +218,7 @@ export function ProblemEdit() {
     setSelectedPosition(null)
     setSelectedHandPiece(null)
     setPossibleMoves([])
+    setSelectedSetupPosition(null)
   }, [mode])
 
   // 問題切り替え時に盤面と手順を復元
@@ -227,6 +230,7 @@ export function ProblemEdit() {
     setSelectedHandPiece(null)
     setPossibleMoves([])
     setSelectedNodeIndex(-1)
+    setSelectedSetupPosition(null)
 
     // MoveTreeがあれば復元
     if (selectedProblem?.moveTree && selectedProblem.moveTree.branches.length > 0) {
@@ -415,6 +419,8 @@ export function ProblemEdit() {
   const handlePaletteSelect = useCallback((piece: PieceType | null, owner: Player) => {
     setSelectedPalettePiece(piece)
     setSelectedOwner(owner)
+    // パレットから駒を選択したら、盤上の選択をクリア
+    setSelectedSetupPosition(null)
   }, [])
 
   // 盤面セルクリック（初期配置モード）
@@ -429,18 +435,41 @@ export function ProblemEdit() {
       const currentBoard = parseSfen(selectedProblem.sfen)
       const newBoard = currentBoard.board.map((r) => [...r])
       const currentCell = newBoard[row][col]
+      const clickedPos = { row, col }
 
+      // パレットから駒が選択されている場合：駒を配置
       if (selectedPalettePiece) {
-        // 駒を配置
         newBoard[row][col] = {
           type: selectedPalettePiece,
           owner: selectedOwner,
         }
-      } else if (currentCell) {
-        // 駒を削除
-        newBoard[row][col] = null
+        // 選択状態をリセット
+        setSelectedSetupPosition(null)
+      }
+      // 盤上の駒が選択されている場合：移動または選択解除
+      else if (selectedSetupPosition) {
+        const isSamePosition =
+          selectedSetupPosition.row === row && selectedSetupPosition.col === col
+        if (isSamePosition) {
+          // 同じ位置をクリック → 選択解除
+          setSelectedSetupPosition(null)
+          return
+        }
+        // 別の位置をクリック → 駒を移動
+        const sourcePiece = newBoard[selectedSetupPosition.row][selectedSetupPosition.col]
+        if (sourcePiece) {
+          newBoard[selectedSetupPosition.row][selectedSetupPosition.col] = null
+          newBoard[row][col] = sourcePiece
+        }
+        setSelectedSetupPosition(null)
+      }
+      // 何も選択されていない場合
+      else if (currentCell) {
+        // 駒があるセルをクリック → 選択（移動元として）
+        setSelectedSetupPosition(clickedPos)
+        return
       } else {
-        // 何もしない
+        // 空のセルをクリック → 何もしない
         return
       }
 
@@ -459,6 +488,7 @@ export function ProblemEdit() {
       selectedProblem,
       selectedPalettePiece,
       selectedOwner,
+      selectedSetupPosition,
       problems,
       selectedIndex,
       handleAddProblem,
@@ -729,6 +759,7 @@ export function ProblemEdit() {
     newProblems[selectedIndex] = { ...selectedProblem, sfen: EMPTY_BOARD_SFEN }
     setProblems(newProblems)
     setSelectedPalettePiece(null)
+    setSelectedSetupPosition(null)
   }, [selectedProblem, problems, selectedIndex])
 
   // 初期配置設定（平手）
@@ -737,6 +768,7 @@ export function ProblemEdit() {
     const newProblems = [...problems]
     newProblems[selectedIndex] = { ...selectedProblem, sfen: INITIAL_SFEN }
     setProblems(newProblems)
+    setSelectedSetupPosition(null)
     setSelectedPalettePiece(null)
   }, [selectedProblem, problems, selectedIndex])
 
@@ -886,7 +918,7 @@ export function ProblemEdit() {
                   onHandPieceClick={mode === 'setup' ? handleHandPieceClick : undefined}
                   onSenteHandPieceClick={mode === 'moves' ? handleSenteHandPieceClick : undefined}
                   onGoteHandPieceClick={mode === 'moves' ? handleGoteHandPieceClick : undefined}
-                  selectedPosition={mode === 'moves' ? selectedPosition : undefined}
+                  selectedPosition={mode === 'moves' ? selectedPosition : selectedSetupPosition}
                   selectedHandPiece={
                     mode === 'moves' && selectedHandPieceOwner === 'sente'
                       ? selectedHandPiece
