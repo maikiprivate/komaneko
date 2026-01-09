@@ -41,7 +41,7 @@ import {
 } from '../../lib/shogi/moveGenerator'
 import { EMPTY_BOARD_SFEN, INITIAL_SFEN, boardStateToSfen, parseSfen } from '../../lib/shogi/sfen'
 import { createEmptyBoardState } from '../../lib/shogi/sfen'
-import type { PieceType, Player, Position } from '../../lib/shogi/types'
+import type { Piece, PieceType, Player, Position } from '../../lib/shogi/types'
 import { HAND_PIECE_TYPES } from '../../lib/shogi/types'
 
 // =============================================================================
@@ -425,7 +425,7 @@ export function ProblemEdit() {
 
   // 盤面のSFENを更新するヘルパー
   const updateBoardSfen = useCallback(
-    (newBoard: (import('../../lib/shogi/types').Piece | null)[][]) => {
+    (newBoard: (Piece | null)[][]) => {
       if (!selectedProblem) return
       const currentBoard = parseSfen(selectedProblem.sfen)
       const newBoardState = { ...currentBoard, board: newBoard }
@@ -757,25 +757,28 @@ export function ProblemEdit() {
     [mode, handleSetupCellClick, handleMovesCellClick],
   )
 
+  // 問題のSFENを更新して選択状態をクリアするヘルパー
+  const updateProblemSfenAndClearSelection = useCallback(
+    (newSfen: string) => {
+      if (!selectedProblem) return
+      const newProblems = [...problems]
+      newProblems[selectedIndex] = { ...selectedProblem, sfen: newSfen }
+      setProblems(newProblems)
+      setSelectedPalettePiece(null)
+      setSelectedSetupPosition(null)
+    },
+    [selectedProblem, problems, selectedIndex],
+  )
+
   // 盤面リセット
   const handleBoardReset = useCallback(() => {
-    if (!selectedProblem) return
-    const newProblems = [...problems]
-    newProblems[selectedIndex] = { ...selectedProblem, sfen: EMPTY_BOARD_SFEN }
-    setProblems(newProblems)
-    setSelectedPalettePiece(null)
-    setSelectedSetupPosition(null)
-  }, [selectedProblem, problems, selectedIndex])
+    updateProblemSfenAndClearSelection(EMPTY_BOARD_SFEN)
+  }, [updateProblemSfenAndClearSelection])
 
   // 初期配置設定（平手）
   const handleSetInitialPosition = useCallback(() => {
-    if (!selectedProblem) return
-    const newProblems = [...problems]
-    newProblems[selectedIndex] = { ...selectedProblem, sfen: INITIAL_SFEN }
-    setProblems(newProblems)
-    setSelectedSetupPosition(null)
-    setSelectedPalettePiece(null)
-  }, [selectedProblem, problems, selectedIndex])
+    updateProblemSfenAndClearSelection(INITIAL_SFEN)
+  }, [updateProblemSfenAndClearSelection])
 
   // 駒台クリック（持ち駒追加）
   const handleStandClick = useCallback(
