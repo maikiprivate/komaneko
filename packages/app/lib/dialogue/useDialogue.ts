@@ -42,8 +42,23 @@ export function useDialogue(
   const [message, setMessage] = useState<string>('')
   const recentlyShownRef = useRef<string[]>([])
 
+  // 依存配列用に個別プロパティを展開（オブジェクト参照変更による不要な再計算を防止）
+  const {
+    streakDays,
+    lastVisitDate,
+    recentAccuracy,
+    currentHearts,
+    maxHearts,
+  } = contextParams
+
   const selectNewDialogue = useCallback(() => {
-    const context = buildUserContext(contextParams)
+    const context = buildUserContext({
+      streakDays,
+      lastVisitDate,
+      recentAccuracy,
+      currentHearts,
+      maxHearts,
+    })
     const entry = selectDialogue(category, context, {
       recentlyShown: recentlyShownRef.current,
     })
@@ -58,7 +73,7 @@ export function useDialogue(
         ...recentlyShownRef.current.slice(0, MAX_RECENT_HISTORY - 1),
       ]
     }
-  }, [category, contextParams])
+  }, [category, streakDays, lastVisitDate, recentAccuracy, currentHearts, maxHearts])
 
   // 初回マウント時に選択
   useEffect(() => {
@@ -107,8 +122,26 @@ export function useDialogueWithPriority(
     useState<DialogueCategory | null>(null)
   const recentlyShownRef = useRef<string[]>([])
 
+  // 依存配列用に個別プロパティを展開（オブジェクト参照変更による不要な再計算を防止）
+  const {
+    streakDays,
+    lastVisitDate,
+    recentAccuracy,
+    currentHearts,
+    maxHearts,
+  } = contextParams
+
+  // categories配列を文字列化して比較（配列参照変更による不要な再計算を防止）
+  const categoriesKey = categories.join(',')
+
   const selectNewDialogue = useCallback(() => {
-    const context = buildUserContext(contextParams)
+    const context = buildUserContext({
+      streakDays,
+      lastVisitDate,
+      recentAccuracy,
+      currentHearts,
+      maxHearts,
+    })
     const result = selectDialogueWithPriority(categories, context, {
       recentlyShown: recentlyShownRef.current,
     })
@@ -124,7 +157,8 @@ export function useDialogueWithPriority(
         ...recentlyShownRef.current.slice(0, MAX_RECENT_HISTORY - 1),
       ]
     }
-  }, [categories, contextParams])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoriesKey, streakDays, lastVisitDate, recentAccuracy, currentHearts, maxHearts])
 
   // 初回マウント時に選択
   useEffect(() => {
@@ -156,6 +190,17 @@ export function useDialogueWithContext(
   const [message, setMessage] = useState<string>('')
   const recentlyShownRef = useRef<string[]>([])
 
+  // 依存配列用に個別プロパティを展開（オブジェクト参照変更による不要な再計算を防止）
+  const {
+    timeOfDay,
+    streakDays,
+    daysAbsent,
+    isFirstVisitToday,
+    recentAccuracy,
+    currentHearts,
+    maxHearts,
+  } = context
+
   const selectNewDialogue = useCallback(() => {
     const entry = selectDialogue(category, context, {
       recentlyShown: recentlyShownRef.current,
@@ -170,7 +215,8 @@ export function useDialogueWithContext(
         ...recentlyShownRef.current.slice(0, MAX_RECENT_HISTORY - 1),
       ]
     }
-  }, [category, context])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, timeOfDay, streakDays, daysAbsent, isFirstVisitToday, recentAccuracy, currentHearts, maxHearts])
 
   useEffect(() => {
     selectNewDialogue()
