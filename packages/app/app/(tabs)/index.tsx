@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
 import Colors from '@/constants/Colors'
-import { useDialogueWithPriority } from '@/lib/dialogue'
+import { useDialogueWithPriority, type DialogueCategory } from '@/lib/dialogue'
 import { formatRecoveryTime } from '@/lib/hearts/heartsUtils'
 import { useHearts } from '@/lib/hearts/useHearts'
 import {
@@ -19,6 +19,9 @@ import {
 
 const characterSitting = require('@/assets/images/character/sitting.png')
 const homeBackground = require('@/assets/images/background/home.jpg')
+
+/** ホーム画面のセリフカテゴリ（優先度順） */
+const HOME_DIALOGUE_CATEGORIES: DialogueCategory[] = ['comeback', 'home_greeting']
 
 export default function HomeScreen() {
   const { colors } = useTheme()
@@ -56,7 +59,7 @@ export default function HomeScreen() {
     [streakInfo.currentStreak, hearts?.current, hearts?.max]
   )
   const { message: komanekoMessage } = useDialogueWithPriority(
-    ['comeback', 'home_greeting'],
+    HOME_DIALOGUE_CATEGORIES,
     dialogueContext
   )
 

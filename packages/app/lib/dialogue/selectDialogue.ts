@@ -29,6 +29,11 @@ function matchesTimeOfDay(
 
 /**
  * 条件が数値範囲にマッチするかチェック
+ *
+ * value が undefined の場合は true を返す（条件を無視）。
+ * これは意図的な設計: コンテキストに値が設定されていない場合、
+ * その条件を持つセリフも候補に含める。
+ * 例: recentAccuracy が不明でも minAccuracy 条件のセリフを表示可能にする。
  */
 function matchesRange(
   value: number | undefined,

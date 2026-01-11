@@ -229,6 +229,21 @@ export function useDialogueWithContext(
   }
 }
 
+/** カテゴリ別のデフォルトメッセージ */
+const DEFAULT_MESSAGES: Partial<Record<DialogueCategory, string>> = {
+  home_greeting: 'こんにちはにゃ！',
+  tsumeshogi_start: '詰将棋に挑戦するにゃ！',
+  tsumeshogi_correct: '正解にゃ！',
+  tsumeshogi_wrong: 'もう一度考えてみるにゃ',
+  lesson_start: 'レッスン開始にゃ！',
+  lesson_correct: '正解にゃ！',
+  lesson_wrong: 'もう一度やってみるにゃ',
+  lesson_opponent: '相手の番にゃ...',
+}
+
+/** 汎用フォールバックメッセージ */
+const FALLBACK_MESSAGE = 'にゃ〜'
+
 /**
  * 単純なセリフ取得（フック外で使用する場合）
  *
@@ -249,5 +264,5 @@ export function getDialogueMessage(
 ): string {
   const context = buildUserContext(contextParams)
   const entry = selectDialogue(category, context)
-  return entry?.message ?? ''
+  return entry?.message ?? DEFAULT_MESSAGES[category] ?? FALLBACK_MESSAGE
 }

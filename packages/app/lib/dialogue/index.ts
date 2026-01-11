@@ -44,6 +44,26 @@
  *   rarity: 5,                 // レアリティ（1-100、低いほどレア）
  * }
  * ```
+ *
+ * ## 新しいカテゴリの追加方法
+ *
+ * 1. `types.ts` の `DialogueCategory` 型にカテゴリ名を追加
+ * 2. `dialogues.ts` にセリフ配列を定義
+ * 3. `dialogues.ts` の `dialogueMap` に追加
+ * 4. （任意）`useDialogue.ts` の `DEFAULT_MESSAGES` にフォールバックメッセージを追加
+ *
+ * 例: 'achievement' カテゴリを追加する場合
+ *
+ * ```ts
+ * // types.ts
+ * export type DialogueCategory = ... | 'achievement'
+ *
+ * // dialogues.ts
+ * const achievement: DialogueEntry[] = [
+ *   { id: 'achievement_1', message: 'すごいにゃ！' },
+ * ]
+ * export const dialogueMap = { ..., achievement }
+ * ```
  */
 
 // 型定義
