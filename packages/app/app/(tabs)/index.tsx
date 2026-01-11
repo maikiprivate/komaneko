@@ -1,12 +1,13 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useFocusEffect } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, Image, ImageBackground, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/components/useTheme'
 import { WeeklyStreakProgress } from '@/components/WeeklyStreakProgress'
 import Colors from '@/constants/Colors'
+import { useDialogueWithPriority, type DialogueCategory } from '@/lib/dialogue'
 import { formatRecoveryTime } from '@/lib/hearts/heartsUtils'
 import { useHearts } from '@/lib/hearts/useHearts'
 import {
@@ -18,6 +19,9 @@ import {
 
 const characterSitting = require('@/assets/images/character/sitting.png')
 const homeBackground = require('@/assets/images/background/home.jpg')
+
+/** ホーム画面のセリフカテゴリ（優先度順） */
+const HOME_DIALOGUE_CATEGORIES: DialogueCategory[] = ['comeback', 'home_greeting']
 
 export default function HomeScreen() {
   const { colors } = useTheme()
@@ -43,6 +47,20 @@ export default function HomeScreen() {
       }
       loadStreak()
     }, [])
+  )
+
+  // 駒猫セリフ（コンテキストに応じて選択）
+  const dialogueContext = useMemo(
+    () => ({
+      streakDays: streakInfo.currentStreak,
+      currentHearts: hearts?.current,
+      maxHearts: hearts?.max,
+    }),
+    [streakInfo.currentStreak, hearts?.current, hearts?.max]
+  )
+  const { message: komanekoMessage } = useDialogueWithPriority(
+    HOME_DIALOGUE_CATEGORIES,
+    dialogueContext
   )
 
   return (
@@ -120,9 +138,7 @@ export default function HomeScreen() {
           <Image source={characterSitting} style={styles.characterImage} resizeMode="contain" />
           {/* ゲーム風セリフボックス */}
           <View style={styles.dialogBox}>
-            <Text style={styles.dialogText}>
-              一日お疲れ様にゃ！{'\n'}今日の締めくくりに詰将棋はいかがかにゃ？
-            </Text>
+            <Text style={styles.dialogText}>{komanekoMessage}</Text>
           </View>
         </View>
       </SafeAreaView>

@@ -31,6 +31,7 @@ import {
   useLessonGame,
 } from '@/hooks/useLessonGame'
 import { getLesson, recordLesson, type LessonData, type ProblemData } from '@/lib/api/lesson'
+import { getDialogueMessage } from '@/lib/dialogue'
 import {
   checkHeartsAvailable,
   hasEnoughHearts,
@@ -503,7 +504,7 @@ export default function LessonPlayScreen() {
           <KomanekoComment
             message={
               game.isOpponentThinking
-                ? '相手の番にゃ...'
+                ? getDialogueMessage('lesson_opponent')
                 : (game.problem.current?.instruction ?? '')
             }
           />
