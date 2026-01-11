@@ -13,16 +13,21 @@ export interface BackupRepository {
   // 詰将棋
   findAllTsumeshogi(): Promise<TsumeshogiExportItem[]>
   findTsumeshogiBySfen(sfen: string): Promise<{ id: string } | null>
+  findTsumeshogiBySfens(sfens: string[]): Promise<Map<string, string>>
   upsertTsumeshogi(
     data: TsumeshogiExportItem,
     existingId: string | null
   ): Promise<{ id: string }>
 
-  // レッスン（後で追加）
+  // レッスン
   findAllCoursesWithNested(): Promise<CourseWithNested[]>
   findCourseByOrder(order: number): Promise<{ id: string } | null>
+  findCoursesByOrders(orders: number[]): Promise<Map<number, string>>
   deleteCourseById(id: string): Promise<void>
   createCourseWithNested(data: CourseCreateInput): Promise<{ id: string }>
+
+  // トランザクション
+  runInTransaction<T>(fn: (repo: BackupRepository) => Promise<T>): Promise<T>
 }
 
 /** コースとネスト構造の型 */
@@ -102,6 +107,14 @@ export function createBackupRepository(prisma: PrismaClient): BackupRepository {
         where: { sfen },
         select: { id: true },
       })
+    },
+
+    async findTsumeshogiBySfens(sfens: string[]): Promise<Map<string, string>> {
+      const items = await prisma.tsumeshogi.findMany({
+        where: { sfen: { in: sfens } },
+        select: { id: true, sfen: true },
+      })
+      return new Map(items.map((item) => [item.sfen, item.id]))
     },
 
     async upsertTsumeshogi(
@@ -188,6 +201,14 @@ export function createBackupRepository(prisma: PrismaClient): BackupRepository {
       })
     },
 
+    async findCoursesByOrders(orders: number[]): Promise<Map<number, string>> {
+      const items = await prisma.course.findMany({
+        where: { order: { in: orders } },
+        select: { id: true, order: true },
+      })
+      return new Map(items.map((item) => [item.order, item.id]))
+    },
+
     async deleteCourseById(id: string): Promise<void> {
       await prisma.course.delete({
         where: { id },
@@ -227,5 +248,20 @@ export function createBackupRepository(prisma: PrismaClient): BackupRepository {
         select: { id: true },
       })
     },
+
+    async runInTransaction<T>(fn: (repo: BackupRepository) => Promise<T>): Promise<T> {
+      return prisma.$transaction(async (tx) => {
+        const txRepo = createBackupRepositoryWithClient(tx as PrismaClient)
+        return fn(txRepo)
+      })
+    },
   }
+}
+
+/**
+ * 指定のPrismaクライアント（またはトランザクション）でリポジトリを作成
+ * runInTransaction内部で使用
+ */
+function createBackupRepositoryWithClient(client: PrismaClient): BackupRepository {
+  return createBackupRepository(client)
 }

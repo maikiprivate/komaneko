@@ -6,12 +6,49 @@
  */
 
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // バックアップディレクトリのパスを取得
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const BACKUP_DIR = join(__dirname, '..', '..', '..', '..', 'backups')
+
+/**
+ * ファイル名のバリデーション（パストラバーサル対策）
+ * @throws Error 不正なファイル名の場合
+ */
+function validateFilename(filename: string): void {
+  // 空文字チェック
+  if (!filename || filename.trim() === '') {
+    throw new Error('ファイル名が空です')
+  }
+
+  // パス区切り文字を含む場合は拒否
+  if (filename.includes('/') || filename.includes('\\')) {
+    throw new Error('ファイル名にパス区切り文字を含めることはできません')
+  }
+
+  // ..を含む場合は拒否（親ディレクトリ参照）
+  if (filename.includes('..')) {
+    throw new Error('ファイル名に".."を含めることはできません')
+  }
+
+  // .jsonで終わっていない場合は拒否
+  if (!filename.endsWith('.json')) {
+    throw new Error('ファイル名は.jsonで終わる必要があります')
+  }
+
+  // basenameと一致しない場合は拒否（追加の安全策）
+  if (basename(filename) !== filename) {
+    throw new Error('不正なファイル名です')
+  }
+
+  // 正規化後のパスがバックアップディレクトリ外を指す場合は拒否
+  const normalizedPath = normalize(join(BACKUP_DIR, filename))
+  if (!normalizedPath.startsWith(BACKUP_DIR)) {
+    throw new Error('不正なファイルパスです')
+  }
+}
 
 /** バックアップファイル情報 */
 export interface BackupFileInfo {
@@ -83,6 +120,7 @@ export async function listBackupFiles(): Promise<BackupFileInfo[]> {
  * バックアップファイルを保存
  */
 export async function saveBackupFile(filename: string, data: unknown): Promise<string> {
+  validateFilename(filename)
   await ensureBackupDir()
 
   const filePath = join(BACKUP_DIR, filename)
@@ -94,17 +132,27 @@ export async function saveBackupFile(filename: string, data: unknown): Promise<s
 
 /**
  * バックアップファイルを読み込み
+ * @throws Error ファイル読み込みエラーまたはJSONパースエラー
  */
 export async function readBackupFile(filename: string): Promise<unknown> {
+  validateFilename(filename)
   const filePath = join(BACKUP_DIR, filename)
   const content = await readFile(filePath, 'utf-8')
-  return JSON.parse(content)
+
+  try {
+    return JSON.parse(content)
+  } catch (err) {
+    throw new Error(
+      `バックアップファイルの形式が不正です: ${err instanceof SyntaxError ? err.message : '不明なエラー'}`
+    )
+  }
 }
 
 /**
  * バックアップファイルを削除
  */
 export async function deleteBackupFile(filename: string): Promise<void> {
+  validateFilename(filename)
   const filePath = join(BACKUP_DIR, filename)
   await unlink(filePath)
 }
@@ -114,6 +162,7 @@ export async function deleteBackupFile(filename: string): Promise<void> {
  */
 export async function backupFileExists(filename: string): Promise<boolean> {
   try {
+    validateFilename(filename)
     const filePath = join(BACKUP_DIR, filename)
     await stat(filePath)
     return true
@@ -126,5 +175,6 @@ export async function backupFileExists(filename: string): Promise<boolean> {
  * バックアップファイルのフルパスを取得
  */
 export function getBackupFilePath(filename: string): string {
+  validateFilename(filename)
   return join(BACKUP_DIR, filename)
 }

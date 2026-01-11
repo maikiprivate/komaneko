@@ -12,9 +12,9 @@ import {
   type DuplicateAction,
   type ImportResult,
   deleteBackupFile,
+  downloadBackupFile,
   exportLesson,
   exportTsumeshogi,
-  getBackupDownloadUrl,
   getBackupFiles,
   importLessonFromFile,
   importLessonFromUpload,
@@ -596,14 +596,22 @@ export function Backup() {
                       <td className="py-3 text-slate-600">{formatDate(file.createdAt)}</td>
                       <td className="py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <a
-                            href={getBackupDownloadUrl(file.filename)}
-                            download={file.filename}
+                          <button
+                            onClick={async () => {
+                              try {
+                                await downloadBackupFile(file.filename)
+                              } catch (err) {
+                                setMessage({
+                                  type: 'error',
+                                  text: err instanceof Error ? err.message : 'ダウンロードに失敗しました',
+                                })
+                              }
+                            }}
                             className="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
                             title="ダウンロード"
                           >
                             <DownloadIcon className="w-4 h-4" />
-                          </a>
+                          </button>
                           <button
                             onClick={() => handleDeleteFile(file.filename)}
                             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"

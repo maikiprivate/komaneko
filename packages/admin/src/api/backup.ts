@@ -54,12 +54,38 @@ export async function deleteBackupFile(filename: string): Promise<void> {
 }
 
 /**
- * バックアップファイルのダウンロードURLを取得
+ * バックアップファイルをダウンロード
+ *
+ * セキュリティのため、トークンはAuthorizationヘッダーで送信し、
+ * レスポンスをBlobとして受け取ってダウンロードを開始します。
  */
-export function getBackupDownloadUrl(filename: string): string {
+export async function downloadBackupFile(filename: string): Promise<void> {
   const token = localStorage.getItem('token')
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-  return `${baseUrl}/api/admin/backup/files/${encodeURIComponent(filename)}/download?token=${token}`
+  const url = `${baseUrl}/api/admin/backup/files/${encodeURIComponent(filename)}/download`
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('ダウンロードに失敗しました')
+  }
+
+  // Blobとしてレスポンスを取得
+  const blob = await response.blob()
+
+  // ダウンロードリンクを作成してクリック
+  const downloadUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(downloadUrl)
 }
 
 // =============================================================================

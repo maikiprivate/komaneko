@@ -120,6 +120,7 @@ export class BackupService {
 
   /**
    * 詰将棋をデータからインポート（アップロードファイル用）
+   * N+1対策: 事前に全SFENを一括取得
    */
   async importTsumeshogiFromData(
     items: TsumeshogiExportItem[],
@@ -132,16 +133,20 @@ export class BackupService {
       skipped: 0,
     }
 
-    for (const item of items) {
-      const existing = await this.repository.findTsumeshogiBySfen(item.sfen)
+    // N+1対策: 全SFENを一括取得
+    const sfens = items.map((item) => item.sfen)
+    const existingMap = await this.repository.findTsumeshogiBySfens(sfens)
 
-      if (existing) {
+    for (const item of items) {
+      const existingId = existingMap.get(item.sfen)
+
+      if (existingId) {
         // 重複あり
         if (options.duplicateAction === 'skip') {
           result.skipped++
         } else {
           // overwrite
-          await this.repository.upsertTsumeshogi(item, existing.id)
+          await this.repository.upsertTsumeshogi(item, existingId)
           result.updated++
         }
       } else {
@@ -233,43 +238,50 @@ export class BackupService {
 
   /**
    * レッスンをデータからインポート（アップロードファイル用）
+   * トランザクション内で実行し、N+1対策済み
    */
   async importLessonFromData(
     courses: CourseExport[],
     options: ImportOptions = { duplicateAction: 'skip' }
   ): Promise<ImportResult> {
-    const result: ImportResult = {
-      total: courses.length,
-      created: 0,
-      updated: 0,
-      skipped: 0,
-    }
+    return this.repository.runInTransaction(async (txRepo) => {
+      const result: ImportResult = {
+        total: courses.length,
+        created: 0,
+        updated: 0,
+        skipped: 0,
+      }
 
-    for (const course of courses) {
-      const existing = await this.repository.findCourseByOrder(course.order)
+      // N+1対策: 全orderを一括取得
+      const orders = courses.map((c) => c.order)
+      const existingMap = await txRepo.findCoursesByOrders(orders)
 
-      if (existing) {
-        // 重複あり
-        if (options.duplicateAction === 'skip') {
-          result.skipped++
+      for (const course of courses) {
+        const existingId = existingMap.get(course.order)
+
+        if (existingId) {
+          // 重複あり
+          if (options.duplicateAction === 'skip') {
+            result.skipped++
+          } else {
+            // overwrite: 削除して再作成
+            await txRepo.deleteCourseById(existingId)
+            await txRepo.createCourseWithNested(
+              this.convertCourseExportToInput(course)
+            )
+            result.updated++
+          }
         } else {
-          // overwrite: 削除して再作成
-          await this.repository.deleteCourseById(existing.id)
-          await this.repository.createCourseWithNested(
+          // 新規
+          await txRepo.createCourseWithNested(
             this.convertCourseExportToInput(course)
           )
-          result.updated++
+          result.created++
         }
-      } else {
-        // 新規
-        await this.repository.createCourseWithNested(
-          this.convertCourseExportToInput(course)
-        )
-        result.created++
       }
-    }
 
-    return result
+      return result
+    })
   }
 
   /**
