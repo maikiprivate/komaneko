@@ -1118,7 +1118,7 @@ packages/admin/src/
 | GET | /api/lesson/courses/:courseId | コース詳細（completedLessonIds含む） | 必須 |
 | GET | /api/lesson/lessons/:lessonId | レッスン詳細（問題含む） | 必須 |
 
-### Phase 16: 機能改善・UX向上（作業中）
+### Phase 16: 機能改善・UX向上（完了）
 
 **目標**: レッスン機能の品質向上と管理画面の効率化
 
@@ -1135,9 +1135,35 @@ packages/admin/src/
   - 平手初期配置ワンクリックボタン
   - クリックで駒移動（初期配置モード）
   - 「手順設定」→「解答設定」ラベル変更
-- [ ] 詰将棋インポート機能
 
-### Phase 17: 本番リリース準備
+### Phase 17: 管理画面バックアップ機能（作業中）
+
+**目標**: 管理画面にデータのインポート/エクスポート機能を実装
+
+詳細設計: `docs/designs/admin-backup.md`
+
+**用途:**
+- 環境間データ移行（ローカル→本番）
+- 災害復旧（バックアップ・リストア）
+
+**実装内容:**
+- [ ] 詰将棋エクスポート/インポート（バックエンド）
+- [ ] 詰将棋バックアップUI（フロントエンド）
+- [ ] レッスンエクスポート/インポート（バックエンド）
+- [ ] レッスンバックアップUI（フロントエンド）
+
+**実装予定エンドポイント（管理者用）:**
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | /api/admin/backup/files | バックアップファイル一覧 |
+| DELETE | /api/admin/backup/files/:filename | ファイル削除 |
+| POST | /api/admin/backup/tsumeshogi/export | 詰将棋エクスポート |
+| POST | /api/admin/backup/tsumeshogi/import | 詰将棋インポート |
+| POST | /api/admin/backup/lesson/export | レッスンエクスポート |
+| POST | /api/admin/backup/lesson/import | レッスンインポート |
+| GET | /api/admin/backup/files/:filename/download | ファイルダウンロード |
+
+### Phase 18: 本番リリース準備
 - [ ] シードデータ作成
 - [ ] 本番環境テスト
 - [ ] App Store / Google Play 準備（任意）

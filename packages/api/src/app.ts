@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import Fastify from 'fastify'
 import { prisma } from './db/client.js'
+import { adminBackupRouter } from './modules/admin/backup/backup.router.js'
 import { adminLessonRouter } from './modules/admin/lesson/lesson.router.js'
 import { authRouter } from './modules/auth/auth.router.js'
 import { heartsRouter } from './modules/hearts/hearts.router.js'
@@ -76,6 +77,9 @@ export async function buildApp() {
 
   // 管理者用レッスンAPI
   await app.register(adminLessonRouter, { prefix: '/api/admin/lesson' })
+
+  // 管理者用バックアップAPI
+  await app.register(adminBackupRouter, { prefix: '/api/admin/backup' })
 
   return app
 }

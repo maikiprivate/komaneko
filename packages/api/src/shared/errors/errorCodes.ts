@@ -26,6 +26,10 @@ export const ErrorCodes = {
   COURSE_NOT_FOUND: { status: 404, message: 'コースが見つかりません' },
   SECTION_NOT_FOUND: { status: 404, message: 'セクションが見つかりません' },
   PROBLEM_NOT_FOUND: { status: 404, message: '問題が見つかりません' },
+  BACKUP_FILE_NOT_FOUND: { status: 404, message: 'バックアップファイルが見つかりません' },
+
+  // ========== バックアップ ==========
+  INVALID_BACKUP_FILE: { status: 400, message: 'バックアップファイルの形式が不正です' },
 
   // ========== ゲーミフィケーション ==========
   NO_HEARTS_LEFT: { status: 400, message: 'ハートがありません' },
