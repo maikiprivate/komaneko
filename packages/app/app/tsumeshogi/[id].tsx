@@ -18,6 +18,7 @@ import { PieceStand } from '@/components/shogi/PieceStand'
 import { PromotionDialog } from '@/components/shogi/PromotionDialog'
 import { ShogiBoard } from '@/components/shogi/ShogiBoard'
 import { useTheme } from '@/components/useTheme'
+import { getDialogueMessage } from '@/lib/dialogue'
 import { type TsumeshogiProblemForGame, useTsumeshogiGame } from '@/hooks/useTsumeshogiGame'
 import { ApiError } from '@/lib/api/client'
 import {
@@ -151,6 +152,11 @@ export default function TsumeshogiPlayScreen() {
   type FeedbackType = 'none' | 'correct' | 'incorrect'
   const [feedback, setFeedback] = useState<FeedbackType>('none')
 
+  // 駒猫のセリフ（フィードバック状態に応じて変化）
+  const [komanekoMessage, setKomanekoMessage] = useState(() =>
+    getDialogueMessage('tsumeshogi_start')
+  )
+
   // アニメーション用
   const scaleAnim = useRef(new Animated.Value(1)).current
 
@@ -173,6 +179,7 @@ export default function TsumeshogiPlayScreen() {
   const handleCorrect = useCallback(async (): Promise<boolean> => {
     if (!problem) return false
     setFeedback('correct')
+    setKomanekoMessage(getDialogueMessage('tsumeshogi_correct'))
 
     try {
       const result = await recordTsumeshogi({
@@ -227,6 +234,7 @@ export default function TsumeshogiPlayScreen() {
   const handleIncorrect = useCallback(() => {
     if (!problem) return
     setFeedback('incorrect')
+    setKomanekoMessage(getDialogueMessage('tsumeshogi_wrong'))
 
     // 一覧画面のキャッシュ更新用にステータスを保存（APIの成功を待たない）
     // 既にsolvedの場合はin_progressに降格させない
@@ -305,6 +313,12 @@ export default function TsumeshogiPlayScreen() {
     // グローバルキャッシュがあるのでIDのみで遷移（キャッシュからデータ取得）
     router.replace({ pathname: '/tsumeshogi/[id]', params: { id: nextProblem.id } })
   }, [nextProblem, hearts])
+
+  // やり直し（ゲームリセット + セリフリセット）
+  const handleReset = useCallback(() => {
+    game.reset()
+    setKomanekoMessage(getDialogueMessage('tsumeshogi_start'))
+  }, [game])
 
   // ローディング中
   if (heartsLoading || isLoadingProblem) {
@@ -407,7 +421,7 @@ export default function TsumeshogiPlayScreen() {
       <Stack.Screen options={{ title: headerTitle }} />
       <View style={[styles.container, { backgroundColor: palette.gameBackground }]}>
         <View style={styles.commentArea}>
-          <KomanekoComment message="王手の連続で玉を詰ませるにゃ！持ち駒を上手く使ってにゃ〜" />
+          <KomanekoComment message={komanekoMessage} />
         </View>
         <View style={styles.boardSection}>
           <View style={styles.content}>
@@ -476,7 +490,7 @@ export default function TsumeshogiPlayScreen() {
             </TouchableOpacity>
           ) : (
             // 解答前: やり直しボタン
-            <TouchableOpacity onPress={game.reset} activeOpacity={0.8}>
+            <TouchableOpacity onPress={handleReset} activeOpacity={0.8}>
               <View
                 style={[
                   styles.footerButton,
