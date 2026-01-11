@@ -23,8 +23,8 @@ export function checkMinVersionFromHeaders(headers: Headers): void {
   if (!minVersion) return
 
   const needsUpdate = !isAppVersionValid(minVersion)
-  if (needsUpdate && !updateRequired) {
-    updateRequired = true
+  if (needsUpdate !== updateRequired) {
+    updateRequired = needsUpdate
     notifyListeners()
   }
 }
