@@ -120,7 +120,8 @@ export class BackupService {
 
   /**
    * 詰将棋をデータからインポート（アップロードファイル用）
-   * N+1対策: 事前に全SFENを一括取得
+   * N+1対策: 事前に全SFENと(moveCount, problemNumber)を一括取得
+   * 重複判定: sfenまたは(moveCount, problemNumber)のいずれかが一致すれば重複
    */
   async importTsumeshogiFromData(
     items: TsumeshogiExportItem[],
@@ -133,19 +134,31 @@ export class BackupService {
       skipped: 0,
     }
 
-    // N+1対策: 全SFENを一括取得
+    // N+1対策: 全SFENと(moveCount, problemNumber)を一括取得
     const sfens = items.map((item) => item.sfen)
-    const existingMap = await this.repository.findTsumeshogiBySfens(sfens)
+    const keys = items.map((item) => ({
+      moveCount: item.moveCount,
+      problemNumber: item.problemNumber,
+    }))
+
+    const [existingBySfen, existingByKey] = await Promise.all([
+      this.repository.findTsumeshogiBySfens(sfens),
+      this.repository.findTsumeshogiByKeys(keys),
+    ])
 
     for (const item of items) {
-      const existingId = existingMap.get(item.sfen)
+      // sfenまたは(moveCount, problemNumber)で既存レコードを検索
+      const existingIdBySfen = existingBySfen.get(item.sfen)
+      const keyStr = `${item.moveCount}:${item.problemNumber}`
+      const existingIdByKey = existingByKey.get(keyStr)
+      const existingId = existingIdBySfen || existingIdByKey
 
       if (existingId) {
         // 重複あり
         if (options.duplicateAction === 'skip') {
           result.skipped++
         } else {
-          // overwrite
+          // overwrite: sfenも更新するためupdateを使用
           await this.repository.upsertTsumeshogi(item, existingId)
           result.updated++
         }

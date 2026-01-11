@@ -9,11 +9,18 @@ import type { Prisma, PrismaClient } from '@prisma/client'
 
 import type { TsumeshogiExportItem } from './backup.schema.js'
 
+/** 詰将棋の重複チェック用キー */
+export interface TsumeshogiKey {
+  moveCount: number
+  problemNumber: number
+}
+
 export interface BackupRepository {
   // 詰将棋
   findAllTsumeshogi(): Promise<TsumeshogiExportItem[]>
   findTsumeshogiBySfen(sfen: string): Promise<{ id: string } | null>
   findTsumeshogiBySfens(sfens: string[]): Promise<Map<string, string>>
+  findTsumeshogiByKeys(keys: TsumeshogiKey[]): Promise<Map<string, string>>
   upsertTsumeshogi(
     data: TsumeshogiExportItem,
     existingId: string | null
@@ -117,15 +124,36 @@ export function createBackupRepository(prisma: PrismaClient): BackupRepository {
       return new Map(items.map((item) => [item.sfen, item.id]))
     },
 
+    async findTsumeshogiByKeys(keys: TsumeshogiKey[]): Promise<Map<string, string>> {
+      if (keys.length === 0) return new Map()
+
+      // OR条件で一括取得
+      const items = await prisma.tsumeshogi.findMany({
+        where: {
+          OR: keys.map((k) => ({
+            moveCount: k.moveCount,
+            problemNumber: k.problemNumber,
+          })),
+        },
+        select: { id: true, moveCount: true, problemNumber: true },
+      })
+
+      // "moveCount:problemNumber" をキーとしたMapを返す
+      return new Map(
+        items.map((item) => [`${item.moveCount}:${item.problemNumber}`, item.id])
+      )
+    },
+
     async upsertTsumeshogi(
       data: TsumeshogiExportItem,
       existingId: string | null
     ): Promise<{ id: string }> {
       if (existingId) {
-        // 既存レコードを更新
+        // 既存レコードを更新（sfenも含めて全フィールド更新）
         return prisma.tsumeshogi.update({
           where: { id: existingId },
           data: {
+            sfen: data.sfen,
             moveCount: data.moveCount,
             problemNumber: data.problemNumber,
             status: data.status,
