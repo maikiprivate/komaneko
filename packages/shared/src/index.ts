@@ -7,3 +7,6 @@ export const APP_VERSION = '0.1.0'
 
 // バリデーションルール
 export * from './validation/index.js'
+
+// バージョンユーティリティ
+export * from './utils/version.js'

@@ -17,6 +17,10 @@
     "./brand/colors": {
       "types": "./dist/brand/colors.d.ts",
       "import": "./dist/brand/colors.js"
+    },
+    "./utils/version": {
+      "types": "./dist/utils/version.d.ts",
+      "import": "./dist/utils/version.js"
     }
   },
   "scripts": {

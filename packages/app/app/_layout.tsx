@@ -8,6 +8,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
 import 'react-native-reanimated'
 
+import { ForceUpdateModal } from '@/components/ForceUpdateModal'
 import { useColorScheme } from '@/components/useColorScheme'
 import { useTheme } from '@/components/useTheme'
 import { getStreak } from '@/lib/api/learning'
@@ -118,6 +119,7 @@ function RootLayoutNav() {
           }}
         />
       </Stack>
+      <ForceUpdateModal />
     </ThemeProvider>
   )
 }

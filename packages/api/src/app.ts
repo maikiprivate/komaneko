@@ -26,6 +26,7 @@ export async function buildApp() {
   await app.register(cors, {
     origin: isDev ? true : process.env.ALLOWED_ORIGINS?.split(',') || false,
     credentials: true,
+    exposedHeaders: ['X-Min-App-Version'],
   })
 
   // レート制限（1分間に100リクエストまで）
@@ -36,6 +37,13 @@ export async function buildApp() {
 
   // エラーハンドラを登録
   app.setErrorHandler(errorHandler)
+
+  // 全レスポンスに最小アプリバージョンをヘッダーで付与
+  // デフォルト0.0.0: 環境変数未設定時は強制アップデートを無効化
+  const minAppVersion = process.env.MIN_APP_VERSION || '0.0.0'
+  app.addHook('onSend', async (_request, reply) => {
+    reply.header('X-Min-App-Version', minAppVersion)
+  })
 
   // ルートエンドポイント
   app.get('/', async () => {

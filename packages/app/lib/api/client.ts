@@ -6,6 +6,7 @@
  */
 
 import { getToken } from '../auth/tokenStorage'
+import { checkMinVersionFromHeaders } from '../version/updateStore'
 import { API_BASE_URL } from './config'
 
 /** APIエラーコード（バックエンドのerrorCodes.tsと対応） */
@@ -127,6 +128,9 @@ export async function apiRequest<T>(
       body: body ? JSON.stringify(body) : undefined,
     })
 
+    // 最小バージョンチェック
+    checkMinVersionFromHeaders(response.headers)
+
     const json = await response.json()
 
     if (!response.ok) {
@@ -165,6 +169,9 @@ export async function apiRequestVoid(
       headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
     })
+
+    // 最小バージョンチェック
+    checkMinVersionFromHeaders(response.headers)
 
     // 204 No Content または成功ステータスで空ボディの場合
     if (response.status === 204 || response.ok) {
