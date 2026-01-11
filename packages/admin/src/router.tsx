@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { useAuth } from './hooks/useAuth'
+import { Backup } from './pages/Backup'
 import { Dashboard } from './pages/Dashboard'
 import { Login } from './pages/Login'
 import { LessonList } from './pages/lesson/LessonList'
@@ -92,12 +93,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'backup',
-        element: (
-          <div className="p-8">
-            <h1 className="text-2xl font-bold">バックアップ</h1>
-            <p className="text-gray-500 mt-2">Step 10で実装</p>
-          </div>
-        ),
+        element: <Backup />,
       },
     ],
   },
